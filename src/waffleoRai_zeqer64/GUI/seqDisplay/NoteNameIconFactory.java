@@ -1,8 +1,8 @@
 package waffleoRai_zeqer64.GUI.seqDisplay;
 
-import java.awt.Graphics2D;
-import java.awt.Image;
 import java.awt.image.BufferedImage;
+
+import waffleoRai_zeqer64.GUI.ScaledImage;
 
 class NoteNameIconFactory {
 	
@@ -55,9 +55,13 @@ class NoteNameIconFactory {
 	
 	private int letter_height;
 	
-	public NoteNameIconFactory(){
+	private int last_height;
+	private FactoryIcon[] cache;
+	
+ 	public NoteNameIconFactory(){
 		letters = new int[12];
 		accidental = new int[12];
+		cache = new FactoryIcon[128];
 		generateTables();
 		setKey(NOTE_C, true);
 		
@@ -101,7 +105,7 @@ class NoteNameIconFactory {
 			majors[maj] = i;
 			maj -= 7;
 			
-			if(min < 12) min += 12;
+			if(min < 0) min += 12;
 			minors[min] = i;
 			min-=7;
 		}
@@ -111,13 +115,15 @@ class NoteNameIconFactory {
 	public int getCurrentKey(){return current_key;}
 	public boolean getCurrentMode(){return current_mode;}
 	
-	public void setDenoteOctave(boolean b){denote_octave = b;}
+	public void setDenoteOctave(boolean b){denote_octave = b; clearCache();}
 	
 	public void setKey(int key, boolean mode){
 		//Mode - true is Major, false is minor
 		//We'll use -5 to 6 for accidentals
 		//For C major, use C#, Eb, F#, Ab, Bb
 		//For A minor, use all sharps
+		
+		clearCache();
 		
 		key = key%12;
 		current_key = key;
@@ -216,7 +222,7 @@ class NoteNameIconFactory {
 		StringBuilder sb = new StringBuilder(4);
 		int letteridx = letters[semi];
 		if(letteridx < 0) return null;
-		sb.append('A' + letteridx);
+		sb.append((char)('A' + letteridx));
 		switch(accidental[semi]){
 		case -1:
 			if(allow_unicode) sb.append(CHAR_FLAT);
@@ -239,102 +245,90 @@ class NoteNameIconFactory {
 		return sb.toString();
 	}
 	
-	public BufferedImage getNoteIcon(byte midi_val){
+	public FactoryIcon getNoteIcon(byte midi_val, int height){
+		if(height != last_height){clearCache(); last_height = height;}
+		
 		int note_i = (int)midi_val;
 		if(note_i < 0) return null;
+		if(cache[note_i] != null) return cache[note_i];
 		
 		int semi = note_i%12;
 		int octave = (note_i/12) - 1; 
-		int alloc_h = letter_height;
-		int alloc_w = 0;
+		int x = 0;
+		FactoryIcon output = new FactoryIcon();
 		
-		//Letter - buff - accidental (if appl, shrunk to 1/4) - buff - number
-		//Pull necessary images
-		BufferedImage i_letter, i_acc, i_number, i_neg;
-		Image s_acc = null, s_number = null, s_neg = null;
-		i_letter = IconFactory.getNoteLetterIcon(letters[semi]);
-		i_number = i_acc = i_neg = null;
-		switch(accidental[semi]){
-		case -1: i_acc = IconFactory.getMappedIcon("flat"); break;
-		case 1: i_acc = IconFactory.getMappedIcon("sharp"); break;
-		case 2: i_acc = IconFactory.getMappedIcon("natural"); break;
+		//Letter
+		float height_f = (float)height;
+		int h_4 = Math.round((float)height_f/4.0f);
+		int h_6 = h_4 * 3;
+		ScaledImage img_letter = IconFactory.getScaledNoteLetterIcon(letters[semi], height-1);
+		output.addPiece(img_letter, x, 1);
+		x += img_letter.getWidth() + 2;
+		
+		//Accidental
+		//int h_2 = height >>> 1;
+		int acc = accidental[semi];
+		ScaledImage img_acc = null;
+		switch(acc){
+		case -1:
+			img_acc = IconFactory.getScaledMappedIcon("flat", h_6);
+			break;
+		case 1:
+			img_acc = IconFactory.getScaledMappedIcon("sharp", h_6);
+			break;
+		case 2:
+			img_acc = IconFactory.getScaledMappedIcon("natural", h_6);
+			break;
 		}
+		if(img_acc != null){
+			output.addPiece(img_acc, x, 0);
+			x += img_acc.getWidth() + 2;
+		}
+		
 		if(denote_octave){
+			//Negative sign
 			if(octave < 0){
-				i_number = IconFactory.getDigitIcon(1);
-				i_neg = IconFactory.getMappedIcon("minus");
-			}
-			else{i_number = IconFactory.getDigitIcon(octave);} //Octaves go -1 to 9
-		}
-		
-		int[] xpos = new int[4];
-		int[] ypos = new int[4];
-		//Scale component images
-		alloc_w += i_letter.getWidth();
-		if(i_acc != null){
-			//Accidental in use
-			alloc_w += PIX_BUFFER; //Buffer
-			xpos[1] = alloc_w;
-			
-			//Move y down so acc is elevated a bit.
-			int elev = i_letter.getHeight() >>> 3; //1/8th the height of the letter
-			alloc_h += elev;
-			ypos[0] = ypos[2] = ypos[3] = elev;
-			
-			//Determine scaling and scale
-			int a_height = i_letter.getHeight() >>> 1; //Half
-			double aratio = (double)i_acc.getWidth()/i_acc.getHeight();
-			int a_width = (int)Math.round(aratio * (double)a_height);
-			s_acc = i_acc.getScaledInstance(a_width, a_height, Image.SCALE_DEFAULT);
-		}
-		
-		//Number
-		if(denote_octave){
-			alloc_w += PIX_BUFFER; //Buffer
-			int elev = i_letter.getHeight() >>> 3;
-			
-			if(i_neg != null){
-				xpos[2] = alloc_w;
-				ypos[2] += elev*5; //Bump back up when know image size.
-				
-				double aratio = (double)i_neg.getWidth()/i_neg.getHeight();
-				int a_height = i_letter.getHeight()/6;
-				int a_width = (int)Math.round(aratio * (double)a_height);
-				s_neg = i_neg.getScaledInstance(a_width, a_height, Image.SCALE_DEFAULT);
-				alloc_w += a_width;
-				
-				ypos[2] -= a_height/2;
-				alloc_w += PIX_BUFFER;
+				ScaledImage img_minus = IconFactory.getScaledMappedIcon("minus", h_6);
+				output.addPiece(img_minus, x, height - h_6);
+				x += img_minus.getWidth() + 2;
 			}
 			
-			int q = i_letter.getHeight() >>> 2;
-			xpos[3] = alloc_w;
-			ypos[3] += q;
+			//Octave number	
+			if(octave > 9){
+				//Two digits
+				ScaledImage img_num = IconFactory.getScaledDigitIcon(1, h_6);
+				output.addPiece(img_num, x, height - h_6);
+				x += img_num.getWidth() + 2;
+				img_num = IconFactory.getScaledNoteLetterIcon(octave, h_6);
+				output.addPiece(img_num, x, height - h_6);
+			}
+			else{
+				ScaledImage img_num = IconFactory.getScaledDigitIcon(octave, h_6);
+				output.addPiece(img_num, x, height - h_6);
+			}
 			
-			double aratio = (double)i_number.getWidth()/i_number.getHeight();
-			int a_height = q * 3;
-			int a_width = (int)Math.round(aratio * (double)a_height);
-			s_number = i_number.getScaledInstance(a_width, a_height, Image.SCALE_DEFAULT);
-			alloc_w += a_width;
 		}
 		
-		//Now paint to output.
-		BufferedImage output = new BufferedImage(alloc_w, alloc_h, BufferedImage.TYPE_4BYTE_ABGR);
-		Graphics2D g = output.createGraphics();
-		
-		g.drawImage(i_letter, xpos[0], ypos[0], null);
-		if(s_acc != null) g.drawImage(s_acc, xpos[1], ypos[1], null);
-		if(s_neg != null) g.drawImage(s_neg, xpos[2], ypos[2], null);
-		if(s_number != null) g.drawImage(s_number, xpos[3], ypos[3], null);
-		
+		cache[note_i] = output;
 		return output;
+	}
+	
+	public void clearCache(){
+		for(int i = 0; i < 128; i++) cache[i] = null;
 	}
 
 	private void dispose(){
+		clearCache();
+		cache = null;
 		letters = null;
 		accidental = null;
 		majors = null;
 		minors = null;
+	}
+	
+	public static void setDenoteOctaveStatic(boolean b){
+		if(static_factory == null) static_factory = new NoteNameIconFactory();
+		static_factory.setDenoteOctave(b);
 	}
 	
 	public static void setKeyStatic(int key, boolean mode){
@@ -347,9 +341,9 @@ class NoteNameIconFactory {
 		return static_factory.noteToString(midi_val, allow_unicode);
 	}
 	
-	public static BufferedImage getNoteAsImage(byte midi_val){
+	public static FactoryIcon getNoteAsImage(byte midi_val, int height){
 		if(static_factory == null) static_factory = new NoteNameIconFactory();
-		return static_factory.getNoteIcon(midi_val);
+		return static_factory.getNoteIcon(midi_val, height);
 	}
 	
 	public static void disposeStatic(){

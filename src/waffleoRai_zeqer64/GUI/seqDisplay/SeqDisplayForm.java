@@ -4,11 +4,16 @@ import java.awt.Dimension;
 
 import javax.swing.JFrame;
 import java.awt.GridBagLayout;
-import javax.swing.JButton;
 import java.awt.GridBagConstraints;
 import javax.swing.JPanel;
 import java.awt.Insets;
-import javax.swing.JScrollPane;
+
+import waffleoRai_SeqSound.n64al.NUSALSeq;
+import waffleoRai_SeqSound.n64al.NUSALSeqChannel;
+import waffleoRai_SeqSound.n64al.NUSALSeqCommandMap;
+
+import javax.swing.JLabel;
+import javax.swing.SwingConstants;
 
 public class SeqDisplayForm extends JFrame{
 
@@ -21,7 +26,16 @@ public class SeqDisplayForm extends JFrame{
 
 	/*----- Instance Variables -----*/
 	
-	private JPanel pnlTracks;
+	private TrackDisplayPanel pnlTracks;
+	private CommandTablePanel pnlCommands;
+	
+	private TrackColorScheme color_seq = TrackColorScheme.RED;
+	private TrackColorScheme color_ch = TrackColorScheme.YELLOW;
+	private TrackColorScheme color_disabled = TrackColorScheme.GREY;
+	private TrackColorScheme color_vox = TrackColorScheme.BLUE;
+	private TrackColorScheme color_voxsub = TrackColorScheme.PURPLE;
+	
+	private NUSALSeq sequence;
 	
 	/*----- Initialization -----*/
 	
@@ -32,7 +46,6 @@ public class SeqDisplayForm extends JFrame{
 	}
 	
 	private void init(){
-		//TODO
 		setTitle("(test)");
 		setMinimumSize(new Dimension(MIN_WIDTH, MIN_HEIGHT));
 		setPreferredSize(new Dimension(MIN_WIDTH, MIN_HEIGHT));
@@ -40,10 +53,11 @@ public class SeqDisplayForm extends JFrame{
 		gridBagLayout.columnWidths = new int[]{0, 0, 0};
 		gridBagLayout.rowHeights = new int[]{0, 0, 0};
 		gridBagLayout.columnWeights = new double[]{4.0, 1.0, Double.MIN_VALUE};
-		gridBagLayout.rowWeights = new double[]{1.0, 3.0, Double.MIN_VALUE};
+		gridBagLayout.rowWeights = new double[]{1.0, 4.0, Double.MIN_VALUE};
 		getContentPane().setLayout(gridBagLayout);
 		
 		JPanel pnlInfo = new JPanel();
+		pnlInfo.setLayout(null);
 		GridBagConstraints gbc_pnlInfo = new GridBagConstraints();
 		gbc_pnlInfo.insets = new Insets(0, 0, 5, 5);
 		gbc_pnlInfo.fill = GridBagConstraints.BOTH;
@@ -51,30 +65,29 @@ public class SeqDisplayForm extends JFrame{
 		gbc_pnlInfo.gridy = 0;
 		getContentPane().add(pnlInfo, gbc_pnlInfo);
 		
-		JScrollPane spCmdTable = new JScrollPane();
+		JLabel lblNewLabel = new JLabel("New label");
+		lblNewLabel.setHorizontalAlignment(SwingConstants.CENTER);
+		lblNewLabel.setBounds(10, 11, 167, 14);
+		pnlInfo.add(lblNewLabel);
+		
+		pnlCommands = new CommandTablePanel();
 		GridBagConstraints gbc_spCmdTable = new GridBagConstraints();
 		gbc_spCmdTable.gridheight = 2;
 		gbc_spCmdTable.fill = GridBagConstraints.BOTH;
 		gbc_spCmdTable.gridx = 1;
 		gbc_spCmdTable.gridy = 0;
-		getContentPane().add(spCmdTable, gbc_spCmdTable);
+		//gbc_spCmdTable.weightx = 0.2;
+		getContentPane().add(pnlCommands, gbc_spCmdTable);
 		
-		JScrollPane spTracks = new JScrollPane();
+		pnlTracks = new TrackDisplayPanel(17);
 		GridBagConstraints gbc_spTracks = new GridBagConstraints();
 		gbc_spTracks.insets = new Insets(0, 0, 0, 5);
 		gbc_spTracks.fill = GridBagConstraints.BOTH;
 		gbc_spTracks.gridx = 0;
 		gbc_spTracks.gridy = 1;
-		getContentPane().add(spTracks, gbc_spTracks);
+		getContentPane().add(pnlTracks, gbc_spTracks);
 		
-		pnlTracks = new JPanel();
-		spTracks.setViewportView(pnlTracks);
-		GridBagLayout gbl_pnlTracks = new GridBagLayout();
-		gbl_pnlTracks.columnWidths = new int[]{0};
-		gbl_pnlTracks.rowHeights = new int[]{0};
-		gbl_pnlTracks.columnWeights = new double[]{Double.MIN_VALUE};
-		gbl_pnlTracks.rowWeights = new double[]{Double.MIN_VALUE};
-		pnlTracks.setLayout(gbl_pnlTracks);
+
 	}
 	
 	public void render(){
@@ -86,6 +99,68 @@ public class SeqDisplayForm extends JFrame{
 	
 	/*----- Setters -----*/
 	
-	/*----- Drawing -----*/
+	/*----- Sequence Load/Sync -----*/
+	
+	private void loadSeqTrack(){
+		NUSALSeqCommandMap seqcmds = sequence.getCommandTickMap();
+		DisplayTrack track = pnlTracks.addTrack("Sequence", color_seq, seqcmds);
+		track.addLevelPanel(LevelPanelType.TEMPO);
+		track.addLevelPanel(LevelPanelType.VOLUME);
+	}
+	
+	private void loadChannel(int ch){
+		if(!sequence.channelEnabled(ch)){
+			pnlTracks.addTrack("Channel " + ch, color_disabled, null);
+		}
+		else{
+			NUSALSeqChannel channel = sequence.getChannel(ch);
+			DisplayTrack track = pnlTracks.addTrack("Channel " + ch, color_ch, channel.getCommandTickMap());
+			track.addLevelPanel(LevelPanelType.VOLUME);
+			track.addLevelPanel(LevelPanelType.PAN);
+			track.addLevelPanel(LevelPanelType.PITCH_BEND);
+			//Determine how many voices are valid...
+			int vcount = 4;
+			for(int i = 3; i >= 0; i--){
+				NUSALSeqCommandMap map = channel.getVoiceCommandTickMap(i);
+				if(map == null || map.isEmpty()) vcount--;
+				else break;
+			}
+			track.allocVoiceTracks(vcount);
+			track.setSecondaryColorScheme(color_vox);
+			track.setTertiaryColorScheme(color_voxsub);
+			for(int i = 0; i < vcount; i++){
+				System.err.println("Loading voice track: " + ch + "-" + i);
+				track.loadVoiceTrack(i, channel.getVoiceCommandTickMap(i));
+			}
+		}
+	}
+	
+	private void updateToMatchSeq(){
+		if(sequence == null){
+			pnlTracks.clearTracks();
+			pnlCommands.load(null);
+			return;
+		}
+		pnlCommands.load(sequence);
+		pnlTracks.clearTracks();
+		loadSeqTrack();
+		for(int i = 0; i < 16; i++){
+			loadChannel(i);
+		}
+		
+		pnlTracks.setMinimumTicks((int)sequence.getLengthInTicks());
+	}
+	
+	public void loadSequence(NUSALSeq seq){
+		sequence = seq;
+		updateToMatchSeq();
+		repaint();
+	}
+	
+	/*----- GUI Controls -----*/
+	
+	/*----- Painting -----*/
+	
+	
 	
 }

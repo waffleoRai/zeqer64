@@ -4,12 +4,14 @@ import java.awt.Color;
 
 public class ZeqerColorScheme {
 	
-	public static final float MIN_BRIGHTNESS = 0.15f;
-	public static final float MAX_BRIGHTNESS = 0.95f;
+	public static final float MIN_BRIGHTNESS = 0.10f;
+	public static final float MAX_BRIGHTNESS = 0.98f;
 	
 	private float hue;
 	private float saturation;
 	private String name;
+	
+	private Color light_bkg;
 	
 	private Color border_light;
 	private Color border_dark;
@@ -47,6 +49,13 @@ public class ZeqerColorScheme {
 			border_light = Color.getHSBColor(hue, (float)(saturation/2.0), MAX_BRIGHTNESS);
 		}
 		return border_light;
+	}
+	
+	public Color getLightBackground(){
+		if(light_bkg == null){
+			light_bkg = Color.getHSBColor(hue, (float)(saturation/4.0), 0.97f);
+		}
+		return light_bkg;
 	}
 	
 	public Color getDarkBorder(){
