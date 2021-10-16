@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<ZeqerRomInfo>
+	<Dolrom id="pzle">
+		<dolrommd5>"2c66f072455ccdbe97a72e5c94784df8"</dolrommd5>
+		<dolromname>"The Legend of Zelda: Collector's Edition (NTSC-U)"</dolromname>
+		<dolootpath>"/PZLE01/tgc/zelda_ENG_090903.tgc"</dolootpath>
+		<dolootoffset>"0x1c848000"</dolootoffset>
+		<dolootromid>"pzle_czle"</dolootromid>
+		<dolmmpath>"/PZLE01/tgc/majora_ENG_091003.tgc"</dolmmpath>
+		<dolmmoffset>"0x17d9fc0"</dolmmoffset>
+		<dolmmromid>"pzle_nzse"</dolmmromid>
+	</Dolrom>
+
+	<Nusrom id="pzle_czle">
+		<nusrommd5>"cd09029edcfb7c097ac01986a0f83d3f"</nusrommd5>
+		<nusromname>"The Legend of Zelda: Ocarina of Time (GC NTSC-U)"</nusromname>
+		<nusromgame>oot</nusromgame>
+		<offset_dmadata>"0x7170"</offset_dmadata> 
+		<dmaidx_code>27</dmaidx_code>
+		<dmaidx_bnkarc>3</dmaidx_bnkarc>
+		<dmaidx_seqarc>4</dmaidx_seqarc> 
+		<dmaidx_wavarc>5</dmaidx_wavarc>
+		<codeaddr_ram>"0x0"</codeaddr_ram>
+		<codeoffset_banktbl>"0x101DA0"</codeoffset_banktbl> 
+		<codeoffset_seqtbl>"0x1021D0"</codeoffset_seqtbl> 
+		<codeoffset_wavtbl>"0x1028C0"</codeoffset_wavtbl> 
+	</Nusrom>
+	
+	<Nusrom id="pzle_nzse">
+		<nusrommd5>"ac0751dbc23ab2ec0c3144203aca0003"</nusrommd5>
+		<nusromname>"The Legend of Zelda: Majora's Mask (GC NTSC-U)"</nusromname>
+		<nusromgame>mm</nusromgame>
+		<offset_dmadata>"0x1ae90"</offset_dmadata> 
+		<dmaidx_code>31</dmaidx_code>
+		<dmaidx_bnkarc>3</dmaidx_bnkarc>
+		<dmaidx_seqarc>4</dmaidx_seqarc> 
+		<dmaidx_wavarc>5</dmaidx_wavarc>
+		<codeaddr_ram>"0x0"</codeaddr_ram>
+		<codeoffset_banktbl>"0x138f10"</codeoffset_banktbl> 
+		<codeoffset_seqtbl>"0x1393c0"</codeoffset_seqtbl> 
+		<codeoffset_wavtbl>"0x139bd0"</codeoffset_wavtbl> 
+	</Nusrom>
+</ZeqerRomInfo>

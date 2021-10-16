@@ -1,10 +1,8 @@
 package waffleoRai_zeqer64.GUI.seqDisplay;
 
-import java.util.List;
 
 import javax.swing.JPanel;
 
-import waffleoRai_SeqSound.n64al.NUSALSeqCommand;
 import waffleoRai_SeqSound.n64al.NUSALSeqCommandMap;
 
 public class DisplayTrack {
