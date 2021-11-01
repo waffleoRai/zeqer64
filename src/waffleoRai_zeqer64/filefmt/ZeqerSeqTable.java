@@ -475,8 +475,8 @@ public class ZeqerSeqTable {
 				if(entry.banks != null){
 					boolean first = true;
 					for(Integer b : entry.banks){
-						bw.write(String.format("0x%8x", b));
 						if(!first) bw.write(";");
+						bw.write(String.format("0x%8x", b));
 						first = false;
 					}
 					bw.write("\n");
@@ -495,11 +495,19 @@ public class ZeqerSeqTable {
 		if(datdir != null){
 			//Write to mid
 			for(Integer uid : uids){
+				System.err.println("Converting seq 0x" + Integer.toHexString(uid) + " to midi");
 				SeqTableEntry entry = entries.get(uid);
 				String srcpath = datdir + File.separator + entry.getDataFileName();
 				String tpath = dirpath + File.separator + entry.getName() + ".mid";
 				
 				FileBuffer dat = FileBuffer.createBuffer(srcpath, true);
+				//If the format is not 0x20, skip
+				int fmt = Byte.toUnsignedInt(dat.getByte(1L));
+				if(fmt != 0x20){
+					System.err.println("ZeqerSeqTable.exportTo || Sequence in non-standard format, skipping conversion");
+					continue;
+				}
+				
 				NUSALSeq seq = new NUSALSeq(dat);
 				try {
 					MIDI m = seq.toMidi();

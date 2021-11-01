@@ -47,14 +47,15 @@ public class ZeqerBankTable {
 		private byte[] md5;
 		
 		private int[] icounts;
-		private int unk_word;
+		private byte[] unk_bytes;
+		private byte warc_idx;
 		
 		private ZonedDateTime time_created;
 		private ZonedDateTime time_modified;
 		
 		private String name;
 		
-		private BankTableEntry(){icounts = new int[3];}
+		private BankTableEntry(){icounts = new int[3]; unk_bytes = new byte[3];}
 		
 		public static BankTableEntry read(FileBuffer in, long offset){
 			BankTableEntry entry = new BankTableEntry();
@@ -69,7 +70,11 @@ public class ZeqerBankTable {
 			entry.icounts[1] = Byte.toUnsignedInt(in.nextByte());
 			entry.icounts[2] = Short.toUnsignedInt(in.nextShort());
 			
-			entry.unk_word = in.nextInt();
+			//entry.unk_word = in.nextInt();
+			entry.unk_bytes[0] = in.nextByte();
+			entry.unk_bytes[1] = in.nextByte();
+			entry.warc_idx = in.nextByte();
+			entry.unk_bytes[2] = in.nextByte();
 			
 			long rawtime = in.nextLong();
 			entry.time_created = ZonedDateTime.ofInstant(Instant.ofEpochSecond(rawtime), ZoneId.systemDefault());
@@ -85,6 +90,7 @@ public class ZeqerBankTable {
 		
 		public String getName(){return name;}
 		public int getUID(){return uid;}
+		public int getWarcIndex(){return Byte.toUnsignedInt(warc_idx);}
 		
 		public void setName(String s){
 			name = s;
@@ -98,8 +104,13 @@ public class ZeqerBankTable {
 			time_modified = ZonedDateTime.now();
 		}
 		
-		public void setUnknownWord(int val){
-			unk_word = val;
+		public void setUnkByte(int i, byte b){
+			unk_bytes[i] = b;
+			time_modified = ZonedDateTime.now();
+		}
+		
+		public void setWarcIndex(int idx){
+			this.warc_idx = (byte)idx;
 			time_modified = ZonedDateTime.now();
 		}
 		
@@ -136,7 +147,11 @@ public class ZeqerBankTable {
 			out.addToFile((byte)icounts[0]);
 			out.addToFile((byte)icounts[1]);
 			out.addToFile((short)icounts[2]);
-			out.addToFile(unk_word);
+			//out.addToFile(unk_word);
+			out.addToFile(unk_bytes[0]);
+			out.addToFile(unk_bytes[1]);
+			out.addToFile(warc_idx);
+			out.addToFile(unk_bytes[2]);
 			
 			if(time_created == null) time_created = ZonedDateTime.now();
 			out.addToFile(time_created.toEpochSecond());
@@ -368,7 +383,7 @@ public class ZeqerBankTable {
 	public void exportTo(String dirpath) throws IOException{
 		String tsvpath = dirpath + File.separator + "_zubnk_tbl.tsv";
 		BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(tsvpath), StandardCharsets.UTF_8));
-		bw.write("#NAME\tUID\tMD5\tDATE_CREATED\tDATE_MOD\tINST_COUNT\tUNK_WORD\n");
+		bw.write("#NAME\tUID\tMD5\tDATE_CREATED\tDATE_MOD\tINST_COUNT\tWARC_IDX\tUNK_BYTES\n");
 		int ecount = entries.size();
 		List<Integer> uids = new ArrayList<Integer>(ecount+1);
 		uids.addAll(entries.keySet());
@@ -386,7 +401,8 @@ public class ZeqerBankTable {
 			bw.write(entry.icounts[1] + ";");
 			bw.write(entry.icounts[2] + "\t");
 			
-			bw.write(String.format("0x%08x\n", entry.unk_word));
+			bw.write(entry.warc_idx + "\t");
+			bw.write(String.format("%02x %02x %02x\n", entry.unk_bytes[0], entry.unk_bytes[1], entry.unk_bytes[2]));
 		}
 		
 		bw.close();

@@ -109,6 +109,17 @@ public class WaveExtractor {
 		Map<Integer, WaveInfoBlock> waves_env = new TreeMap<Integer, WaveInfoBlock>();
 		Map<Integer, WaveInfoBlock> waves_music = new TreeMap<Integer, WaveInfoBlock>();
 		
+		//Read warc table from code file
+		code.setCurrentPosition(rominfo.getCodeOffset_audtable());
+		int warccount = Short.toUnsignedInt(code.nextShort());
+		code.skipBytes(14);
+		long[][] warcpos = new long[warccount][2];
+		for(int i = 0; i < warccount; i++){
+			warcpos[i][0] = Integer.toUnsignedLong(code.nextInt());
+			warcpos[i][1] = Integer.toUnsignedLong(code.nextInt());
+			code.skipBytes(8L);
+		}
+		
 		//Read audio bank table from code file
 		code.setCurrentPosition(rominfo.getCodeOffset_bnktable());
 		int bcount = Short.toUnsignedInt(code.nextShort());
@@ -116,8 +127,11 @@ public class WaveExtractor {
 		for(int i = 0; i < bcount; i++){
 			long stoff = Integer.toUnsignedLong(code.nextInt());
 			long size = Integer.toUnsignedLong(code.nextInt());
-			//Not sure what the next four bytes are
-			code.skipBytes(4);
+			
+			//Not sure what the next two bytes are
+			code.skipBytes(2);
+			int bwarc = Byte.toUnsignedInt(code.nextByte());
+			code.nextByte(); //Unknown, usually 0xff
 			
 			int s0count = Byte.toUnsignedInt(code.nextByte());
 			int s1count = Byte.toUnsignedInt(code.nextByte());
@@ -127,19 +141,21 @@ public class WaveExtractor {
 			Z64Bank zbnk = Z64Bank.readBank(bnkdat, s0count, s1count, s2count);
 			
 			//Get waves
+			int wmask = bwarc << 24;
 			List<WaveInfoBlock> wavelist = zbnk.getAllWaveInfoBlocks();
 			for(WaveInfoBlock wb : wavelist){
+				int modoff = wb.getOffset() | wmask;
 				if(i == 1){
-					waves_actor.put(wb.getOffset(), wb);
+					waves_actor.put(modoff, wb);
 				}
 				else if(i == 2){
-					if(waves_actor.containsKey(wb.getOffset())) continue;
-					waves_env.put(wb.getOffset(), wb);
+					if(waves_actor.containsKey(modoff)) continue;
+					waves_env.put(modoff, wb);
 				}
 				else{
-					if(waves_actor.containsKey(wb.getOffset())) continue;
-					if(waves_env.containsKey(wb.getOffset())) continue;
-					waves_music.put(wb.getOffset(), wb);
+					if(waves_actor.containsKey(modoff)) continue;
+					if(waves_env.containsKey(modoff)) continue;
+					waves_music.put(modoff, wb);
 				}
 			}
 			
@@ -154,7 +170,10 @@ public class WaveExtractor {
 		ilist.addAll(waves_actor.keySet());
 		for(Integer k : ilist){
 			WaveInfoBlock wb = waves_actor.get(k);
-			FileBuffer wavedat = audiotable.createReadOnlyCopy(wb.getOffset(), wb.getOffset() + wb.getLength());
+			int warc_idx = k >>> 24;
+			long offset = wb.getOffset() + warcpos[warc_idx][0];
+			
+			FileBuffer wavedat = audiotable.createReadOnlyCopy(offset, offset + wb.getLength());
 			
 			//Hash.
 			byte[] md5 = FileUtils.getMD5Sum(wavedat.getBytes());
@@ -175,17 +194,17 @@ public class WaveExtractor {
 					entry.setName("actor_snd_" + Integer.toHexString(uid));
 					String wpath = dir_base + File.separator + String.format("%08x", uid) + ".adpcm";
 					wavedat.writeFile(wpath);
-					uidmap.put(wb.getOffset(), entry.getUID());	
+					uidmap.put(k, entry.getUID());	
 				}
 			}
 			else{
 				//Just map to uidmap then.
-				System.err.println("Wave match found! 0x" + Integer.toHexString(wb.getOffset()) + " to " + entry.getName());
+				System.err.println("Wave match found! 0x" + Integer.toHexString(k) + " to " + entry.getName());
 				String wpath = dir_base + File.separator + String.format("%08x", entry.getUID()) + ".adpcm";
 				if(!FileBuffer.fileExists(wpath)){
 					wavedat.writeFile(wpath);
 				}
-				uidmap.put(wb.getOffset(), entry.getUID());
+				uidmap.put(k, entry.getUID());
 			}
 			
 			wavedat.dispose();
@@ -195,7 +214,10 @@ public class WaveExtractor {
 		ilist.addAll(waves_env.keySet());
 		for(Integer k : ilist){
 			WaveInfoBlock wb = waves_env.get(k);
-			FileBuffer wavedat = audiotable.createReadOnlyCopy(wb.getOffset(), wb.getOffset() + wb.getLength());
+			int warc_idx = k >>> 24;
+			long offset = wb.getOffset() + warcpos[warc_idx][0];
+			
+			FileBuffer wavedat = audiotable.createReadOnlyCopy(offset, offset + wb.getLength());
 			byte[] md5 = FileUtils.getMD5Sum(wavedat.getBytes());
 			
 			//See if this wave already exists in database
@@ -211,7 +233,7 @@ public class WaveExtractor {
 					entry.setName("env_snd_" + Integer.toHexString(uid));
 					String wpath = dir_base + File.separator + String.format("%08x", uid) + ".adpcm";
 					wavedat.writeFile(wpath);
-					uidmap.put(wb.getOffset(), entry.getUID());
+					uidmap.put(k, entry.getUID());
 				}
 			}
 			else{
@@ -221,7 +243,7 @@ public class WaveExtractor {
 				if(!FileBuffer.fileExists(wpath)){
 					wavedat.writeFile(wpath);
 				}
-				uidmap.put(wb.getOffset(), entry.getUID());
+				uidmap.put(k, entry.getUID());
 			}
 			wavedat.dispose();
 		}
@@ -230,7 +252,10 @@ public class WaveExtractor {
 		ilist.addAll(waves_music.keySet());
 		for(Integer k : ilist){
 			WaveInfoBlock wb = waves_music.get(k);
-			FileBuffer wavedat = audiotable.createReadOnlyCopy(wb.getOffset(), wb.getOffset() + wb.getLength());
+			int warc_idx = k >>> 24;
+			long offset = wb.getOffset() + warcpos[warc_idx][0];
+			
+			FileBuffer wavedat = audiotable.createReadOnlyCopy(offset, offset + wb.getLength());
 			byte[] md5 = FileUtils.getMD5Sum(wavedat.getBytes());
 			
 			//See if this wave already exists in database
@@ -246,7 +271,7 @@ public class WaveExtractor {
 					entry.setName("music_snd_" + Integer.toHexString(uid));
 					String wpath = dir_base + File.separator + String.format("%08x", uid) + ".adpcm";
 					wavedat.writeFile(wpath);
-					uidmap.put(wb.getOffset(), entry.getUID());
+					uidmap.put(k, entry.getUID());
 				}
 			}
 			else{
@@ -255,7 +280,7 @@ public class WaveExtractor {
 				if(!FileBuffer.fileExists(wpath)){
 					wavedat.writeFile(wpath);
 				}
-				uidmap.put(wb.getOffset(), entry.getUID());
+				uidmap.put(k, entry.getUID());
 			}
 			wavedat.dispose();
 		}

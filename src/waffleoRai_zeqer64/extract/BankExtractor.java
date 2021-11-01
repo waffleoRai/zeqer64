@@ -93,6 +93,7 @@ public class BankExtractor {
 		FileBuffer code = z_rom.loadCode(); code.setEndian(true);
 		FileBuffer audiobank = z_rom.loadAudiobank(); audiobank.setEndian(true);
 		
+		//Read bank table
 		code.setCurrentPosition(rominfo.getCodeOffset_bnktable());
 		int bcount = Short.toUnsignedInt(code.nextShort());
 		int[] uid_tbl = new int[bcount];
@@ -101,7 +102,11 @@ public class BankExtractor {
 			boolean skip = false;
 			long stoff = Integer.toUnsignedLong(code.nextInt());
 			long size = Integer.toUnsignedLong(code.nextInt());
-			int unkw = code.nextInt();
+			byte[] ub = new byte[3];
+			ub[0] = code.nextByte();
+			ub[1] = code.nextByte();
+			int widx = Byte.toUnsignedInt(code.nextByte());
+			ub[2] = code.nextByte();
 			int i0 = Byte.toUnsignedInt(code.nextByte());
 			int i1 = Byte.toUnsignedInt(code.nextByte());
 			int i2 = Short.toUnsignedInt(code.nextShort());
@@ -110,11 +115,13 @@ public class BankExtractor {
 			FileBuffer bdat = audiobank.createCopy(stoff, stoff+size);
 			//System.err.println("DEBUG -- Bank Data Size: 0x" + Long.toHexString(bdat.getFileSize()));
 			Z64Bank bank = Z64Bank.readBank(bdat, i0, i1, i2);
+			int wmask = widx << 24;
 			List<WaveInfoBlock> wblocks = bank.getAllWaveInfoBlocks();
 			for(WaveInfoBlock wb : wblocks){
 				//Base is the second word in the record. That's what we read and update.
 				int addr = wb.getBankOffset() + 4;
 				int woff = wb.getOffset();
+				woff |= wmask;
 				if(!wavloc_map.containsKey(woff)){
 					System.err.println("BankExtractor.extractBanks || Failed to ID sound at audiotable 0x" + Integer.toHexString(woff));
 					skip = true;
@@ -136,7 +143,9 @@ public class BankExtractor {
 				if(write_perm){
 					entry = table.newEntry(hash);
 					entry.setInstCounts(i0, i1, i2);
-					entry.setUnknownWord(unkw);
+					//entry.setUnknownWord(unkw);
+					for(int j = 0; j < 3; j++) entry.setUnkByte(j, ub[j]);
+					entry.setWarcIndex(widx);
 					
 					String dpath = dir_base + SEP + entry.getDataFileName();
 					if(!FileBuffer.fileExists(dpath)){
