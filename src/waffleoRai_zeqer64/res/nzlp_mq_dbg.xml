@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<ZeqerRomInfo>
+	<Nusrom id="nzlp_mq_dbg">
+		<nusrommd5>"f0b7f35375f9cc8ca1b2d59d78e35405"</nusrommd5>
+		<nusromname>"The Legend of Zelda: Ocarina of Time Master Quest (PAL Debug)"</nusromname>
+		<nusromgame>ootmq</nusromgame>
+		<offset_dmadata>"0x12f70"</offset_dmadata> 
+		<dmaidx_code>28</dmaidx_code>
+		<dmaidx_bnkarc>3</dmaidx_bnkarc>
+		<dmaidx_seqarc>4</dmaidx_seqarc> 
+		<dmaidx_wavarc>5</dmaidx_wavarc>
+		<codeaddr_ram>"0x8001ce60"</codeaddr_ram>
+		<codeoffset_banktbl>"0x138270"</codeoffset_banktbl> 
+		<codeoffset_seqtbl>"0x1386a0"</codeoffset_seqtbl> 
+		<codeoffset_wavtbl>"0x138d90"</codeoffset_wavtbl> 
+	</Nusrom>
+</ZeqerRomInfo>

@@ -6,6 +6,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
@@ -87,6 +88,132 @@ public class WaveExtractor {
 	public void setWaveTableWriteEnabled(boolean b){tbl_w = b;}
 	
 	/*----- Extraction -----*/
+	
+	public static int[][][] buildWavePosTable(ZeqerRom rom) throws IOException{
+		if(rom == null) return null;
+		
+		FileBuffer code = rom.loadCode();
+		
+		//Read code table for audiotable
+		int[][] warc_tbl, bnk_tbl;
+		code.setCurrentPosition(rom.getRomInfo().getCodeOffset_audtable());
+		int warc_count = Short.toUnsignedInt(code.nextShort());
+		code.skipBytes(14);
+		warc_tbl = new int[warc_count][2];
+		for(int i = 0; i < warc_count; i++){
+			warc_tbl[i][0] = code.nextInt();
+			warc_tbl[i][1] = code.nextInt();
+			code.skipBytes(8);
+		}
+		
+		//Ew. But it does the job.
+		ArrayList<Map<Integer, Integer>> found = new ArrayList<Map<Integer,Integer>>(warc_count);
+		for(int i = 0; i < warc_count; i++){found.add(new TreeMap<Integer, Integer>());}
+		//Maps offset to length.
+		
+		//Read code table for audiobank
+		code.setCurrentPosition(rom.getRomInfo().getCodeOffset_bnktable());
+		int bcount = Short.toUnsignedInt(code.nextShort());
+		code.skipBytes(14);
+		bnk_tbl = new int[bcount][6];
+		for(int i = 0; i < bcount; i++){
+			bnk_tbl[i][0] = code.nextInt();
+			bnk_tbl[i][1] = code.nextInt();
+			code.skipBytes(2);
+			bnk_tbl[i][2] = Byte.toUnsignedInt(code.nextByte());
+			code.nextByte();
+			bnk_tbl[i][3] = Byte.toUnsignedInt(code.nextByte());
+			bnk_tbl[i][4] = Byte.toUnsignedInt(code.nextByte());
+			bnk_tbl[i][5] = Short.toUnsignedInt(code.nextShort());
+			
+			//if(bnk_tbl[i][2] == 1) bnk_tbl[i][2] = 0; //Dunno why this is true, but it is. I think 1 refers to the musical samples maybe?
+		}
+		
+		//Scan banks for wave references
+		FileBuffer audiobank = rom.loadAudiobank();
+		for(int i = 0; i < bcount; i++){
+			FileBuffer mybank = audiobank.createReadOnlyCopy(bnk_tbl[i][0], bnk_tbl[i][0] + bnk_tbl[i][1]);
+			Map<Integer, Integer> warcmap = found.get(bnk_tbl[i][2]);
+			
+			Z64Bank zbnk = Z64Bank.readBank(mybank, bnk_tbl[i][3], bnk_tbl[i][4], bnk_tbl[i][5]);
+			List<WaveInfoBlock> winfos = zbnk.getAllWaveInfoBlocks();
+			for(WaveInfoBlock winfo : winfos){
+				if(!warcmap.containsKey(winfo.getOffset())){
+					//System.err.println("New wave: 0x" + Integer.toHexString(winfo.getOffset()) + ", 0x" + Integer.toHexString(winfo.getLength()));
+					warcmap.put(winfo.getOffset(), winfo.getLength());
+				}
+			}
+			mybank.dispose();
+		}
+		
+		int[][][] wave_table = new int[warc_count][][];
+		for(int i = 0; i < warc_count; i++){
+			//Don't forget to search for gaps too! (Gaps must be longer than 16 bytes to count as gaps)
+			Map<Integer, Integer> warcmap = found.get(i);
+			
+			if(warcmap.isEmpty()){
+				//Just put the whole thing as one "sample"
+				int[][] mytbl = new int[1][3];
+				wave_table[i] = mytbl;
+				mytbl[0][0] = 0;
+				mytbl[0][1] = warc_tbl[i][1];
+				mytbl[0][2] = 0;
+				continue;
+			}
+			
+			List<Integer> offsets = new ArrayList<Integer>(warcmap.size()+1);
+			offsets.addAll(warcmap.keySet());
+			Collections.sort(offsets);
+			int count = offsets.size();
+			for(int j = 0; j < count; j++){
+				int myoff = offsets.get(j);
+				int nextoff = warc_tbl[i][1];
+				if(j < count-1) nextoff = offsets.get(j+1);
+				int mylen = warcmap.get(myoff);
+				int myend = myoff + mylen;
+				if(myend < nextoff){
+					//Gap.
+					if(!(i == 0 && j == count-1)){
+						int diff = nextoff - myend;
+						if(diff > 16){
+							warcmap.put(myend, (nextoff - myend) | 0x80000000); //Hi bit marks as unused	
+						}	
+					}
+				}
+			}
+
+			//Now allocate and copy to table.
+			count = warcmap.size();
+			int[][] mytbl = new int[count][3];
+			wave_table[i] = mytbl;
+			
+			offsets = new ArrayList<Integer>(count+1);
+			offsets.addAll(warcmap.keySet());
+			Collections.sort(offsets);
+			for(int j = 0; j < count; j++){
+				int myoff = offsets.get(j);
+				int mylen = warcmap.get(myoff);
+				boolean used = (mylen & 0x80000000) == 0;
+				mylen &= 0x7fffffff;
+				mytbl[j][0] = myoff;
+				mytbl[j][1] = mylen;
+				mytbl[j][2] = used?1:0;
+				System.err.println("wave_table[" + i + "][" + j + "] = " 
+						+ "0x" + Integer.toHexString(mytbl[j][0])
+						+ ":0x" + Integer.toHexString(mytbl[j][1])
+						+ ":" + Integer.toHexString(mytbl[j][2]));
+			}
+			//System.err.println("\t\tWARC " + i + " Wave Count: " + count);
+		}
+		
+		//[warc_idx][wav_idx][field]
+		//Fields:
+		//	0 - Offset (relative to warc)
+		//	1 - Length
+		//	2 - Is used? (0 or 1)
+		
+		return wave_table;
+	}
 	
 	public boolean extractWaves() throws IOException{
 		if(z_rom == null) return false;

@@ -29,6 +29,8 @@ public class ZeqerRom {
 		head = N64ROMImage.readROMHeader(path);
 		FileBuffer romdat = N64ROMImage.loadROMasZ64(rom_path);
 		dmadata = N64ZFileTable.readTable(romdat, this.info.getDMADataOffset());
+		
+		//System.err.println("DMAData Offset: 0x" + Long.toHexString(this.info.getDMADataOffset()));
 	}
 	
 	/*----- Getters -----*/

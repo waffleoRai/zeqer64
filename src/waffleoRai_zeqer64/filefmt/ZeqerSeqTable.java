@@ -492,7 +492,7 @@ public class ZeqerSeqTable {
 		
 		bw.close();
 		
-		if(datdir != null){
+		/*if(datdir != null){
 			//Write to mid
 			for(Integer uid : uids){
 				System.err.println("Converting seq 0x" + Integer.toHexString(uid) + " to midi");
@@ -516,7 +516,7 @@ public class ZeqerSeqTable {
 					e.printStackTrace();
 				}
 			}
-		}
+		}*/
 	}
 	
 }
