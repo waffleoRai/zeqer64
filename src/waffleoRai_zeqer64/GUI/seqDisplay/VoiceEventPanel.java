@@ -333,10 +333,10 @@ class VoiceEventPanel extends AbstractEventPanel{
 				else{
 					switch(cmd.getCommand()){
 					case END_READ:
-					case RETURN:
+					case BREAK:
 						insub = false;
 						break;
-					case TRANSPOSE:
+					case L_TRANSPOSE:
 						transpose = cmd.getParam(0);
 						break;
 					default:

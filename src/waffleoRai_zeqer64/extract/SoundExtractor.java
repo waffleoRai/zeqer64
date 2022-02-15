@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -11,6 +12,7 @@ import waffleoRai_Utils.FileBuffer;
 import waffleoRai_zeqer64.ZeqerCore;
 import waffleoRai_zeqer64.ZeqerRom;
 import waffleoRai_zeqer64.filefmt.ZeqerBankTable;
+import waffleoRai_zeqer64.filefmt.ZeqerPresetTable;
 import waffleoRai_zeqer64.filefmt.ZeqerSeqTable;
 import waffleoRai_zeqer64.filefmt.ZeqerWaveTable;
 
@@ -65,22 +67,11 @@ public class SoundExtractor {
 		if(write_perm) wavex.setWaveTableWriteEnabled(true);
 		if(!wavex.extractWaves()) return false;
 		
-		//Banks
+		//Banks & Presets
 		if(verbose) System.err.println("Mapping wave offsets to UIDs...");
 		if(write_perm) bnkex.setSysPermission(true);
 		//Reload wav id map for banks
-		Map<Integer, Integer> wavmap = new TreeMap<Integer, Integer>();
-		String tblpath = wavex.getIDTablePath();
-		System.err.println("tblpath = " + tblpath);
-		if(!FileBuffer.fileExists(tblpath)) return false;
-		FileBuffer buffer = FileBuffer.createBuffer(tblpath, true);
-		int ecount = (int)buffer.getFileSize() >>> 3;
-		buffer.setCurrentPosition(0L);
-		for(int i = 0; i < ecount; i++){
-			int id = buffer.nextInt();
-			int pos = buffer.nextInt();
-			wavmap.put(pos, id);
-		}
+		List<Map<Integer, Integer>> wavmap = ZeqerWaveTable.loadVersionWaveOffsetIDMap(wavdir, z_rom.getRomInfo().getZeqerID());
 		
 		if(verbose) System.err.println("Extracting soundbanks...");
 		if(!bnkex.extractBanks(wavmap)) return false;
@@ -94,17 +85,8 @@ public class SoundExtractor {
 		if(!seqex.extractSeqs()) return false;
 		
 		if(verbose) System.err.println("Mapping soundbanks to seqs...");
-		tblpath = bnkex.getIDTablePath();
-		if(!FileBuffer.fileExists(tblpath)) return false;
-		buffer = FileBuffer.createBuffer(tblpath, true);
-		ecount = (int)buffer.getFileSize() >>> 2;
-		if(ecount == 0) return false;
-		int[] buids = new int[ecount];
-		buffer.setCurrentPosition(0L);
-		for(int i = 0; i < ecount; i++){
-			int id = buffer.nextInt();
-			buids[i] = id;
-		}
+		int[] buids = ZeqerBankTable.loadVersionTable(bnkdir, z_rom.getRomInfo().getZeqerID());
+		if(buids == null) return false;
 		if(!seqex.mapSeqBanks(buids)) return false;
 		
 		return good;
@@ -149,7 +131,7 @@ public class SoundExtractor {
 			String srcpath = srcdir + SEP + ZeqerCore.FN_SYSWAVE;
 			if(!FileBuffer.directoryExists(tblpath)) Files.createDirectories(Paths.get(tblpath));
 			ZeqerWaveTable wtbl = ZeqerWaveTable.readTable(FileBuffer.createBuffer(srcpath, true));
-			wtbl.exportTo(tblpath, srcdir);
+			wtbl.exportTo(tblpath, null);
 			
 			tblpath = tbldir + SEP + "bnk";
 			srcdir = outdir + SEP + ZeqerCore.DIRNAME_BANK + SEP + ZeqerCore.DIRNAME_ZBANK;
@@ -157,6 +139,11 @@ public class SoundExtractor {
 			if(!FileBuffer.directoryExists(tblpath)) Files.createDirectories(Paths.get(tblpath));
 			ZeqerBankTable btbl = ZeqerBankTable.readTable(FileBuffer.createBuffer(srcpath, true));
 			btbl.exportTo(tblpath);
+			
+			srcpath = srcdir + SEP + ZeqerCore.FN_SYSPRESET;
+			if(!FileBuffer.directoryExists(tblpath)) Files.createDirectories(Paths.get(tblpath));
+			ZeqerPresetTable ptbl = ZeqerPresetTable.readTable(FileBuffer.createBuffer(srcpath, true));
+			ptbl.exportTo(tblpath);
 			
 			tblpath = tbldir + SEP + "seq" + SEP + "z5";
 			srcdir = outdir + SEP + ZeqerCore.DIRNAME_SEQ + SEP + ZeqerCore.DIRNAME_ZSEQ;
@@ -174,6 +161,16 @@ public class SoundExtractor {
 				ZeqerSeqTable stbl = ZeqerSeqTable.readTable(FileBuffer.createBuffer(srcpath, true));
 				stbl.exportTo(tblpath, srcdir);
 			}
+			
+			srcdir = outdir + SEP + ZeqerCore.DIRNAME_BANK + SEP + ZeqerCore.DIRNAME_ZBANK;
+			int[] verids = ZeqerBankTable.loadVersionTable(srcdir, rom.getRomInfo().getZeqerID());
+			System.out.println("Banks Found: " + verids.length);
+			for(int id : verids) System.out.println(String.format("%08x", id));
+			
+			srcdir = outdir + SEP + ZeqerCore.DIRNAME_SEQ + SEP + ZeqerCore.DIRNAME_ZSEQ;
+			verids = ZeqerSeqTable.loadVersionTable(srcdir, rom.getRomInfo().getZeqerID());
+			System.out.println("Seqs Found: " + verids.length);
+			for(int id : verids) System.out.println(String.format("%08x", id));
 			
 		}
 		catch(Exception ex){

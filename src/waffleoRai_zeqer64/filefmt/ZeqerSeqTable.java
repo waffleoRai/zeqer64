@@ -16,17 +16,16 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 
-import javax.sound.midi.InvalidMidiDataException;
-
-import waffleoRai_SeqSound.MIDI;
-import waffleoRai_SeqSound.n64al.NUSALSeq;
 import waffleoRai_Utils.BinFieldSize;
 import waffleoRai_Utils.FileBuffer;
 import waffleoRai_Utils.SerializedString;
@@ -39,10 +38,11 @@ public class ZeqerSeqTable {
 	/*----- Constants -----*/
 	
 	public static final String MAGIC = "zeqrSEQt";
-	public static final short CURRENT_VERSION = 1;
+	public static final short CURRENT_VERSION = 2;
 	
 	public static final int FLAG_MULTIBANK = 0x00000001;
-	public static final int FLAG_ALLOCTYPE = 0x00000006;
+	
+	private static final char SEP = File.separatorChar;
 	
 	/*----- Inner Classes -----*/
 	
@@ -52,7 +52,8 @@ public class ZeqerSeqTable {
 	
 		private int uid;
 		private int flags = 0;
-		private byte unkbyte;
+		private byte medium;
+		private byte cache;
 		private byte[] md5;
 		
 		private ZonedDateTime time_created;
@@ -62,16 +63,18 @@ public class ZeqerSeqTable {
 		private List<Integer> banks; //Only used if multi bank
 		
 		private String name;
+		private Set<String> tags;
 		
-		private SeqTableEntry(){}
+		private SeqTableEntry(){tags = new HashSet<String>();}
 		
-		public static SeqTableEntry read(FileBuffer in, long offset){
+		public static SeqTableEntry read(FileBuffer in, int version){
 			SeqTableEntry entry = new SeqTableEntry();
-			in.setCurrentPosition(offset);
+			//in.setCurrentPosition(offset);
 			
 			entry.uid = in.nextInt();
-			entry.flags = in.nextShortish();
-			entry.unkbyte = in.nextByte();
+			entry.flags = Short.toUnsignedInt(in.nextShort());
+			entry.medium = in.nextByte();
+			entry.cache = in.nextByte();
 			entry.md5 = new byte[16];
 			for(int i = 0; i < 16; i++) entry.md5[i] = in.nextByte();
 			
@@ -95,6 +98,18 @@ public class ZeqerSeqTable {
 			long cpos = in.getCurrentPosition();
 			SerializedString ss = in.readVariableLengthString("UTF8", cpos, BinFieldSize.WORD, 2);
 			entry.name = ss.getString();
+			in.skipBytes(ss.getSizeOnDisk());
+			
+			if(version >= 2){
+				cpos = in.getCurrentPosition();
+				ss = in.readVariableLengthString("UTF8", cpos, BinFieldSize.WORD, 2);
+				String rawtags = ss.getString();
+				if(rawtags != null && !rawtags.isEmpty()){
+					String[] taglist = rawtags.split(";");
+					for(String tag:taglist) entry.tags.add(tag);
+				}
+				in.skipBytes(ss.getSizeOnDisk());	
+			}
 			
 			return entry;
 		}
@@ -103,34 +118,34 @@ public class ZeqerSeqTable {
 			return ((flags & flag) != 0);
 		}
 		
-		public int getAllocType(){
-			return (flags & FLAG_ALLOCTYPE) >>> 1;
-		}
-		
 		public int getUID(){return uid;}
 		public String getName(){return name;}
+		public byte getMedium(){return medium;}
+		public byte getCache(){return cache;}
+		public boolean hasTag(String tag){return tags.contains(tag);}
+		
+		public Collection<String> getTags(){
+			List<String> list = new ArrayList<String>(tags.size());
+			list.addAll(tags);
+			return list;
+		}
 		
 		public String getDataFileName(){
 			return String.format("%08x.zuseq", uid);
 		}
-		
-		public void setAllocType(byte type){
-			int type_i = Byte.toUnsignedInt(type);
-			type_i &= 3;
-			type_i <<= 1;
-			flags &= ~FLAG_ALLOCTYPE;
-			flags |= type_i;
 			
-			time_modified = ZonedDateTime.now();
-		}
-		
-		public void setUnkByte(byte b){
-			unkbyte = b;
-			time_modified = ZonedDateTime.now();
-		}
-		
 		public void setName(String s){
 			name = s;
+			time_modified = ZonedDateTime.now();
+		}
+		
+		public void setMedium(byte val){
+			medium = val;
+			time_modified = ZonedDateTime.now();
+		}
+		
+		public void setCache(byte val){
+			cache = val;
 			time_modified = ZonedDateTime.now();
 		}
 		
@@ -151,6 +166,14 @@ public class ZeqerSeqTable {
 			time_modified = ZonedDateTime.now();
 		}
 		
+		public void addTag(String tag){
+			tags.add(tag);
+		}
+		
+		public void clearTags(){
+			tags.clear();
+		}
+		
 		public int getSerializedSize(){
 			int size = BASE_SIZE;
 			if(flagSet(FLAG_MULTIBANK)){
@@ -162,6 +185,13 @@ public class ZeqerSeqTable {
 				size += name.length();
 				if(size % 2 != 0) size++;
 			}
+			//Tags
+			size += 2;
+			for(String tag:tags){
+				size += tag.length();
+			}
+			size += (tags.size()-1); //Semicolons
+			if(size % 2 != 0) size++;
 			return size;
 		}
 		
@@ -170,8 +200,9 @@ public class ZeqerSeqTable {
 			int initsize = (int)out.getFileSize();
 			
 			out.addToFile(uid);
-			out.add24ToFile(flags);
-			out.addToFile(unkbyte);
+			out.addToFile((short)flags);
+			out.addToFile(medium);
+			out.addToFile(cache);
 			
 			if(md5 == null){
 				for(int i = 0; i < 16; i++) out.addToFile(FileBuffer.ZERO_BYTE);
@@ -202,6 +233,16 @@ public class ZeqerSeqTable {
 			}
 			
 			out.addVariableLengthString("UTF8", name, BinFieldSize.WORD, 2);
+			
+			//Tags
+			StringBuilder sb = new StringBuilder(1024);
+			boolean first = true;
+			for(String tag:tags){
+				if(!first)sb.append(";");
+				sb.append(tag);
+				first = false;
+			}
+			out.addVariableLengthString("UTF8", sb.toString(), BinFieldSize.WORD, 2);
 			
 			return (int)out.getFileSize() - initsize;
 		}
@@ -306,11 +347,11 @@ public class ZeqerSeqTable {
 		}
 		int rcount = data.nextInt();
 		
-		long cpos = data.getCurrentPosition();
+		//long cpos = data.getCurrentPosition();
 		ZeqerSeqTable tbl = new ZeqerSeqTable();
 		for(int i = 0; i < rcount; i++){
-			SeqTableEntry entry = SeqTableEntry.read(data, cpos);
-			cpos += entry.getSerializedSize();
+			SeqTableEntry entry = SeqTableEntry.read(data,version);
+			//cpos += entry.getSerializedSize(); //You can't use this - will have versioning issues.
 			tbl.entries.put(entry.uid, entry);
 			String md5str = FileUtils.bytes2str(entry.md5).toLowerCase();
 			tbl.md5_map.put(md5str, entry);
@@ -338,7 +379,10 @@ public class ZeqerSeqTable {
 		line = line.substring(1);
 		String[] fields = line.split("\t");
 		for(int i = 0; i < fields.length; i++){
-			cidx_map.put(fields[i].toUpperCase(), i);
+			if(fields[i].startsWith("#")) fields[i] = fields[i].substring(1);
+			String k = fields[i].toUpperCase();
+			cidx_map.put(k, i);
+			System.err.println("ZeqerSeqTable.importTSV || Field Key Found: " + k);
 		}
 		
 		//Make sure mandatory fields are present
@@ -356,7 +400,8 @@ public class ZeqerSeqTable {
 			fields = line.split("\t");
 			
 			//Look for matching record
-			raw = fields[cidx_uid].substring(2); //Chop 0x prefix
+			raw = fields[cidx_uid];
+			if(raw.startsWith("0x")) raw = raw.substring(2); //Chop 0x prefix
 			n = Integer.parseUnsignedInt(raw, 16); //Let the exception be thrown
 			SeqTableEntry entry = entries.get(n);
 			if(entry == null){
@@ -366,12 +411,8 @@ public class ZeqerSeqTable {
 			
 			//Update update-able fields.
 			String key = "NAME";
-			if(cidx_map.containsKey(key)) entry.setName(fields[cidx_map.get(key)]);
-			key = "ALLOCTYPE";
 			if(cidx_map.containsKey(key)){
-				raw = fields[cidx_map.get(key)];
-				n = Integer.parseUnsignedInt(raw);
-				entry.setAllocType((byte)n);
+				entry.setName(fields[cidx_map.get(key)]);
 			}
 			key = "BANKID";
 			if(cidx_map.containsKey(key)){
@@ -379,17 +420,28 @@ public class ZeqerSeqTable {
 				if(raw != null){
 					String[] blist = raw.split(";");
 					if(blist.length > 1){
-						raw = blist[0].substring(2);
+						raw = blist[0];
+						if(raw.startsWith("0x")) raw = raw.substring(2);
 						n = Integer.parseUnsignedInt(raw, 16);
 						entry.setSingleBank(n);
 					}
 					else{
 						if(entry.banks != null) entry.banks.clear();
 						for(String bid : blist){
-							bid = bid.substring(2);
+							if(bid.startsWith("0x")) bid = bid.substring(2);
 							n = Integer.parseUnsignedInt(bid, 16);
 							entry.addBank(n);
 						}
+					}
+				}
+			}
+			key = "TAGS";
+			if(cidx_map.containsKey(key)){
+				raw = fields[cidx_map.get(key)];
+				if(raw != null && !raw.isEmpty()){
+					if(!raw.startsWith("<NONE>")){
+						String[] taglist = raw.split(";");
+						for(String tag:taglist) entry.addTag(tag);	
 					}
 				}
 			}
@@ -400,6 +452,22 @@ public class ZeqerSeqTable {
 		br.close();
 		
 		return update_count;
+	}
+	
+	public static int[] loadVersionTable(String dir_base, String zeqer_id) throws IOException{
+		String path = dir_base + SEP + "seq_" + zeqer_id + ".bin";
+		if(!FileBuffer.fileExists(path)) return null;
+		FileBuffer buffer = FileBuffer.createBuffer(path, true);
+		long sz = buffer.getFileSize();
+		int bcount = (int)sz >>> 2;
+		buffer.setCurrentPosition(0L);
+		
+		int[] ids = new int[bcount];
+		for(int i = 0; i < bcount; i++){
+			ids[i] = buffer.nextInt();
+		}
+		
+		return ids;
 	}
 	
 	/*----- Writing -----*/
@@ -454,7 +522,7 @@ public class ZeqerSeqTable {
 		
 		String tsvpath = dirpath + File.separator + "_zuseq_tbl.tsv";
 		BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(tsvpath), StandardCharsets.UTF_8));
-		bw.write("#NAME\tUID\tMD5\tDATE_CREATED\tDATE_MOD\tALLOCTYPE\tUNK_BYTE\tMULTIBANK\tBANKID\n");
+		bw.write("#NAME\tUID\tMD5\tDATE_CREATED\tDATE_MOD\tMEDIUM\tCACHE\tMULTIBANK\tBANKID\tTAGS\n");
 		int ecount = entries.size();
 		List<Integer> uids = new ArrayList<Integer>(ecount+1);
 		uids.addAll(entries.keySet());
@@ -467,8 +535,8 @@ public class ZeqerSeqTable {
 			bw.write(FileUtils.bytes2str(entry.md5).toLowerCase() + "\t");
 			bw.write(entry.time_created.format(DateTimeFormatter.ISO_ZONED_DATE_TIME) + "\t");
 			bw.write(entry.time_modified.format(DateTimeFormatter.ISO_ZONED_DATE_TIME) + "\t");
-			bw.write(entry.getAllocType() + "\t");
-			bw.write(String.format("0x%02x\t", entry.unkbyte));
+			bw.write(entry.getMedium() + "\t");
+			bw.write(entry.getCache() + "\t");
 			
 			if(entry.flagSet(FLAG_MULTIBANK)){
 				bw.write("y\t");
@@ -479,15 +547,28 @@ public class ZeqerSeqTable {
 						bw.write(String.format("0x%8x", b));
 						first = false;
 					}
-					bw.write("\n");
+					bw.write("\t");
 				}
-				else bw.write("<NULL>\n");
+				else bw.write("<NULL>\t");
 			}
 			else{
 				bw.write("n\t");
-				bw.write(String.format("0x%8x\n", entry.bank_uid));
+				bw.write(String.format("0x%8x\t", entry.bank_uid));
 			}
 
+			if(entry.tags.isEmpty()){
+				bw.write("<NONE>\n");
+			}
+			else{
+				boolean first = true;
+				for(String tag:entry.tags){
+					if(!first)bw.write(";");
+					bw.write(tag);
+					first = false;
+				}
+				bw.write("\n");
+			}
+			
 		}
 		
 		bw.close();

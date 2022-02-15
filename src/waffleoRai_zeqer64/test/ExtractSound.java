@@ -12,10 +12,14 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import waffleoRai_Sound.nintendo.Z64Sound;
+import waffleoRai_Sound.nintendo.Z64Wave;
+import waffleoRai_Sound.nintendo.Z64WaveInfo;
 import waffleoRai_Utils.FileBuffer;
 import waffleoRai_Utils.FileUtils;
 import waffleoRai_zeqer64.ZeqerCore;
@@ -32,12 +36,12 @@ public class ExtractSound {
 		
 		public String md5str;
 		public int len;
-		public Map<String, int[]> versions; //WArc idx, index, offset, used
+		public Map<String, List<int[]>> versions; //WArc idx, index, offset, used
 		
 		public WaveTableEntry(String hash){
 			md5str = hash;
 			len = 0;
-			versions = new HashMap<String, int[]>();
+			versions = new HashMap<String, List<int[]>>();
 		}
 		
 		public int hashCode(){
@@ -54,18 +58,31 @@ public class ExtractSound {
 			//1. Versions
 			if(version_pri != null){
 				for(String v : version_pri){
-					int[] myvals = this.versions.get(v);
-					int[] ovals = o.versions.get(v);
+					List<int[]> myvals = this.versions.get(v);
+					List<int[]> ovals = o.versions.get(v);
 					
 					if(myvals == null && ovals == null) continue;
 					if(myvals == null) return 1;
 					if(ovals == null) return -1;
 					
-					int count = myvals.length;
-					for(int i = 0; i < count; i++){
-						if(myvals[i] == ovals[i]) continue;
-						return myvals[i] - ovals[i];
+					Iterator<int[]> myitr = myvals.iterator();
+					Iterator<int[]> oitr = ovals.iterator();
+					while(myitr.hasNext()){
+						if(!oitr.hasNext()){
+							//o comes first
+							return -1;
+						}
+						int[] mloc = myitr.next();
+						int[] oloc = oitr.next();
+						
+						for(int j = 0; j < mloc.length; j++){
+							if(mloc[j] != oloc[j]){
+								return mloc[j] - oloc[j];
+							}
+						}
+						
 					}
+					if(oitr.hasNext()) return 1;
 				}
 			}
 			
@@ -172,14 +189,22 @@ public class ExtractSound {
 				WaveTableEntry entry = new WaveTableEntry(fields[0]);
 				entry.len = Integer.parseInt(fields[1].substring(2), 16);
 				for(int i = 0; i < vcount; i++){
-					String[] subfields = fields[i+2].split(":");
-					if(subfields.length < 4) continue;
-					
-					int warc = Integer.parseInt(subfields[0]);
-					int idx = Integer.parseInt(subfields[1]);
-					int offset = Integer.parseInt(subfields[2].substring(2), 16);
-					int used = Integer.parseInt(subfields[3]);
-					entry.versions.put(versions[i], new int[]{warc,idx,offset,used});
+					String[] loclist = fields[i+2].split("|");
+					for(int j = 0; j < loclist.length; j++){
+						String[] subfields = loclist[j].split(":");
+						if(subfields.length < 4) continue;
+						
+						int warc = Integer.parseInt(subfields[0]);
+						int idx = Integer.parseInt(subfields[1]);
+						int offset = Integer.parseInt(subfields[2].substring(2), 16);
+						int used = Integer.parseInt(subfields[3]);
+						List<int[]> vlist = entry.versions.get(versions[i]);
+						if(vlist == null){
+							vlist = new LinkedList<int[]>();
+							entry.versions.put(versions[i], vlist);
+						}
+					vlist.add(new int[]{warc,idx,offset,used});	
+					}
 				}
 				
 				map.put(entry.md5str, entry);
@@ -257,15 +282,21 @@ public class ExtractSound {
 			
 			if(version_pri != null){
 				for(String v : version_pri){
-					int[] vdat = e.versions.get(v);
-					if(vdat == null){
+					List<int[]> vlist = e.versions.get(v);
+					if(vlist == null || vlist.isEmpty()){
 						bw.write(",N/A");
 					}
 					else{
-						bw.write(","); bw.write(Integer.toString(vdat[0]));
-						bw.write(":"); bw.write(Integer.toString(vdat[1]));
-						bw.write(":0x"); bw.write(Integer.toHexString(vdat[2]));
-						bw.write(":"); bw.write(Integer.toString(vdat[3]));
+						bw.write(",");
+						boolean f = true;
+						for(int[] vdat : vlist){
+							if(!f) bw.write("|");
+							bw.write(Integer.toString(vdat[0]));
+							bw.write(":"); bw.write(Integer.toString(vdat[1]));
+							bw.write(":0x"); bw.write(Integer.toHexString(vdat[2]));
+							bw.write(":"); bw.write(Integer.toString(vdat[3]));
+							f = false;
+						}
 					}
 				}
 			}
@@ -373,6 +404,7 @@ public class ExtractSound {
 		Map<String, WaveTableEntry> wtbl = tryLoadWaveTable(wtbl_path);
 		Map<String, SeqTableEntry> stbl = tryLoadSeqTable(stbl_path);
 		
+		//TODO note duplicates within a ROM...
 		for(ZeqerRom rom : roms){
 			System.err.println("Starting ROM: " + rom.getRomInfo().getZeqerID());
 			
@@ -461,18 +493,20 @@ public class ExtractSound {
 			
 			//Build wave table
 			System.err.println("\tBuilding wave table...");
-			int[][][] wav_tbl = WaveExtractor.buildWavePosTable(rom);
+			Z64WaveInfo[][] wav_tbl = WaveExtractor.buildWaveTable(rom);
 			
 			//Extract waves (raw), write to comp table
 			subdir = rdir_path + File.separator + "audiotable";
 			if(!FileBuffer.directoryExists(subdir)) Files.createDirectories(Paths.get(subdir));
 			adata = rom.loadAudiotable();
 			for(int i = 0; i < warccount; i++){
-				if(i != 1 && warctbl[i][1] < 1) continue; //Empty warc
+				if(warctbl[i][1] < 1) continue; //Empty warc
 				String warcdir = subdir + File.separator + String.format("%02d", i);
+				String warc_conv_dir = warcdir + File.separator + "wav";
 				if(!FileBuffer.directoryExists(warcdir)) Files.createDirectories(Paths.get(warcdir));
+				if(!FileBuffer.directoryExists(warc_conv_dir)) Files.createDirectories(Paths.get(warc_conv_dir));
 				
-				int[][] mytbl = wav_tbl[i];
+				Z64WaveInfo[] mytbl = wav_tbl[i];
 				if(mytbl == null) continue;
 				int count = mytbl.length;
 				System.err.println("\t\tReceived -- WARC " + i + " Wave Count: " + count);
@@ -480,21 +514,47 @@ public class ExtractSound {
 				if(i == 1) baseoff = warctbl[0][0];
 				for(int j = 0; j < count; j++){
 					//System.err.println("");
-					int wavoff = baseoff + mytbl[j][0];
-					if(mytbl[j][1] < 1) continue;
-					FileBuffer wavbuff = adata.createReadOnlyCopy(wavoff, wavoff + mytbl[j][1]);
+					int wavoff = baseoff + mytbl[j].getWaveOffset();
+					if(mytbl[j].getWaveSize() < 1) continue;
+					FileBuffer wavbuff = adata.createReadOnlyCopy(wavoff, wavoff + mytbl[j].getWaveSize());
 					wavbuff.writeFile(warcdir + File.separator + "audiotable_" + String.format("%02d_%04d.vadpcm", i,j));
+					
+					//Try converting to wav too.
+					if(mytbl[j].usedFlag()){
+						int codec = mytbl[j].getCodec();
+						if(codec != Z64Sound.CODEC_ADPCM && codec != Z64Sound.CODEC_SMALL_ADPCM){
+							System.err.println("Unhandled codec encountered: " + codec);
+						}
+						else{
+							try{
+								String wavpath = warc_conv_dir + File.separator + "audiotable_" + String.format("%02d_%04d.wav", i,j);
+								Z64Wave wave = Z64Wave.readZ64Wave(wavbuff, mytbl[j]);
+								wave.writeToWav(wavpath);
+							}
+							catch(Exception ex){
+								System.err.println("Couldn't convert sample " + i + ":" + j + " to PCM.");
+							}	
+						}
+					}
+					
+					//Compare.
 					byte[] md5 = FileUtils.getMD5Sum(wavbuff.getBytes());
 					String md5str = FileUtils.bytes2str(md5).toLowerCase();
 					
 					WaveTableEntry e = wtbl.get(md5str);
 					if(e == null){
 						e = new WaveTableEntry(md5str);
-						e.len = mytbl[j][1];
+						e.len = mytbl[j].getWaveSize();
 						wtbl.put(md5str, e);
 					}
 					//See if version is already present and print warning if so.
-					e.versions.put(rom.getRomInfo().getZeqerID(), new int[]{i, j, mytbl[j][0], mytbl[j][2]});
+					int used = mytbl[j].usedFlag()?1:0;
+					List<int[]> ilist = e.versions.get(rom.getRomInfo().getZeqerID());
+					if(ilist == null){
+						ilist = new LinkedList<int[]>();
+						e.versions.put(rom.getRomInfo().getZeqerID(), ilist);
+					}
+					ilist.add(new int[]{i, j, mytbl[j].getWaveOffset(), used});
 					
 					wavbuff.dispose();
 				}
@@ -507,7 +567,7 @@ public class ExtractSound {
 	}
 	
 	public static void main(String[] args) {
-
+		
 		try{
 			extractToDir(args);
 		}

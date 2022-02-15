@@ -8,6 +8,7 @@ import java.io.IOException;
 import waffleoRai_Utils.FileBuffer;
 import waffleoRai_Utils.FileBuffer.UnsupportedFileTypeException;
 import waffleoRai_Utils.FileUtils;
+import waffleoRai_zeqer64.SoundTables.SeqInfoEntry;
 import waffleoRai_zeqer64.ZeqerCore;
 import waffleoRai_zeqer64.ZeqerRom;
 import waffleoRai_zeqer64.filefmt.NusRomInfo;
@@ -158,22 +159,18 @@ public class SeqExtractor {
 		boolean good = true;
 		
 		//Get needed files from ROM
-		FileBuffer code = z_rom.loadCode(); code.setEndian(true);
-		FileBuffer audioseq = z_rom.loadAudioseq(); audioseq.setEndian(true);
+		//FileBuffer code = z_rom.loadCode(); code.setEndian(true);
 		NusRomInfo rominfo = z_rom.getRomInfo();
 		if(rominfo == null) return false;
+		FileBuffer audioseq = z_rom.loadAudioseq(); audioseq.setEndian(true);
+		SeqInfoEntry[] cseq_tbl = z_rom.loadSeqEntries();
 		
 		//Iterate thru seq table
-		code.setCurrentPosition(rominfo.getCodeOffset_seqtable());
-		int scount = Short.toUnsignedInt(code.nextShort());
+		int scount = cseq_tbl.length;
 		int[] uid_tbl = new int[scount];
-		code.skipBytes(14);
 		for(int i = 0; i < scount; i++){
-			long stoff = Integer.toUnsignedLong(code.nextInt());
-			long size = Integer.toUnsignedLong(code.nextInt());
-			byte unk = code.nextByte();
-			byte atype = code.nextByte();
-			code.skipBytes(6L);
+			long stoff = cseq_tbl[i].getOffset();
+			long size = cseq_tbl[i].getSize();
 			if(size <= 0L){
 				System.err.println("SeqExtractor.extractSeqs || Seq " + i + " appears to be empty. Skipping...");
 				continue;
@@ -190,8 +187,8 @@ public class SeqExtractor {
 				//Create if write enabled.
 				if(mode != MODE_USER){
 					entry = seq_tbl.newEntry(md5);
-					entry.setAllocType(atype);
-					entry.setUnkByte(unk);
+					entry.setMedium((byte)cseq_tbl[i].getMedium());
+					entry.setCache((byte)cseq_tbl[i].getCachePolicy());
 					
 					//Copy data
 					String datapath = dir_base + SEP + entry.getDataFileName();

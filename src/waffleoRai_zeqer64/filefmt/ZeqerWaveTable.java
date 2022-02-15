@@ -18,114 +18,146 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-import waffleoRai_Sound.nintendo.Z64Wave;
+import waffleoRai_Sound.nintendo.N64ADPCMTable;
+import waffleoRai_Sound.nintendo.Z64Sound;
+import waffleoRai_Sound.nintendo.Z64WaveInfo;
 import waffleoRai_Utils.BinFieldSize;
 import waffleoRai_Utils.FileBuffer;
 import waffleoRai_Utils.FileBuffer.UnsupportedFileTypeException;
 import waffleoRai_Utils.FileUtils;
 import waffleoRai_Utils.MultiFileBuffer;
 import waffleoRai_Utils.SerializedString;
-import waffleoRai_soundbank.nintendo.Z64Bank.WaveInfoBlock;
 
 public class ZeqerWaveTable {
+	
+	//TODO Flags must by synced between UWAV and table...
 
 	/*----- Constants -----*/
 	
 	public static final String MAGIC = "zeqrWAVt";
-	public static final short CURRENT_VERSION = 1;
+	public static final short CURRENT_VERSION = 2;
 	
 	public static final int FLAG_ISMUSIC = 0x00000001;
 	public static final int FLAG_ISACTOR = 0x00000002;
 	public static final int FLAG_ISENV = 0x00000004;
 	public static final int FLAG_ISSFX = 0x00000008;
 	
-	public static final int FLAG_2BIT = 0x40000000;
+	//public static final int FLAG_2BIT = 0x40000000; //DEPRECATED
 	public static final int FLAG_ADPCM = 0x80000000;
 	
 	/*----- Inner Classes -----*/
 	
 	public static class WaveTableEntry{
 		
-		private static final int BASE_SIZE = 4+4+16+16+2;
+		private static final int BASE_SIZE = 4+2+1+1+16+2; //V2
 		
-		private int UID;
-		private int flags = 0;
 		private byte[] md5;
-		private int samplerate = 22050;
 		private byte unity_key = 60;
 		private byte fine_tune = 0;
-		private byte loop_count = 0;
-		//byte reserved
-		private int loop_start = -1;
-		private int loop_end = -1;
+		private int flags = 0;
 		
-		private int pred_order = -1;
-		private int pred_count = -1;
-		private short[] pred_table;
+		private Z64WaveInfo wave_info;
 		
-		private String name;
+		private WaveTableEntry(){wave_info = new Z64WaveInfo();}
 		
-		private WaveTableEntry(){}
-		
-		public static WaveTableEntry read(FileBuffer in, long offset){
+		public static WaveTableEntry read(FileBuffer in, long offset, int version){
 			//System.err.println("DEBUG: Starting entry read at 0x" + Long.toHexString(offset));
 			WaveTableEntry entry = new WaveTableEntry();
 			in.setCurrentPosition(offset);
 			
-			entry.UID = in.nextInt();
-			entry.flags = in.nextInt();
-			entry.md5 = new byte[16];
-			for(int i = 0; i < 16; i++) entry.md5[i] = in.nextByte();
-			entry.samplerate = in.nextInt();
-			entry.unity_key = in.nextByte();
-			entry.fine_tune = in.nextByte();
-			entry.loop_count = in.nextByte();
-			in.nextByte(); //Reserved
-			entry.loop_start = in.nextInt();
-			entry.loop_end = in.nextInt();
-			
-			//If ADPCM
-			if((entry.flags | FLAG_ADPCM) != 0){
-				entry.pred_order = in.nextInt();
-				entry.pred_count = in.nextInt();
-				int n = (entry.pred_count * entry.pred_order) << 3;
-				entry.pred_table = new short[n];
-				for(int i = 0; i < n; i++) entry.pred_table[i] = in.nextShort();
+			entry.wave_info.setUID(in.nextInt());
+			if(version < 2){
+				int flags = in.nextInt();
+				entry.md5 = new byte[16];
+				for(int i = 0; i < 16; i++) entry.md5[i] = in.nextByte();
+				int samplerate = in.nextInt();
+				entry.unity_key = in.nextByte();
+				entry.fine_tune = in.nextByte();
+				entry.wave_info.setLoopCount(in.nextByte());
+				in.nextByte(); //Reserved
+				entry.wave_info.setLoopStart(in.nextInt());
+				entry.wave_info.setLoopEnd(in.nextInt());
+				entry.wave_info.setTuning((float)samplerate/32000.0f);
+				
+				//If ADPCM
+				if((flags | FLAG_ADPCM) != 0){
+					int pred_order = in.nextInt();
+					int pred_count = in.nextInt();
+					int n = (pred_count * pred_order) << 3;
+					short[] pred_table = new short[n];
+					for(int i = 0; i < n; i++) pred_table[i] = in.nextShort();
+					entry.wave_info.setADPCMBook(N64ADPCMTable.fromRaw(pred_order, pred_count, pred_table));
+				}
+			}
+			else{
+				entry.flags = Short.toUnsignedInt(in.nextShort());
+				entry.unity_key = in.nextByte();
+				entry.fine_tune = in.nextByte();
+				entry.md5 = new byte[16];
+				for(int i = 0; i < 16; i++) entry.md5[i] = in.nextByte();
+				entry.wave_info.setWaveSize(-1); //Unloaded marker
+				
+				//Update flags in wave info
+				entry.wave_info.flagAsActor(entry.isFlagSet(FLAG_ISACTOR));
+				entry.wave_info.flagAsEnv(entry.isFlagSet(FLAG_ISENV));
+				entry.wave_info.flagAsSFX(entry.isFlagSet(FLAG_ISSFX));
+				entry.wave_info.flagAsMusic(entry.isFlagSet(FLAG_ISMUSIC));
 			}
 			
 			long pos = in.getCurrentPosition();
 			SerializedString ss = in.readVariableLengthString("UTF8", pos, BinFieldSize.WORD, 2);
-			entry.name = ss.getString();
+			entry.wave_info.setName(ss.getString());
+			in.skipBytes(ss.getSizeOnDisk());
 			
 			return entry;
 		}
 		
-		public int getUID(){return UID;}
-		public String getName(){return name;}
+		public int getUID(){return wave_info.getUID();}
+		public String getName(){return wave_info.getName();}
+		
+		public int getSampleRate(){
+			return Math.round(32000f * wave_info.getTuning());
+		}
+		
+		private void updateFlags(){
+			flags = 0;
+			if(wave_info.actorFlag()) flags |= FLAG_ISACTOR;
+			if(wave_info.envFlag()) flags |= FLAG_ISENV;
+			if(wave_info.sfxFlag()) flags |= FLAG_ISSFX;
+			if(wave_info.musicFlag()) flags |= FLAG_ISMUSIC;
+		}
 		
 		public boolean isFlagSet(int flagMask){
 			return (flags & flagMask) != 0; 
 		}
 		
-		public void setName(String s){name = s;}
-		public void setFlags(int flagMask){flags |= flagMask;}
+		public void setName(String s){wave_info.setName(s);}
+		
+		public void setSampleRate(int sampleRate){
+			float sr = (float)sampleRate;
+			wave_info.setTuning(sr/32000f);
+		}
+		
+		public void setFlags(int flagMask){
+			flags |= flagMask;
+		}
+		
+		public Z64WaveInfo getWaveInfo(){
+			return wave_info;
+		}
 		
 		public String getDataFileName(){
-			return String.format("%08x.adpcm", UID);
+			//return String.format("%08x.vadpcm", UID);
+			return String.format("%08x.buwav", wave_info.getUID());
 		}
 		
 		public int getSerializedSize(){
 			int size = BASE_SIZE;
 			
-			//Add ADPCM data
-			if(isFlagSet(FLAG_ADPCM)){
-				size += 8;
-				int n = (pred_order * pred_count) << 3;
-				size += n << 1;
-			}
-			
 			//Add name size
-			int nlen = name.length();
+			String wname = wave_info.getName();
+			if(wname == null) return size;
+			int nlen = wname.length();
 			size += nlen;
 			if(nlen % 2 != 0) size++;
 			
@@ -135,46 +167,20 @@ public class ZeqerWaveTable {
 		public int serializeTo(FileBuffer out){
 			long initsize = out.getFileSize();
 			
-			out.addToFile(UID);
-			out.addToFile(flags);
-			if(md5 == null){for(int i = 0; i < 4; i++) out.addToFile(0);}
-			else{
-				for(int i = 0; i < 16; i++){
-					if(md5.length <= i) out.addToFile(FileBuffer.ZERO_BYTE);
-					else{
-						out.addToFile(md5[i]);
-					}
-				}
-			}
-			
-			out.addToFile(samplerate);
+			out.addToFile(wave_info.getUID());
+			//out.addToFile((short)0);
+			updateFlags();
+			out.addToFile((short)flags);
 			out.addToFile(unity_key);
 			out.addToFile(fine_tune);
-			out.addToFile(loop_count);
-			out.addToFile(FileBuffer.ZERO_BYTE);
-			out.addToFile(loop_start);
-			out.addToFile(loop_end);
 			
-			if(isFlagSet(FLAG_ADPCM)){
-				out.addToFile(pred_order);
-				out.addToFile(pred_count);
-				int n = (pred_order * pred_count) << 3;
-				if(pred_table == null){
-					for(int i = 0; i < n; i++){
-						out.addToFile((short)0);
-					}
-				}
-				else{
-					for(int i = 0; i < n; i++){
-						if(pred_table.length <= i) out.addToFile((short)0);
-						else{
-							out.addToFile(pred_table[i]);
-						}
-					}	
-				}
+			if(md5 != null){
+				for(int i = 0; i < 16; i++) out.addToFile(md5[i]);
 			}
-			
-			out.addVariableLengthString("UTF8", name, BinFieldSize.WORD, 2);
+			else{
+				for(int i = 0; i < 4; i++) out.addToFile(0);
+			}
+			out.addVariableLengthString("UTF8", wave_info.getName(), BinFieldSize.WORD, 2);
 			
 			return (int)(out.getFileSize() - initsize);
 		}
@@ -208,32 +214,28 @@ public class ZeqerWaveTable {
 	/*----- Getters -----*/
 	
 	public WaveTableEntry getEntryWithSum(String md5str){return md5_map.get(md5str);}
+	public WaveTableEntry getEntryWithUID(int uid){return entries.get(uid);}
 	
 	/*----- Setters -----*/
 	
-	public WaveTableEntry addEntryFromBankBlock(WaveInfoBlock block, byte[] md5sum){
+	public WaveTableEntry addEntryFromInfoBlock(Z64WaveInfo block, byte[] md5sum){
 		if(block == null || md5sum == null) return null;
 		WaveTableEntry entry = new WaveTableEntry();
+		entry.wave_info = block;
+		entry.md5 = new byte[16];
 		int uid = 0;
-		for(int i = 0; i < 4; i++){
-			uid <<= 8;
-			uid |= Byte.toUnsignedInt(md5sum[i]);
+		for(int i = 0; i < 16; i++){
+			if(i >= md5sum.length) break;
+			entry.md5[i] = md5sum[i];
+			if(i < 4){
+				uid <<= 8;
+				uid |= Byte.toUnsignedInt(entry.md5[i]);
+			}
 		}
+		entry.wave_info.setUID(uid);
 		
-		entry.UID = uid;
-		entry.md5 = md5sum;
-		entry.flags |= FLAG_ADPCM;
-		entry.loop_start = block.getLoopStart();
-		entry.loop_end = block.getLoopEnd();
-		entry.loop_count = (byte)block.getLoopCount();
-		entry.pred_count = block.getPredCount();
-		entry.pred_order = block.getPredOrder();
-		entry.pred_table = block.getPredictorTable();
-		if(block.isTwoBit()) entry.flags |= FLAG_2BIT;
-		entry.name = "adpcmsound_" + Integer.toHexString(uid);
-		
-		entries.put(entry.UID, entry);
-		md5_map.put(FileUtils.bytes2str(entry.md5).toLowerCase(), entry);
+		entries.put(uid, entry);
+		md5_map.put(FileUtils.bytes2str(md5sum), entry);
 		
 		return entry;
 	}
@@ -263,7 +265,7 @@ public class ZeqerWaveTable {
 		int rcount = data.nextInt();
 		long cpos = data.getCurrentPosition();
 		for(int i = 0; i < rcount; i++){
-			WaveTableEntry entry = WaveTableEntry.read(data, cpos);
+			WaveTableEntry entry = WaveTableEntry.read(data, cpos, version);
 			table.entries.put(entry.getUID(), entry);
 			table.md5_map.put(FileUtils.bytes2str(entry.md5).toLowerCase(), entry);
 			cpos += entry.getSerializedSize();
@@ -291,7 +293,10 @@ public class ZeqerWaveTable {
 		line = line.substring(1);
 		String[] fields = line.split("\t");
 		for(int i = 0; i < fields.length; i++){
-			cidx_map.put(fields[i].toUpperCase(), i);
+			if(fields[i].startsWith("#")) fields[i] = fields[i].substring(1);
+			String k = fields[i].toUpperCase();
+			cidx_map.put(k, i);
+			System.err.println("ZeqerWaveTable.importTSV || Field Key Found: " + k);
 		}
 		
 		//Make sure mandatory fields are present
@@ -309,7 +314,8 @@ public class ZeqerWaveTable {
 			fields = line.split("\t");
 			
 			//Look for matching record
-			raw = fields[cidx_uid].substring(2); //Chop 0x prefix
+			raw = fields[cidx_uid];
+			if(raw.startsWith("0x")) raw = raw.substring(2); //Chop 0x prefix
 			n = Integer.parseUnsignedInt(raw, 16); //Let the exception be thrown
 			WaveTableEntry entry = entries.get(n);
 			if(entry == null){
@@ -320,12 +326,12 @@ public class ZeqerWaveTable {
 			//Update update-able fields.
 			String key = "NAME";
 			if(cidx_map.containsKey(key)) entry.setName(fields[cidx_map.get(key)]);
-			key = "SAMPLERATE";
+			/*key = "SAMPLERATE";
 			if(cidx_map.containsKey(key)){
 				raw = fields[cidx_map.get(key)];
 				n = Integer.parseUnsignedInt(raw);
-				entry.samplerate = n;
-			}
+				entry.setSampleRate(n);
+			}*/
 			key = "UNITYKEY";
 			if(cidx_map.containsKey(key)){
 				raw = fields[cidx_map.get(key)];
@@ -338,43 +344,47 @@ public class ZeqerWaveTable {
 				n = Integer.parseUnsignedInt(raw);
 				entry.fine_tune = (byte)n;
 			}
-			key = "LOOPSTART";
+			/*key = "LOOPSTART";
 			if(cidx_map.containsKey(key)){
 				raw = fields[cidx_map.get(key)];
 				n = Integer.parseUnsignedInt(raw);
-				entry.loop_start = n;
+				entry.wave_info.setLoopStart(n);
 			}
 			key = "LOOPEND";
 			if(cidx_map.containsKey(key)){
 				raw = fields[cidx_map.get(key)];
 				n = Integer.parseUnsignedInt(raw);
-				entry.loop_end = n;
+				entry.wave_info.setLoopEnd(n);
 			}
 			key = "LOOPCOUNT";
 			if(cidx_map.containsKey(key)){
 				raw = fields[cidx_map.get(key)];
 				n = Integer.parseUnsignedInt(raw);
-				entry.loop_count = (byte)n;
-			}
+				entry.wave_info.setLoopCount(n);
+			}*/
 			key = "IS_MUSIC";
 			if(cidx_map.containsKey(key)){
 				raw = fields[cidx_map.get(key)].toLowerCase();
-				if(raw.equals("y")) entry.setFlags(FLAG_ISMUSIC);
+				if(raw.equals("y")) entry.wave_info.flagAsMusic(true);
+				else entry.wave_info.flagAsMusic(false);
 			}
 			key = "IS_ACTOR";
 			if(cidx_map.containsKey(key)){
 				raw = fields[cidx_map.get(key)].toLowerCase();
-				if(raw.equals("y")) entry.setFlags(FLAG_ISACTOR);
+				if(raw.equals("y")) entry.wave_info.flagAsActor(true);
+				else entry.wave_info.flagAsActor(false);
 			}
 			key = "IS_ENV";
 			if(cidx_map.containsKey(key)){
 				raw = fields[cidx_map.get(key)].toLowerCase();
-				if(raw.equals("y")) entry.setFlags(FLAG_ISENV);
+				if(raw.equals("y")) entry.wave_info.flagAsEnv(true);
+				else entry.wave_info.flagAsEnv(false);
 			}
 			key = "IS_SFX";
 			if(cidx_map.containsKey(key)){
 				raw = fields[cidx_map.get(key)].toLowerCase();
-				if(raw.equals("y")) entry.setFlags(FLAG_ISSFX);
+				if(raw.equals("y")) entry.wave_info.flagAsSFX(true);
+				else entry.wave_info.flagAsSFX(false);
 			}
 			update_count++;
 		}
@@ -384,10 +394,58 @@ public class ZeqerWaveTable {
 		return update_count;
 	}
 	
+	public static int[][][] loadVersionTable(String dirpath, String verID) throws IOException{
+		String path = dirpath + File.separator + "wav_" + verID + ".bin";
+		FileBuffer buff = FileBuffer.createBuffer(path, true);
+		buff.setCurrentPosition(0L);
+		
+		int arc_count = Short.toUnsignedInt(buff.nextShort());
+		int[][][] tbl = new int[arc_count][][];
+		for(int i = 0; i < arc_count; i++){
+			int flags = Short.toUnsignedInt(buff.nextShort());
+			if((flags & 0x1) != 0){
+				//Reference. Skip
+				buff.nextShort();
+				continue;
+			}
+			
+			int wcount = Short.toUnsignedInt(buff.nextShort());
+			tbl[i] = new int[wcount][];
+			
+			for(int j = 0; j < wcount; j++){
+				tbl[i][j] = new int[2];
+				tbl[i][j][0] = buff.nextInt();
+				tbl[i][j][1] = buff.nextInt();
+			}
+		}
+		
+		return tbl;
+	}
+	
+	public static List<Map<Integer, Integer>> loadVersionWaveOffsetIDMap(String dirpath, String verID) throws IOException{
+		int[][][] tbl = loadVersionTable(dirpath, verID);
+		int warc_count = tbl.length;
+		List<Map<Integer, Integer>> output = new ArrayList<Map<Integer, Integer>>(warc_count+1);
+		
+		for(int i = 0; i < warc_count; i++){
+			Map<Integer, Integer> map = new HashMap<Integer, Integer>();
+			output.add(map);
+			
+			int[][] warc = tbl[i];
+			if(warc == null) continue;
+			int wcount = warc.length;
+			for(int j = 0; j < wcount; j++){
+				map.put(warc[j][1], warc[j][0]);
+			}
+		}
+		
+		return output;
+	}
+	
 	/*----- Writing -----*/
 	
 	public int writeTo(FileBuffer out){
-		//VERSION: 1
+		//VERSION: 2
 		int sz = 0;
 		FileBuffer header = new FileBuffer(16, true);
 		header.printASCIIToFile(MAGIC);
@@ -439,7 +497,7 @@ public class ZeqerWaveTable {
 		String tsvpath = dirpath + File.separator + "_zuwav_tbl.tsv";
 		BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(tsvpath), StandardCharsets.UTF_8));
 		bw.write("#NAME\tUID\tMD5\tSAMPLERATE\tUNITYKEY\tFINETUNE\tLOOPSTART\tLOOPEND\tLOOPCOUNT\t" +
-		 "PREDORDER\tPREDCOUNT\tIS_ADPCM\tIS_TWOBIT\tIS_MUSIC\tIS_ACTOR\tIS_ENV\tIS_SFX\n");
+		 "PREDORDER\tPREDCOUNT\tCODEC\tIS_MUSIC\tIS_ACTOR\tIS_ENV\tIS_SFX\n");
 		int ecount = entries.size();
 		List<Integer> uids = new ArrayList<Integer>(ecount+1);
 		uids.addAll(entries.keySet());
@@ -447,46 +505,76 @@ public class ZeqerWaveTable {
 		
 		for(Integer uid : uids){
 			WaveTableEntry entry = entries.get(uid);
+			String srcpath = datdir + File.separator + entry.getDataFileName();
+			if(FileBuffer.fileExists(srcpath)){
+				try{
+					UltraWavFile uwav = UltraWavFile.createUWAV(srcpath);
+					uwav.readWaveInfo(entry.wave_info);
+				}
+				catch(Exception ex){
+					ex.printStackTrace();
+				}
+			}
+			
 			bw.write(entry.getName() + "\t");
 			bw.write(String.format("0x%08x\t", entry.getUID()));
 			bw.write(FileUtils.bytes2str(entry.md5).toLowerCase() + "\t");
-			bw.write(entry.samplerate + "\t");
+			bw.write(entry.getSampleRate() + "\t");
 			bw.write(entry.unity_key + "\t");
 			bw.write(entry.fine_tune + "\t");
-			bw.write(entry.loop_start + "\t");
-			bw.write(entry.loop_end + "\t");
-			bw.write(entry.loop_count + "\t");
-			bw.write(entry.pred_order + "\t");
-			bw.write(entry.pred_count + "\t");
+			bw.write(entry.wave_info.getLoopStart() + "\t");
+			bw.write(entry.wave_info.getLoopEnd() + "\t");
+			bw.write(entry.wave_info.getLoopCount() + "\t");
 			
-			if(entry.isFlagSet(FLAG_ADPCM)) bw.write("y\t");
+			if(entry.wave_info.getADPCMBook() != null){
+				bw.write(entry.wave_info.getADPCMBook().getOrder() + "\t");
+				bw.write(entry.wave_info.getADPCMBook().getPredictorCount() + "\t");
+			}
+			else{
+				bw.write("N/A\tN/A\t");
+			}
+			
+			switch(entry.wave_info.getCodec()){
+			case Z64Sound.CODEC_ADPCM:
+				bw.write("ADP9"); break;
+			case Z64Sound.CODEC_REVERB:
+				bw.write("RVRB"); break;
+			case Z64Sound.CODEC_S16:
+				bw.write("_PCM"); break;
+			case Z64Sound.CODEC_S16_INMEMORY:
+				bw.write("MPCM"); break;
+			case Z64Sound.CODEC_S8:
+				bw.write("HPCM"); break;
+			case Z64Sound.CODEC_SMALL_ADPCM:
+				bw.write("ADP5"); break;
+			default:
+				bw.write("UNK_" + entry.wave_info.getCodec()); break;
+			}
+			bw.write("\t");
+			if(entry.wave_info.musicFlag()) bw.write("y\t");
 			else bw.write("n\t");
-			if(entry.isFlagSet(FLAG_2BIT)) bw.write("y\t");
+			if(entry.wave_info.actorFlag()) bw.write("y\t");
 			else bw.write("n\t");
-			if(entry.isFlagSet(FLAG_ISMUSIC)) bw.write("y\t");
+			if(entry.wave_info.envFlag()) bw.write("y\t");
 			else bw.write("n\t");
-			if(entry.isFlagSet(FLAG_ISACTOR)) bw.write("y\t");
-			else bw.write("n\t");
-			if(entry.isFlagSet(FLAG_ISENV)) bw.write("y\t");
-			else bw.write("n\t");
-			if(entry.isFlagSet(FLAG_ISSFX)) bw.write("y\n");
+			if(entry.wave_info.sfxFlag()) bw.write("y\n");
 			else bw.write("n\n");
 		}
 		
 		bw.close();
 		
-		if(datdir != null){
+		/*if(datdir != null){
 			//Write waves
 			for(Integer uid : uids){
 				WaveTableEntry entry = entries.get(uid);
-				String srcpath = datdir + File.separator + entry.getDataFileName();
+				String srcpath = datdir + File.separator + entry.getName() + ".buwav";
 				String tpath = dirpath + File.separator + entry.getName() + ".wav";
 				
 				FileBuffer wavdat = FileBuffer.createBuffer(srcpath, true);
-				Z64Wave wave = Z64Wave.readZ64Wave(wavdat, entry.pred_table, entry.loop_start, entry.loop_end, entry.isFlagSet(FLAG_2BIT));
+				Z64Wave wave = Z64Wave.readZ64Wave(wavdat, entry.getWaveInfo());
 				wave.writeToWav(tpath);
 			}
-		}
+		}*/
 	}
 	
 }
