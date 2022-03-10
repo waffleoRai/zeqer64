@@ -1,6 +1,6 @@
 package waffleoRai_zeqer64.engine;
 
-import waffleoRai_Sound.nintendo.Z64Sound;
+import waffleoRai_zeqer64.SoundTables;
 
 public class EngineBankInfo {
 	
@@ -12,8 +12,8 @@ public class EngineBankInfo {
 	//Yes, these are included in the Z64Bank, but need to be specific to this engine load
 	private int warc1 = 0;
 	private int warc2 = -1;
-	private int cachePolicy;
-	private int medium = Z64Sound.MEDIUM_CART;
+	private int cachePolicy = SoundTables.CACHE__TEMPORARY;
+	private int medium = SoundTables.MEDIUM_CART;
 	
 	/*----- Initialization -----*/
 	

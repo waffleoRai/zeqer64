@@ -764,6 +764,31 @@ public class ZeqerCore {
 		return Z64Wave.readZ64Wave(sounddat, winfo);
 	}
 	
+	public static FileBuffer loadWaveData(int wave_uid){
+		if(wav_table_sys == null) return null;
+		ZeqerWaveTable.WaveTableEntry entry = wav_table_sys.getEntryWithUID(wave_uid);
+		if(entry == null) return null;
+		Z64WaveInfo winfo = entry.getWaveInfo();
+		if(winfo == null) return null;
+		
+		String wpath = getWaveDirectoryPath() + File.separator + entry.getDataFileName();
+		FileBuffer sounddat = null;
+		try{
+			UltraWavFile uwav = UltraWavFile.createUWAV(wpath);
+			if(winfo.getWaveSize() <= 0){
+				//Info has not been loaded
+				uwav.readWaveInfo(winfo);
+			}
+			sounddat = uwav.loadSoundData();
+		}
+		catch(Exception ex){
+			System.err.println("ZeqerCore.getWaveInfo || Failed to load " + wpath);
+			ex.printStackTrace();
+			return null;
+		}
+		return sounddat;
+	}
+	
 	public static Z64Bank loadBank(int bank_uid){
 		BankTableEntry entry = null;
 		String basedir = null;
