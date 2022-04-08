@@ -1,6 +1,9 @@
 package waffleoRai_zeqer64;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 import waffleoRai_Containers.nintendo.nus.N64ROMImage;
 import waffleoRai_Containers.nintendo.nus.N64ZFileTable;
@@ -40,9 +43,86 @@ public class ZeqerRom {
 	
 	/*----- Getters -----*/
 	
+	public String getRomPath(){return rom_path;}
 	public NusRomInfo getRomInfo(){return info;}
 	
+	public int getVirtualRomSize(){
+		if(dmadata == null) return 0;
+		return (int)dmadata.getVirtualRomEnd();
+	}
+	
+	public int getFileVirtualOffset(int dmadata_idx){
+		return (int)dmadata.getEntry(dmadata_idx).getVirtualStart();
+	}
+	
+	public int[][] getVirtualAddressTable(){
+		if(dmadata == null) return null;
+		int fcount = dmadata.getEntryCount();
+		int[][] table = new int[fcount][2];
+		
+		for(int i = 0; i < fcount; i++){
+			table[i][0] = (int)dmadata.getEntry(i).getVirtualStart();
+			table[i][1] = (int)dmadata.getEntry(i).getVirtualEnd();
+		}
+		
+		return table;
+	}
+	
+	public int[] getFileImageOrder(){
+		if(dmadata == null) return null;
+		int fcount = dmadata.getEntryCount();
+		List<SortNode> nodes = new ArrayList<SortNode>(fcount);
+		for(int i = 0; i < fcount; i++){
+			nodes.add(new SortNode(dmadata.getEntry(i).getVirtualStart(), i));
+		}
+		Collections.sort(nodes);
+		int[] out = new int[fcount];
+		int i = 0;
+		for(SortNode n : nodes){
+			out[i++] = n.f_idx;
+		}
+		
+		return out;
+	}
+	
 	/*----- Setters -----*/
+	
+	/*----- Inner Classes -----*/
+	
+	private static class SortNode implements Comparable<SortNode>{
+		public long vaddr;
+		public int f_idx;
+		
+		public SortNode(long addr, int idx){
+			vaddr = addr; f_idx = idx;
+		}
+		
+		public int hashCode(){
+			return (int)vaddr ^ f_idx;
+		}
+
+		public boolean equals(Object o){
+			if(o == this) return true;
+			if(o == null) return false;
+			if(!(o instanceof SortNode)) return false;
+			SortNode onode = (SortNode)o;
+			if(onode.vaddr != this.vaddr) return false;
+			if(onode.f_idx != this.f_idx) return false;
+			return true;
+		}
+		
+		public int compareTo(SortNode o) {
+			if(o == null) return -1;
+			if(this.vaddr > o.vaddr) return 1;
+			else if(this.vaddr < o.vaddr) return -1;
+			
+			if(this.f_idx > o.f_idx) return 1;
+			else if(this.f_idx < o.f_idx) return -1;
+			
+			return 0;
+		}
+		
+	}
 	
 	/*----- File Load -----*/
 	
@@ -108,10 +188,25 @@ public class ZeqerRom {
 		return tbl;
 	}
 	
+	public int getDmadataIndex(){
+		long dmadata_offset = info.getDMADataOffset();
+		int fcount = dmadata.getEntryCount();
+		for(int i = 0; i < fcount; i++){
+			if(dmadata.getEntry(i).getROMAddress() == dmadata_offset) return i;
+		}
+		return -1;
+	}
+	
 	public FileBuffer loadFile(int dmadata_idx) throws IOException{
 		FileNode node = dmadata.getFileAsNode(rom_path, head.getOrdering(), dmadata_idx);
 		if(node == null) return null;
 		return node.loadDecompressedData();
+	}
+	
+	public FileBuffer loadDmadata() throws IOException{
+		int idx = getDmadataIndex();
+		if(idx < 0) return null;
+		return loadFile(idx);
 	}
 	
 	public FileBuffer loadCode() throws IOException{

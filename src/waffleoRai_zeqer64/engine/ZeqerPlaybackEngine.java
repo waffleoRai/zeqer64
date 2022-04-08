@@ -18,6 +18,7 @@ import waffleoRai_soundbank.nintendo.z64.Z64Instrument;
 import waffleoRai_soundbank.nintendo.z64.Z64SoundEffect;
 import waffleoRai_zeqer64.SoundTables.WaveArcInfoEntry;
 import waffleoRai_zeqer64.ZeqerCore;
+import waffleoRai_zeqer64.ZeqerRom;
 
 public class ZeqerPlaybackEngine {
 
@@ -162,6 +163,11 @@ public class ZeqerPlaybackEngine {
 	
 	public void exportForRecomp(String dirpath){
 		//TODO
+	}
+	
+	public static ZeqerPlaybackEngine fromRom(ZeqerRom rom){
+		//TODO
+		return null;
 	}
 	
 	/*----- Getters -----*/

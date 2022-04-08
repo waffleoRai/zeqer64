@@ -199,6 +199,8 @@ public class ZeqerWaveTable {
 	private Map<Integer, WaveTableEntry> entries;
 	private Map<String, WaveTableEntry> md5_map;
 	
+	private Map<String, WaveTableEntry> name_map;
+	
 	/*----- Initialization -----*/
 	
 	private ZeqerWaveTable(){
@@ -215,6 +217,16 @@ public class ZeqerWaveTable {
 	
 	public WaveTableEntry getEntryWithSum(String md5str){return md5_map.get(md5str);}
 	public WaveTableEntry getEntryWithUID(int uid){return entries.get(uid);}
+	
+	public WaveTableEntry getEntryWithName(String name){
+		if(name_map == null){
+			name_map = new HashMap<String, WaveTableEntry>();
+			for(WaveTableEntry entry : entries.values()){
+				name_map.put(entry.getName().toUpperCase(), entry);
+			}
+		}
+		return name_map.get(name.toUpperCase());
+	}
 	
 	/*----- Setters -----*/
 	
@@ -316,6 +328,7 @@ public class ZeqerWaveTable {
 			//Look for matching record
 			raw = fields[cidx_uid];
 			if(raw.startsWith("0x")) raw = raw.substring(2); //Chop 0x prefix
+			if(raw.length() > 8) raw = raw.substring(0, 8);
 			n = Integer.parseUnsignedInt(raw, 16); //Let the exception be thrown
 			WaveTableEntry entry = entries.get(n);
 			if(entry == null){

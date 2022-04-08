@@ -26,6 +26,8 @@ import waffleoRai_Utils.FileBuffer;
 import waffleoRai_Utils.FileBuffer.UnsupportedFileTypeException;
 import waffleoRai_Utils.FileUtils;
 import waffleoRai_soundbank.nintendo.z64.Z64Bank;
+import waffleoRai_soundbank.nintendo.z64.Z64Instrument;
+import waffleoRai_zeqer64.engine.ZeqerPlaybackEngine;
 import waffleoRai_zeqer64.filefmt.NusRomInfo;
 import waffleoRai_zeqer64.filefmt.RomInfoNode;
 import waffleoRai_zeqer64.filefmt.UltraWavFile;
@@ -35,6 +37,7 @@ import waffleoRai_zeqer64.filefmt.ZeqerPresetTable;
 import waffleoRai_zeqer64.filefmt.ZeqerRomInfo;
 import waffleoRai_zeqer64.filefmt.ZeqerSeqTable;
 import waffleoRai_zeqer64.filefmt.ZeqerWaveTable;
+import waffleoRai_zeqer64.presets.ZeqerInstPreset;
 
 public class ZeqerCore {
 	
@@ -495,6 +498,7 @@ public class ZeqerCore {
 		if(rootdir == null || rootdir.isEmpty()) return false;
 		
 		String dir = rootdir + File.separator + DIRNAME_ROMINFO;
+		if(!FileBuffer.directoryExists(dir)) return false;
 		
 		DirectoryStream<Path> dstr = Files.newDirectoryStream(Paths.get(dir));
 		for(Path p : dstr){
@@ -578,6 +582,11 @@ public class ZeqerCore {
 		
 		ZeqerRom rom = new ZeqerRom(path, rominfo);
 		return rom;
+	}
+	
+	public static ZeqerPlaybackEngine loadRomBuild(String zeqer_id){
+		//TODO
+		return null;
 	}
 	
 	/*----- Tables -----*/
@@ -713,6 +722,30 @@ public class ZeqerCore {
 	
 	/*----- Data Loading -----*/
 	
+	public static Z64WaveInfo getWaveByName(String wave_name){
+		if(wav_table_sys == null) return null;
+		ZeqerWaveTable.WaveTableEntry entry = wav_table_sys.getEntryWithName(wave_name);
+		if(entry == null) return null;
+		Z64WaveInfo winfo = entry.getWaveInfo();
+		if(winfo == null) return null;
+		
+		if(winfo.getWaveSize() <= 0){
+			//Not loaded.
+			String wpath = getWaveDirectoryPath() + File.separator + entry.getDataFileName();
+			try{
+				UltraWavFile uwav = UltraWavFile.createUWAV(wpath);
+				uwav.readWaveInfo(winfo);
+			}
+			catch(Exception ex){
+				System.err.println("ZeqerCore.getWaveByName || Failed to load " + wpath);
+				ex.printStackTrace();
+				return null;
+			}
+		}
+		
+		return winfo;
+	}
+	
 	public static Z64WaveInfo getWaveInfo(int wave_uid){
 		if(wav_table_sys == null) return null;
 		ZeqerWaveTable.WaveTableEntry entry = wav_table_sys.getEntryWithUID(wave_uid);
@@ -820,5 +853,58 @@ public class ZeqerCore {
 		}
 	}
 	
+	public static Z64Instrument getPresetInstrumentByName(String preset_name){
+		//Look thru preset tables for ZeqerPreset
+		if(preset_table_sys == null) return null; //Should not be null...
+		ZeqerPreset preset = preset_table_sys.getPresetByName(preset_name);
+		if(preset == null){
+			//Try user table.
+			if(preset_table_user == null) return null;
+			preset = preset_table_user.getPresetByName(preset_name);
+			if(preset == null) return null;
+		}
+		
+		//Cast to instrument preset (or return null if not one)
+		if(!(preset instanceof ZeqerInstPreset)) return null;
+		ZeqerInstPreset ipreset = (ZeqerInstPreset)preset;
+		
+		//Link up wave samples if not already linked!
+		Z64Instrument inst = ipreset.getInstrument();
+		int wuid = ipreset.getWaveIDMid();
+		if(inst.getSampleMiddle() == null){
+			if(wuid != 0 && wuid != -1){
+				inst.setSampleMiddle(ZeqerCore.getWaveInfo(wuid));
+			}
+		}
+		
+		wuid = ipreset.getWaveIDLo();
+		if(inst.getSampleLow() == null){
+			if(wuid != 0 && wuid != -1){
+				inst.setSampleLow(ZeqerCore.getWaveInfo(wuid));
+			}
+		}
+		
+		wuid = ipreset.getWaveIDHi();
+		if(inst.getSampleHigh() == null){
+			if(wuid != 0 && wuid != -1){
+				inst.setSampleHigh(ZeqerCore.getWaveInfo(wuid));
+			}
+		}
+		inst.setID(ipreset.getUID());
+		
+		return inst;
+	}
+	
+	public static int[][][] loadVersionTable(String rom_id) throws IOException{
+		if(wav_table_sys == null) return null;
+		String wavdir = ZeqerCore.getWaveDirectoryPath();
+		return ZeqerWaveTable.loadVersionTable(wavdir, rom_id);
+	}
+	
+	public static List<Map<Integer, Integer>> loadVersionWaveOffsetIDMap(String rom_id) throws IOException{
+		if(wav_table_sys == null) return null;
+		String wavdir = ZeqerCore.getWaveDirectoryPath();
+		return ZeqerWaveTable.loadVersionWaveOffsetIDMap(wavdir, rom_id);
+	}
 	
 }

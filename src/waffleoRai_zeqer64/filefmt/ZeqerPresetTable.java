@@ -40,6 +40,7 @@ public class ZeqerPresetTable {
 	/*----- Instance Variables -----*/
 	
 	private Map<Integer, ZeqerPreset> presets;
+	private Map<String, ZeqerPreset> name_map;
 	
 	/*----- Init -----*/
 	
@@ -371,6 +372,16 @@ public class ZeqerPresetTable {
 	
 	public ZeqerPreset getPreset(int uid){
 		return presets.get(uid);
+	}
+	
+	public ZeqerPreset getPresetByName(String name){
+		if(name_map == null){
+			name_map = new HashMap<String, ZeqerPreset>();
+			for(ZeqerPreset preset : presets.values()){
+				name_map.put(preset.getName().toUpperCase(), preset);
+			}
+		}
+		return name_map.get(name.toUpperCase());
 	}
 	
 	/*----- Setters -----*/

@@ -23,7 +23,8 @@ public class GUITestMain {
 		
 		String testseq_path = "C:\\Users\\Blythe\\Documents\\Desktop\\out\\n64test\\seq_095.buseq";
 		try {
-			NUSALSeq seq = new NUSALSeq(FileBuffer.createBuffer(testseq_path, true));
+			//NUSALSeq seq = new NUSALSeq(FileBuffer.createBuffer(testseq_path, true));
+			NUSALSeq seq = NUSALSeq.readNUSALSeq(FileBuffer.createBuffer(testseq_path, true));
 			form.loadSequence(seq);
 		} 
 		catch (IOException e) {
