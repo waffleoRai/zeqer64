@@ -4,9 +4,12 @@ import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
+import waffleoRai_zeqer64.ZeqerRom;
+
 public class NusRomInfo extends RomInfoNode{
 	
 	private String game_id;
+	private int tv_type = ZeqerRom.TV_TYPE__NTSC;
 	
 	private long offset_dmadata;
 	private long codeoffset_bnktbl;
@@ -23,6 +26,7 @@ public class NusRomInfo extends RomInfoNode{
 	protected NusRomInfo(){}
 	
 	public boolean isGamecube(){return false;}
+	public int getTVType(){return tv_type;}
 	
 	public boolean isZ5(){return game_id.contains("oot");}
 	public boolean isZ6(){return game_id.equals("mm");}
@@ -105,6 +109,11 @@ public class NusRomInfo extends RomInfoNode{
 						else if(key.endsWith("game")){
 							game_id = txt;
 						}
+					}
+					else if(key.startsWith("region_tv")){
+						if(txt.equalsIgnoreCase("NTSC")) tv_type = ZeqerRom.TV_TYPE__NTSC;
+						else if(txt.equalsIgnoreCase("MPAL")) tv_type = ZeqerRom.TV_TYPE__MPAL;
+						else if(txt.equalsIgnoreCase("PAL")) tv_type = ZeqerRom.TV_TYPE__PAL;
 					}
 				}
 				catch(NumberFormatException ex){

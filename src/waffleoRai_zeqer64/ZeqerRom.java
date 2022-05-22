@@ -17,6 +17,10 @@ import waffleoRai_zeqer64.SoundTables.WaveArcInfoEntry;
 import waffleoRai_zeqer64.filefmt.NusRomInfo;
 
 public class ZeqerRom {
+	
+	public static final int TV_TYPE__NTSC = 1;
+	public static final int TV_TYPE__PAL  = 0;
+	public static final int TV_TYPE__MPAL = 2;
 
 	/*----- Instance Variables -----*/
 	

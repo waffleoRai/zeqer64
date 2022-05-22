@@ -28,6 +28,7 @@ import waffleoRai_Utils.FileUtils;
 import waffleoRai_soundbank.nintendo.z64.Z64Bank;
 import waffleoRai_soundbank.nintendo.z64.Z64Instrument;
 import waffleoRai_zeqer64.engine.ZeqerPlaybackEngine;
+import waffleoRai_zeqer64.filefmt.AbldFile;
 import waffleoRai_zeqer64.filefmt.NusRomInfo;
 import waffleoRai_zeqer64.filefmt.RomInfoNode;
 import waffleoRai_zeqer64.filefmt.UltraWavFile;
@@ -36,7 +37,9 @@ import waffleoRai_zeqer64.filefmt.ZeqerBankTable.BankTableEntry;
 import waffleoRai_zeqer64.filefmt.ZeqerPresetTable;
 import waffleoRai_zeqer64.filefmt.ZeqerRomInfo;
 import waffleoRai_zeqer64.filefmt.ZeqerSeqTable;
+import waffleoRai_zeqer64.filefmt.ZeqerSeqTable.SeqTableEntry;
 import waffleoRai_zeqer64.filefmt.ZeqerWaveTable;
+import waffleoRai_zeqer64.filefmt.ZeqerWaveTable.WaveTableEntry;
 import waffleoRai_zeqer64.presets.ZeqerInstPreset;
 
 public class ZeqerCore {
@@ -51,18 +54,23 @@ public class ZeqerCore {
 	public static final String DIRNAME_WAVE = "wav";
 	public static final String DIRNAME_SEQ = "seq";
 	public static final String DIRNAME_BANK = "bnk";
+	public static final String DIRNAME_ABLD = "abld";
 	public static final String DIRNAME_ENGINE = "engine";
 	
 	public static final String DIRNAME_ZSEQ = "zseqs";
+	public static final String DIRNAME_ZWAVE = "zwavs";
 	public static final String DIRNAME_ZBANK = "zbnks";
+	public static final String DIRNAME_ZBLD = "zbld";
 	
 	public static final String FN_SYSBANK = "zbanks.bin";
 	public static final String FN_SYSWAVE = "zwavs.bin";
 	public static final String FN_SYSPRESET = "zpresets.bin";
-	public static final String FN_SYSSEQ_OOT = "ootseqs.bin";
-	public static final String FN_SYSSEQ_MM = "mmseqs.bin";
+	public static final String FN_SYSSEQ = "zseqs.bin";
+	//public static final String FN_SYSSEQ_OOT = "ootseqs.bin";
+	//public static final String FN_SYSSEQ_MM = "mmseqs.bin";
 	
 	public static final String FN_USRBANK = "mybanks.bin";
+	public static final String FN_USRWAVE = "mywaves.bin";
 	public static final String FN_USRSEQ = "myseqs.bin";
 	public static final String FN_USRPRESET = "mypresets.bin";
 	
@@ -189,7 +197,11 @@ public class ZeqerCore {
 	/*----- Paths -----*/
 	
 	public static String getWaveDirectoryPath(){
-		return getProgramDirectory() + File.separator + DIRNAME_WAVE;
+		return getProgramDirectory() + SEP + DIRNAME_WAVE;
+	}
+	
+	public static String getSysWaveDirectoryPath(){
+		return getWaveDirectoryPath() + SEP + DIRNAME_ZWAVE;
 	}
 	
 	/*----- Settings -----*/
@@ -288,11 +300,14 @@ public class ZeqerCore {
 		if(!FileBuffer.directoryExists(subdir)){
 			Files.createDirectories(Paths.get(zsubdir));
 		}
-		String respath = RES_JARPATH + "/" + FN_SYSSEQ_OOT;
+		/*String respath = RES_JARPATH + "/" + FN_SYSSEQ_OOT;
 		String targetpath = zsubdir + File.separator + FN_SYSSEQ_OOT;
 		good = good && extractFromJAR(respath, targetpath);
 		respath = RES_JARPATH + "/" + FN_SYSSEQ_MM;
 		targetpath = zsubdir + File.separator + FN_SYSSEQ_MM;
+		good = good && extractFromJAR(respath, targetpath);*/
+		String respath = RES_JARPATH + "/" + FN_SYSSEQ;
+		String targetpath = zsubdir + File.separator + FN_SYSSEQ;
 		good = good && extractFromJAR(respath, targetpath);
 		
 		//bnk
@@ -307,12 +322,19 @@ public class ZeqerCore {
 		
 		//wav
 		subdir = dirpath + File.separator + DIRNAME_WAVE;
+		zsubdir = subdir + File.separatorChar + DIRNAME_ZWAVE;
 		if(!FileBuffer.directoryExists(subdir)){
 			Files.createDirectory(Paths.get(subdir));
 		}
 		respath = RES_JARPATH + "/" + FN_SYSWAVE;
-		targetpath = subdir + File.separator + FN_SYSWAVE;
+		targetpath = zsubdir + File.separator + FN_SYSWAVE;
 		good = good && extractFromJAR(respath, targetpath);
+		
+		//abld
+		subdir = dirpath + File.separator + DIRNAME_ABLD;
+		if(!FileBuffer.directoryExists(subdir)){
+			Files.createDirectory(Paths.get(subdir));
+		}
 		
 		//engine
 		subdir = dirpath + File.separator + DIRNAME_ENGINE;
@@ -480,11 +502,13 @@ public class ZeqerCore {
 		root_dir = null;
 		
 		wav_table_sys = null;
-		seq_table_sys_oot = null;
-		seq_table_sys_mm = null;
+		//seq_table_sys_oot = null;
+		//seq_table_sys_mm = null;
+		seq_table_sys = null;
 		bnk_table_sys = null;
 		seq_table_user = null;
 		bnk_table_user = null;
+		wav_table_user = null;
 	}
 	
 	/*----- RomInfo -----*/
@@ -592,11 +616,11 @@ public class ZeqerCore {
 	/*----- Tables -----*/
 	
 	private static ZeqerWaveTable wav_table_sys;
-	private static ZeqerSeqTable seq_table_sys_oot;
-	private static ZeqerSeqTable seq_table_sys_mm;
+	private static ZeqerSeqTable seq_table_sys;
 	private static ZeqerBankTable bnk_table_sys;
 	private static ZeqerPresetTable preset_table_sys;
 	
+	private static ZeqerWaveTable wav_table_user;
 	private static ZeqerSeqTable seq_table_user;
 	private static ZeqerBankTable bnk_table_user;
 	private static ZeqerPresetTable preset_table_user;
@@ -606,14 +630,14 @@ public class ZeqerCore {
 		if(pdir == null) return;
 		
 		char sep = File.separatorChar;
-		String loadpath = pdir + sep + DIRNAME_WAVE + sep + FN_SYSWAVE;
+		String loadpath = pdir + sep + DIRNAME_WAVE + sep + DIRNAME_ZWAVE + sep + FN_SYSWAVE;
 		FileBuffer buffer = null;
 		if(FileBuffer.fileExists(loadpath)) {
 			buffer = FileBuffer.createBuffer(loadpath, true);
 			wav_table_sys = ZeqerWaveTable.readTable(buffer);
 		}
 		
-		loadpath = pdir + sep + DIRNAME_SEQ + sep + DIRNAME_ZSEQ + sep + FN_SYSSEQ_OOT;
+		/*loadpath = pdir + sep + DIRNAME_SEQ + sep + DIRNAME_ZSEQ + sep + FN_SYSSEQ_OOT;
 		buffer = null;
 		if(FileBuffer.fileExists(loadpath)) {
 			buffer = FileBuffer.createBuffer(loadpath, true);
@@ -625,6 +649,13 @@ public class ZeqerCore {
 		if(FileBuffer.fileExists(loadpath)) {
 			buffer = FileBuffer.createBuffer(loadpath, true);
 			seq_table_sys_mm = ZeqerSeqTable.readTable(buffer);
+		}*/
+		
+		loadpath = pdir + sep + DIRNAME_SEQ + sep + DIRNAME_ZSEQ + sep + FN_SYSSEQ;
+		buffer = null;
+		if(FileBuffer.fileExists(loadpath)) {
+			buffer = FileBuffer.createBuffer(loadpath, true);
+			seq_table_sys = ZeqerSeqTable.readTable(buffer);
 		}
 		
 		loadpath = pdir + sep + DIRNAME_BANK + sep + DIRNAME_ZBANK + sep + FN_SYSBANK;
@@ -639,6 +670,13 @@ public class ZeqerCore {
 		if(FileBuffer.fileExists(loadpath)) {
 			buffer = FileBuffer.createBuffer(loadpath, true);
 			preset_table_sys = ZeqerPresetTable.readTable(buffer);
+		}
+		
+		loadpath = pdir + sep + DIRNAME_WAVE + sep + FN_USRWAVE;
+		buffer = null;
+		if(FileBuffer.fileExists(loadpath)) {
+			buffer = FileBuffer.createBuffer(loadpath, true);
+			wav_table_user = ZeqerWaveTable.readTable(buffer);
 		}
 		
 		loadpath = pdir + sep + DIRNAME_SEQ + sep + FN_USRSEQ;
@@ -668,11 +706,14 @@ public class ZeqerCore {
 		if(pdir == null) return;
 
 		final char sep = File.separatorChar;
-		String savepath = pdir + sep + DIRNAME_SEQ + sep + DIRNAME_ZSEQ + sep + FN_SYSSEQ_OOT;
+		/*String savepath = pdir + sep + DIRNAME_SEQ + sep + DIRNAME_ZSEQ + sep + FN_SYSSEQ_OOT;
 		if(seq_table_sys_oot != null) seq_table_sys_oot.writeTo(savepath);
 		
 		savepath = pdir + sep + DIRNAME_SEQ + sep + DIRNAME_ZSEQ + sep + FN_SYSSEQ_MM;
-		if(seq_table_sys_mm != null) seq_table_sys_mm.writeTo(savepath);
+		if(seq_table_sys_mm != null) seq_table_sys_mm.writeTo(savepath);*/
+		
+		String savepath = pdir + sep + DIRNAME_SEQ + sep + DIRNAME_ZSEQ + sep + FN_SYSSEQ;
+		if(seq_table_sys != null) seq_table_sys.writeTo(savepath);
 		
 		savepath = pdir + sep + DIRNAME_BANK + sep + DIRNAME_ZBANK + sep + FN_SYSBANK;
 		if(bnk_table_sys != null) bnk_table_sys.writeTo(savepath);
@@ -680,7 +721,7 @@ public class ZeqerCore {
 		savepath = pdir + sep + DIRNAME_BANK + sep + DIRNAME_ZBANK + sep + FN_SYSPRESET;
 		if(preset_table_sys != null) preset_table_sys.writeTo(savepath);
 		
-		savepath = pdir + sep + DIRNAME_WAVE + sep + FN_SYSWAVE;
+		savepath = pdir + sep + DIRNAME_WAVE + sep + DIRNAME_ZWAVE + sep + FN_SYSWAVE;
 		if(wav_table_sys != null) wav_table_sys.writeTo(savepath);
 	}
 	
@@ -692,6 +733,9 @@ public class ZeqerCore {
 		String savepath = pdir + sep + DIRNAME_SEQ + sep + FN_USRSEQ;
 		if(seq_table_user != null) seq_table_user.writeTo(savepath);
 		
+		savepath = pdir + sep + DIRNAME_WAVE + sep + FN_USRWAVE;
+		if(wav_table_user != null) wav_table_user.writeTo(savepath);
+		
 		savepath = pdir + sep + DIRNAME_BANK + sep + FN_USRBANK;
 		if(bnk_table_user != null) bnk_table_user.writeTo(savepath);
 		
@@ -700,14 +744,20 @@ public class ZeqerCore {
 	}
 
 	public static ZeqerWaveTable getZeqerWaveTable(){return wav_table_sys;}
-	public static ZeqerSeqTable getZeqerZ5SeqTable(){return seq_table_sys_oot;}
-	public static ZeqerSeqTable getZeqerZ6SeqTable(){return seq_table_sys_mm;}
+	//public static ZeqerSeqTable getZeqerZ5SeqTable(){return seq_table_sys_oot;}
+	//public static ZeqerSeqTable getZeqerZ6SeqTable(){return seq_table_sys_mm;}
+	public static ZeqerSeqTable getZeqerSeqTable(){return seq_table_sys;}
 	public static ZeqerBankTable getZeqerBankTable(){return bnk_table_sys;}
 	public static ZeqerPresetTable getZeqerPresetTable(){return preset_table_sys;}
 	
 	public static ZeqerBankTable getUserBankTable(){
 		if(bnk_table_user == null) bnk_table_user = ZeqerBankTable.createTable();
 		return bnk_table_user;
+	}
+	
+	public static ZeqerWaveTable getUserWaveTable(){
+		if(wav_table_user == null) wav_table_user = ZeqerWaveTable.createTable();
+		return wav_table_user;
 	}
 	
 	public static ZeqerPresetTable getUserPresetTable(){
@@ -722,16 +772,35 @@ public class ZeqerCore {
 	
 	/*----- Data Loading -----*/
 	
+	public static AbldFile loadSysBuild(String rom_id) throws UnsupportedFileTypeException, IOException{
+		String dirpath = getProgramDirectory();
+		if(dirpath == null) return null;
+		dirpath += SEP + DIRNAME_ABLD + SEP + DIRNAME_ZBLD;
+		String filepath = dirpath + SEP + rom_id + ".abld";
+		AbldFile abld = AbldFile.readABLD(FileBuffer.createBuffer(filepath, true));
+		return abld;
+	}
+	
 	public static Z64WaveInfo getWaveByName(String wave_name){
-		if(wav_table_sys == null) return null;
-		ZeqerWaveTable.WaveTableEntry entry = wav_table_sys.getEntryWithName(wave_name);
-		if(entry == null) return null;
+		String wdir = null;
+		WaveTableEntry entry = null;
+		if(wav_table_sys != null){
+			entry = wav_table_sys.getEntryWithName(wave_name);
+			if(entry != null) wdir = getSysWaveDirectoryPath();
+		}
+		if(entry == null){
+			if(wav_table_user == null) return null;
+			entry = wav_table_user.getEntryWithName(wave_name);
+			if(entry != null) wdir = getWaveDirectoryPath();
+			else return null;
+		}
+		
 		Z64WaveInfo winfo = entry.getWaveInfo();
 		if(winfo == null) return null;
 		
 		if(winfo.getWaveSize() <= 0){
 			//Not loaded.
-			String wpath = getWaveDirectoryPath() + File.separator + entry.getDataFileName();
+			String wpath = wdir + File.separator + entry.getDataFileName();
 			try{
 				UltraWavFile uwav = UltraWavFile.createUWAV(wpath);
 				uwav.readWaveInfo(winfo);
@@ -747,15 +816,25 @@ public class ZeqerCore {
 	}
 	
 	public static Z64WaveInfo getWaveInfo(int wave_uid){
-		if(wav_table_sys == null) return null;
-		ZeqerWaveTable.WaveTableEntry entry = wav_table_sys.getEntryWithUID(wave_uid);
-		if(entry == null) return null;
+		String wdir = null;
+		WaveTableEntry entry = null;
+		if(wav_table_sys != null){
+			entry = wav_table_sys.getEntryWithUID(wave_uid);
+			if(entry != null) wdir = getSysWaveDirectoryPath();
+		}
+		if(entry == null){
+			if(wav_table_user == null) return null;
+			entry = wav_table_user.getEntryWithUID(wave_uid);
+			if(entry != null) wdir = getWaveDirectoryPath();
+			else return null;
+		}
+		
 		Z64WaveInfo winfo = entry.getWaveInfo();
 		if(winfo == null) return null;
 		
 		if(winfo.getWaveSize() <= 0){
 			//Not loaded.
-			String wpath = getWaveDirectoryPath() + File.separator + entry.getDataFileName();
+			String wpath = wdir + File.separator + entry.getDataFileName();
 			try{
 				UltraWavFile uwav = UltraWavFile.createUWAV(wpath);
 				uwav.readWaveInfo(winfo);
@@ -771,13 +850,23 @@ public class ZeqerCore {
 	}
 	
 	public static Z64Wave loadWave(int wave_uid){
-		if(wav_table_sys == null) return null;
-		ZeqerWaveTable.WaveTableEntry entry = wav_table_sys.getEntryWithUID(wave_uid);
-		if(entry == null) return null;
+		String wdir = null;
+		WaveTableEntry entry = null;
+		if(wav_table_sys != null){
+			entry = wav_table_sys.getEntryWithUID(wave_uid);
+			if(entry != null) wdir = getSysWaveDirectoryPath();
+		}
+		if(entry == null){
+			if(wav_table_user == null) return null;
+			entry = wav_table_user.getEntryWithUID(wave_uid);
+			if(entry != null) wdir = getWaveDirectoryPath();
+			else return null;
+		}
+		
 		Z64WaveInfo winfo = entry.getWaveInfo();
 		if(winfo == null) return null;
 		
-		String wpath = getWaveDirectoryPath() + File.separator + entry.getDataFileName();
+		String wpath = wdir + File.separator + entry.getDataFileName();
 		FileBuffer sounddat = null;
 		try{
 			UltraWavFile uwav = UltraWavFile.createUWAV(wpath);
@@ -798,13 +887,23 @@ public class ZeqerCore {
 	}
 	
 	public static FileBuffer loadWaveData(int wave_uid){
-		if(wav_table_sys == null) return null;
-		ZeqerWaveTable.WaveTableEntry entry = wav_table_sys.getEntryWithUID(wave_uid);
-		if(entry == null) return null;
+		String wdir = null;
+		WaveTableEntry entry = null;
+		if(wav_table_sys != null){
+			entry = wav_table_sys.getEntryWithUID(wave_uid);
+			if(entry != null) wdir = getSysWaveDirectoryPath();
+		}
+		if(entry == null){
+			if(wav_table_user == null) return null;
+			entry = wav_table_user.getEntryWithUID(wave_uid);
+			if(entry != null) wdir = getWaveDirectoryPath();
+			else return null;
+		}
+		
 		Z64WaveInfo winfo = entry.getWaveInfo();
 		if(winfo == null) return null;
 		
-		String wpath = getWaveDirectoryPath() + File.separator + entry.getDataFileName();
+		String wpath = wdir + File.separator + entry.getDataFileName();
 		FileBuffer sounddat = null;
 		try{
 			UltraWavFile uwav = UltraWavFile.createUWAV(wpath);
@@ -822,6 +921,15 @@ public class ZeqerCore {
 		return sounddat;
 	}
 	
+	public static BankTableEntry getBankInfo(int bank_uid){
+		BankTableEntry entry = null;
+		if(bnk_table_sys != null) entry = bnk_table_sys.getBank(bank_uid);
+		if(entry == null && bnk_table_user != null) {
+			entry = bnk_table_user.getBank(bank_uid);
+		}
+		return entry;
+	}
+	
 	public static Z64Bank loadBank(int bank_uid){
 		BankTableEntry entry = null;
 		String basedir = null;
@@ -830,13 +938,14 @@ public class ZeqerCore {
 			basedir = getProgramDirectory() + SEP + DIRNAME_BANK + SEP + DIRNAME_ZBANK;
 		}
 		
-		if(bnk_table_user != null) {
+		if(entry == null && bnk_table_user != null) {
 			entry = bnk_table_user.getBank(bank_uid);
 			basedir = getProgramDirectory() + SEP + DIRNAME_BANK;
 		}
 		if(entry == null) return null;
 		
 		String bnkpath = basedir + SEP + entry.getDataFileName();
+		//System.err.println("ZeqerCore.loadBank || Path: " + bnkpath);
 		if(!FileBuffer.fileExists(bnkpath)) return null;
 		try{
 			Z64Bank zbank = Z64Bank.readUBNK(FileBuffer.createBuffer(bnkpath, true));
@@ -895,15 +1004,50 @@ public class ZeqerCore {
 		return inst;
 	}
 	
-	public static int[][][] loadVersionTable(String rom_id) throws IOException{
+	public static SeqTableEntry getSeqInfo(int seq_uid){
+		SeqTableEntry entry = null;
+		if(seq_table_sys != null) entry = seq_table_sys.getSequence(seq_uid);
+		if(entry == null && seq_table_user != null) {
+			entry = seq_table_user.getSequence(seq_uid);
+		}
+		return entry;
+	}
+	
+	public static FileBuffer loadSeqData(int seq_uid){
+		SeqTableEntry entry = null;
+		String basedir = null;
+		if(seq_table_sys != null) entry = seq_table_sys.getSequence(seq_uid);
+		if(entry != null){
+			basedir = getProgramDirectory() + SEP + DIRNAME_SEQ + SEP + DIRNAME_ZSEQ;
+		}
+		
+		if(entry == null && seq_table_sys != null) {
+			entry = seq_table_user.getSequence(seq_uid);
+			basedir = getProgramDirectory() + SEP + DIRNAME_SEQ;
+		}
+		if(entry == null) return null;
+		
+		String spath = basedir + SEP + entry.getDataFileName();
+		if(!FileBuffer.fileExists(spath)) return null;
+		try{
+			return FileBuffer.createBuffer(spath, true);
+		}
+		catch(Exception ex){
+			System.err.println("ZeqerCore.loadSeqData || Failed to load seq " + String.format("%08x", seq_uid));
+			ex.printStackTrace();
+			return null;
+		}
+	}
+	
+	public static int[][][] loadWaveVersionTable(String rom_id) throws IOException{
 		if(wav_table_sys == null) return null;
-		String wavdir = ZeqerCore.getWaveDirectoryPath();
+		String wavdir = ZeqerCore.getSysWaveDirectoryPath();
 		return ZeqerWaveTable.loadVersionTable(wavdir, rom_id);
 	}
 	
 	public static List<Map<Integer, Integer>> loadVersionWaveOffsetIDMap(String rom_id) throws IOException{
 		if(wav_table_sys == null) return null;
-		String wavdir = ZeqerCore.getWaveDirectoryPath();
+		String wavdir = ZeqerCore.getSysWaveDirectoryPath();
 		return ZeqerWaveTable.loadVersionWaveOffsetIDMap(wavdir, rom_id);
 	}
 	

@@ -2,20 +2,22 @@ package waffleoRai_zeqer64;
 
 import java.util.Arrays;
 
+import waffleoRai_Sound.nintendo.Z64Sound;
 import waffleoRai_Utils.BufferReference;
+import waffleoRai_Utils.FileBuffer;
 
 public class SoundTables {
 	
-	public static final int MEDIUM_RAM = 0;
-	public static final int MEDIUM_UNK = 1;
-	public static final int MEDIUM_CART = 2;
-	public static final int MEDIUM_DISK_DRIVE = 3;
+	public static final int MEDIUM_RAM = Z64Sound.MEDIUM_RAM;
+	public static final int MEDIUM_UNK = Z64Sound.MEDIUM_UNK;
+	public static final int MEDIUM_CART = Z64Sound.MEDIUM_CART;
+	public static final int MEDIUM_DISK_DRIVE = Z64Sound.MEDIUM_DISK_DRIVE;
 	
-	public static final int CACHE__PERMANENT = 0;
-	public static final int CACHE__PERSISTENT = 1;
-	public static final int CACHE__TEMPORARY = 2;
-	public static final int CACHE__ANY = 3;
-	public static final int CACHE__ANY_NO_SYNC_LOAD = 4;
+	public static final int CACHE__PERMANENT = Z64Sound.CACHE_PERMANENT;
+	public static final int CACHE__PERSISTENT = Z64Sound.CACHE_PERSISTENT;
+	public static final int CACHE__TEMPORARY = Z64Sound.CACHE_TEMPORARY;
+	public static final int CACHE__ANY = Z64Sound.CACHE_ANY;
+	public static final int CACHE__ANY_NO_SYNC_LOAD = Z64Sound.CACHE_ANYNOSYNCLOAD;
 
 	public static class BankInfoEntry{
 		private int offset = -1;
@@ -62,6 +64,18 @@ public class SoundTables {
 		public void setPercussionCount(int val){perc_count = val;}
 		public void setSFXCount(int val){sfx_count = val;}
 		
+		public void serializeTo(FileBuffer buffer){
+			buffer.addToFile(offset);
+			buffer.addToFile(size);
+			buffer.addToFile((byte)medium);
+			buffer.addToFile((byte)cachePolicy);
+			buffer.addToFile((byte)warc1);
+			buffer.addToFile((byte)warc2);
+			buffer.addToFile((byte)inst_count);
+			buffer.addToFile((byte)perc_count);
+			buffer.addToFile((short)sfx_count);
+		}
+		
 	}
 	
 	public static class BankMapEntry{
@@ -76,6 +90,10 @@ public class SoundTables {
 			if(idx < 0) return -1;
 			if(idx >= banklist.length) return -1;
 			return banklist[idx];
+		}
+				
+		public int getBankCount(){
+			return banklist.length;
 		}
 		
 		public void setBank(int idx, int val){
@@ -112,6 +130,14 @@ public class SoundTables {
 		public void setMedium(int val){medium = val;}
 		public void setCachePolicy(int val){cachePolicy = val;}
 		
+		public void serializeTo(FileBuffer buffer){
+			buffer.addToFile(offset);
+			buffer.addToFile(size);
+			buffer.addToFile((byte)medium);
+			buffer.addToFile((byte)cachePolicy);
+			buffer.addToFile((short)0);
+			buffer.addToFile(0);
+		}
 	}
 	
 	public static class WaveArcInfoEntry{
@@ -139,6 +165,16 @@ public class SoundTables {
 		public void setSize(int val){size = val;}
 		public void setMedium(int val){medium = val;}
 		public void setCachePolicy(int val){cachePolicy = val;}
+		
+		public void serializeTo(FileBuffer buffer){
+			//In my script I didn't see the need to add a 64-bit ver? I guess the struct is fixed size?
+			buffer.addToFile(offset);
+			buffer.addToFile(size);
+			buffer.addToFile((byte)medium);
+			buffer.addToFile((byte)cachePolicy);
+			buffer.addToFile((short)0);
+			buffer.addToFile(0);
+		}
 	}
 	
 }

@@ -6,11 +6,11 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
 
 import waffleoRai_Utils.FileBuffer;
 import waffleoRai_zeqer64.ZeqerCore;
 import waffleoRai_zeqer64.ZeqerRom;
+import waffleoRai_zeqer64.filefmt.AbldFile;
 import waffleoRai_zeqer64.filefmt.ZeqerBankTable;
 import waffleoRai_zeqer64.filefmt.ZeqerPresetTable;
 import waffleoRai_zeqer64.filefmt.ZeqerSeqTable;
@@ -47,9 +47,11 @@ public class SoundExtractor {
 	/*----- Dump -----*/
 	
 	public boolean dumpSoundData(boolean verbose) throws IOException{
-		String wavdir = dir_base + SEP + ZeqerCore.DIRNAME_WAVE;
+		String wavdir = dir_base + SEP + ZeqerCore.DIRNAME_WAVE + SEP + ZeqerCore.DIRNAME_ZWAVE;
 		String bnkdir = dir_base + SEP + ZeqerCore.DIRNAME_BANK + SEP + ZeqerCore.DIRNAME_ZBANK;
 		String seqdir = dir_base + SEP + ZeqerCore.DIRNAME_SEQ + SEP + ZeqerCore.DIRNAME_ZSEQ;
+		String blddir = dir_base + SEP + ZeqerCore.DIRNAME_ABLD + SEP + ZeqerCore.DIRNAME_ZBLD;
+		String zid = z_rom.getRomInfo().getZeqerID();
 		
 		if(verbose) System.err.println("Creating output directories...");
 		if(!FileBuffer.directoryExists(wavdir)) Files.createDirectories(Paths.get(wavdir));
@@ -71,7 +73,7 @@ public class SoundExtractor {
 		if(verbose) System.err.println("Mapping wave offsets to UIDs...");
 		if(write_perm) bnkex.setSysPermission(true);
 		//Reload wav id map for banks
-		List<Map<Integer, Integer>> wavmap = ZeqerWaveTable.loadVersionWaveOffsetIDMap(wavdir, z_rom.getRomInfo().getZeqerID());
+		List<Map<Integer, Integer>> wavmap = ZeqerWaveTable.loadVersionWaveOffsetIDMap(wavdir, zid);
 		
 		if(verbose) System.err.println("Extracting soundbanks...");
 		if(!bnkex.extractBanks(wavmap)) return false;
@@ -79,15 +81,24 @@ public class SoundExtractor {
 		//Seqs
 		if(verbose) System.err.println("Extracting seqs...");
 		if(write_perm) {
-			if(z_rom.getRomInfo().isZ5()) seqex.setSysZ5Mode();
-			else seqex.setSysZ6Mode();
+			seqex.setSysMode();
+			//if(z_rom.getRomInfo().isZ5()) seqex.setSysZ5Mode();
+			//else seqex.setSysZ6Mode();
 		}
 		if(!seqex.extractSeqs()) return false;
 		
 		if(verbose) System.err.println("Mapping soundbanks to seqs...");
-		int[] buids = ZeqerBankTable.loadVersionTable(bnkdir, z_rom.getRomInfo().getZeqerID());
+		int[] buids = ZeqerBankTable.loadVersionTable(bnkdir, zid);
 		if(buids == null) return false;
 		if(!seqex.mapSeqBanks(buids)) return false;
+		
+		//generate abld
+		//Load id tables.
+		if(!FileBuffer.directoryExists(blddir)) Files.createDirectories(Paths.get(blddir));
+		int[][][] wuids = ZeqerWaveTable.loadVersionTable(wavdir, zid);
+		int[] suids = ZeqerSeqTable.loadVersionTable(seqdir, zid);
+		AbldFile abld = AbldFile.fromROM(z_rom, suids, buids, wuids);
+		good = good && abld.serializeTo(blddir + SEP + zid + ".abld");
 		
 		return good;
 	}
@@ -127,7 +138,7 @@ public class SoundExtractor {
 			String tbldir = outdir + SEP + "dbgtbl";
 			
 			String tblpath = tbldir + SEP + "wav";
-			String srcdir = outdir + SEP + ZeqerCore.DIRNAME_WAVE;
+			String srcdir = outdir + SEP + ZeqerCore.DIRNAME_WAVE + SEP + ZeqerCore.DIRNAME_ZWAVE;
 			String srcpath = srcdir + SEP + ZeqerCore.FN_SYSWAVE;
 			if(!FileBuffer.directoryExists(tblpath)) Files.createDirectories(Paths.get(tblpath));
 			ZeqerWaveTable wtbl = ZeqerWaveTable.readTable(FileBuffer.createBuffer(srcpath, true));
@@ -145,7 +156,7 @@ public class SoundExtractor {
 			ZeqerPresetTable ptbl = ZeqerPresetTable.readTable(FileBuffer.createBuffer(srcpath, true));
 			ptbl.exportTo(tblpath);
 			
-			tblpath = tbldir + SEP + "seq" + SEP + "z5";
+			/*tblpath = tbldir + SEP + "seq" + SEP + "z5";
 			srcdir = outdir + SEP + ZeqerCore.DIRNAME_SEQ + SEP + ZeqerCore.DIRNAME_ZSEQ;
 			srcpath = srcdir + SEP + ZeqerCore.FN_SYSSEQ_OOT;
 			if(!FileBuffer.directoryExists(tblpath)) Files.createDirectories(Paths.get(tblpath));
@@ -156,6 +167,14 @@ public class SoundExtractor {
 			
 			tblpath = tbldir + SEP + "seq" + SEP + "z6";
 			srcpath = srcdir + SEP + ZeqerCore.FN_SYSSEQ_MM;
+			if(!FileBuffer.directoryExists(tblpath)) Files.createDirectories(Paths.get(tblpath));
+			if(FileBuffer.fileExists(srcpath)){
+				ZeqerSeqTable stbl = ZeqerSeqTable.readTable(FileBuffer.createBuffer(srcpath, true));
+				stbl.exportTo(tblpath, srcdir);
+			}*/
+			
+			tblpath = tbldir + SEP + "seq";
+			srcpath = srcdir + SEP + ZeqerCore.FN_SYSSEQ;
 			if(!FileBuffer.directoryExists(tblpath)) Files.createDirectories(Paths.get(tblpath));
 			if(FileBuffer.fileExists(srcpath)){
 				ZeqerSeqTable stbl = ZeqerSeqTable.readTable(FileBuffer.createBuffer(srcpath, true));

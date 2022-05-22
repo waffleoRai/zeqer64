@@ -1,7 +1,9 @@
 package waffleoRai_zeqer64.filefmt;
 
 import java.io.IOException;
+import java.io.Writer;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import javax.xml.parsers.ParserConfigurationException;
@@ -14,6 +16,7 @@ import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
 import waffleoRai_Sound.nintendo.Z64Sound;
+import waffleoRai_Sound.nintendo.Z64Sound.Z64Tuning;
 import waffleoRai_Sound.nintendo.Z64WaveInfo;
 import waffleoRai_SoundSynth.SynthMath;
 import waffleoRai_soundbank.nintendo.z64.Z64Bank;
@@ -28,6 +31,11 @@ public class SoundfontXML {
 	public static final int INST_SAMPLE_LO = -1;
 	public static final int INST_SAMPLE_MID = 0;
 	public static final int INST_SAMPLE_HI = 1;
+	
+	public static final int MIDC_OCT_RECOMP = 5;
+	public static final String[] RECOMP_TONE_NAMES = {"C", "C♯", "D", "D♯",
+													  "E", "F", "F♯", "G",
+													  "G♯", "A", "A♯", "B"};
 	
 	private Map<String, Z64Envelope> env_map;
 	private Z64Bank output;
@@ -137,6 +145,17 @@ public class SoundfontXML {
 			midival = ((oct + 1) * 12) + semis;
 		}
 		return midival;
+	}
+	
+	public static String znote2Str(int z64note, int midc_oct){
+		return midnote2Str(z64note+0x15, midc_oct);
+	}
+	
+	public static String midnote2Str(int midinote, int midc_oct){
+		int octave = (midinote/12);
+		octave += (midc_oct - 5);
+		int tone = midinote % 12;
+		return RECOMP_TONE_NAMES[tone] + Integer.toString(octave);
 	}
 	
 	public Z64Envelope readEnvelope(Element xml_element){
@@ -254,7 +273,7 @@ public class SoundfontXML {
 		
 		//2. This is the note that should play sample at 32kHz
 		//	Figure out ratio to C4.
-		int cents = (60 - midival) * 100;
+		int cents = (midival - 60) * 100;
 		return (float)SynthMath.cents2FreqRatio(cents);
 	}
 	
@@ -341,7 +360,8 @@ public class SoundfontXML {
 			}
 			else{
 				//Pull from wave info
-				entry.drum.setTuning(wave.getTuning());
+				//entry.drum.setTuning(wave.getTuning());
+				entry.drum.setTuning(Z64Drum.localToCommonTuning(entry.range_min, wave.getTuning()));
 			}
 		}
 		else if(mytag.equals("DrumRange")){
@@ -371,9 +391,12 @@ public class SoundfontXML {
 			
 			attrstr = xml_element.getAttribute("TuneTo");
 			if(attrstr != null && !attrstr.isEmpty()){
-				entry.drum.setTuning(calculateDrumTune(attrstr));
+				Z64Tuning drumtune = new Z64Tuning();
+				drumtune.root_key = (byte)readNote(attrstr);
+				entry.drum.setTuning(drumtune);
+				//entry.drum.setTuning(calculateDrumTune(attrstr));
 			}
-			else entry.drum.setTuning(wave.getTuning());
+			else entry.drum.setTuning(Z64Drum.localToCommonTuning(entry.range_min, wave.getTuning()));
 		}
 		
 		return entry;
@@ -640,10 +663,229 @@ public class SoundfontXML {
 		return sfxml.output;
 	}
 	
-	public static boolean writeBuildDocs(Z64Bank bank, int font_idx, String pathstem){
-		//TODO
-		//Always in full-build format. Writes a .h and .xml
-		return false;
+	public static String tabstr(int tabs){
+		if(tabs <= 0) return "";
+		StringBuilder sb = new StringBuilder(tabs);
+		for(int i = 0; i < tabs; i++) sb.append('\t');
+		return sb.toString();
+	}
+	
+	public static boolean writeSFBankElement(Writer out, int tabs, String bank_name) throws IOException{
+		String tabstr = tabstr(tabs);
+		out.write(tabstr);
+		out.write("<Bank ");
+		out.write("Name=\"");
+		out.write(bank_name);
+		out.write("\"/>\n");
+		return true;
+	}
+	
+	public static boolean writeSFBankElement(Writer out, int tabs, int bank_idx) throws IOException{
+		String tabstr = tabstr(tabs);
+		out.write(tabstr);
+		out.write("<Bank ");
+		out.write("Index=\"");
+		out.write(Integer.toString(bank_idx));
+		out.write("\"/>\n");
+		return true;
+	}
+
+	public static boolean writeSFInstElement(Writer out, int tabs, int prefix_idx, Z64Instrument inst, String enumstr) throws IOException{
+		if(out == null) return false;
+		String tabstr = tabstr(tabs);
+		out.write(tabstr);
+		if(inst == null){
+			out.write("<Instrument/>\n");
+			return true;
+		}
+		
+		out.write("<Instrument Name=\"");
+		out.write(inst.getName());
+		out.write("\" Index=\"");
+		out.write(Integer.toString(prefix_idx));
+		out.write("\" Enum=\"");
+		out.write(enumstr);
+		out.write("\" Decay=\"");
+		out.write(Integer.toString(Byte.toUnsignedInt(inst.getDecay())));
+		out.write("\" Envelope=\"");
+		Z64Envelope env = inst.getEnvelope();
+		if(env != null) out.write(env.getName());
+		out.write("\">\n");
+		
+		//Low
+		out.write(tabstr + "\t");
+		Z64WaveInfo winfo = inst.getSampleLow();
+		if(winfo != null){
+			out.write("<LowKey Sample=\"");
+			out.write(winfo.getName());
+			out.write(".aifc\" MaxNote=\"");
+			out.write(znote2Str(inst.getLowRangeTop(), MIDC_OCT_RECOMP));
+			float tune = inst.getTuningLow();
+			if(tune != winfo.getTuning()){
+				out.write("\" Pitch=\"");
+				out.write(Float.toString(tune));
+			}
+			out.write("\"/>\n");
+		}
+		else out.write("<LowKey/>\n");
+		
+		//Mid
+		out.write(tabstr + "\t");
+		winfo = inst.getSampleMiddle();
+		if(winfo != null){
+			out.write("<MediumKey Sample=\"");
+			out.write(winfo.getName());
+			out.write(".aifc");
+			float tune = inst.getTuningMiddle();
+			if(tune != winfo.getTuning()){
+				out.write("\" Pitch=\"");
+				out.write(Float.toString(tune));
+			}
+			out.write("\"/>\n");
+		}
+		else out.write("<MediumKey/>\n"); //This should not happen, but it is here.
+				
+		//High
+		out.write(tabstr + "\t");
+		winfo = inst.getSampleHigh();
+		if(winfo != null){
+			out.write("<HighKey Sample=\"");
+			out.write(winfo.getName());
+			out.write(".aifc\" MinNote=\"");
+			out.write(znote2Str(inst.getHighRangeBottom(), MIDC_OCT_RECOMP));
+			float tune = inst.getTuningHigh();
+			if(tune != winfo.getTuning()){
+				out.write("\" Pitch=\"");
+				out.write(Float.toString(tune));
+			}
+			out.write("\"/>\n");
+		}
+		else out.write("<HighKey/>\n");
+		
+		out.write(tabstr);
+		out.write("</Instrument>\n");
+		return true;
+	}
+	
+	public static boolean writeSFDrumElement(Writer out, int tabs, int slot_idx, Z64Drum drum, String enumstr) throws IOException{
+		if(out == null) return false;
+		String tabstr = tabstr(tabs);
+		out.write(tabstr);
+		if(drum == null){
+			out.write("<Drum/>\n");
+			return true;
+		}
+		
+		out.write("<Drum Name=\"");
+		out.write(drum.getName());
+		out.write("\" Index=\"");
+		out.write(Integer.toString(slot_idx));
+		out.write("\" Enum=\"");
+		out.write(enumstr);
+		out.write("\" Decay=\"");
+		out.write(Integer.toString(Byte.toUnsignedInt(drum.getDecay())));
+		out.write("\" Pan=\"");
+		out.write(Integer.toString(drum.getPan()));
+		
+		Z64WaveInfo winfo = drum.getSample();
+		out.write("\" Sample=\"");
+		out.write(winfo.getName());
+		out.write(".aifc\"");
+		
+		Z64Envelope env = drum.getEnvelope();
+		if(env != null){
+			out.write(" Envelope=\"");
+			out.write(env.getName());
+			out.write("\"");
+		}
+		
+		float ltune = Z64Drum.commonToLocalTuning(slot_idx, drum.getTuning());
+		if(ltune != winfo.getTuning()){
+			out.write(" Pitch=\"");
+			out.write(Float.toString(ltune));
+			out.write("\"");
+		}
+		out.write("/>\n");
+		
+		return true;
+	}
+	
+	public static boolean writeSFEffectElement(Writer out, int tabs, int slot_idx, Z64SoundEffect sfx, String enumstr) throws IOException{
+		if(out == null) return false;
+		String tabstr = tabstr(tabs);
+		out.write(tabstr);
+		if(sfx == null){
+			out.write("<SoundEffect/>\n");
+			return true;
+		}
+		
+		out.write("<SoundEffect Name=\"");
+		out.write(sfx.getName());
+		out.write("\" Index=\"");
+		out.write(Integer.toString(slot_idx));
+		out.write("\" Enum=\"");
+		out.write(enumstr);
+		
+		Z64WaveInfo winfo = sfx.getSample();
+		out.write("\" Sample=\"");
+		out.write(winfo.getName());
+		out.write(".aifc\"");
+		
+		float tune = sfx.getTuning();
+		if(tune != winfo.getTuning()){
+			out.write(" Pitch=\"");
+			out.write(Float.toString(tune));
+			out.write("\"");
+		}
+		out.write("/>\n");
+		
+		return true;
+	}
+	
+	public static boolean writeSFEnvelopeElement(Writer out, int tabs, Z64Envelope env) throws IOException{
+		if(out == null) return false;
+		String tabstr = tabstr(tabs);
+		out.write(tabstr);
+		if(env == null){
+			out.write("<Envelope/>\n");
+			return true;
+		}
+		
+		out.write("<Envelope Name=\"");
+		out.write(env.getName());
+		out.write("\">\n");
+		
+		List<short[]> script = env.getEvents();
+		out.write(tabstr + "\t<Script>\n");
+		for(short[] event : script){
+			out.write(tabstr); 
+			out.write("\t\t<Point Delay=\"");
+			switch(event[0]){
+			case Z64Sound.ENVCMD__ADSR_DISABLE:
+				out.write("ADSR_DISABLE"); 
+				break;
+			case Z64Sound.ENVCMD__ADSR_HANG:
+				out.write("ADSR_HANG"); 
+				break;
+			case Z64Sound.ENVCMD__ADSR_GOTO:
+				out.write("ADSR_GOTO"); 
+				break;
+			case Z64Sound.ENVCMD__ADSR_RESTART:
+				out.write("ADSR_RESTART"); 
+				break;
+			default:
+				out.write(Short.toString(event[0]));
+				break;
+			}
+			out.write("\" Command=\"");
+			out.write(Short.toString(event[1]));
+			out.write("\"/>\n");
+		}
+		out.write(tabstr + "\t</Script>\n");
+		
+		out.write(tabstr);
+		out.write("</Envelope>\n");
+		return true;
 	}
 	
 }

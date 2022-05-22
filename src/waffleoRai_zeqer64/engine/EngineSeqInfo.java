@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import waffleoRai_Sound.nintendo.Z64Sound;
+import waffleoRai_Utils.FileBuffer;
 
 public class EngineSeqInfo {
 	
@@ -32,5 +33,26 @@ public class EngineSeqInfo {
 	public void setSeqUID(int val) {uid = val;}
 	public void setCachePolicy(int val) {cachePolicy = val;}
 	public void setMedium(int val) {medium = val;}
+	
+	public void setBanks(int[] vals){
+		banks.clear();
+		if(vals == null) return;
+		for(int i = 0; i < vals.length; i++) banks.add(vals[i]);
+	}
+	
+	/*----- Serialize -----*/
+	
+	public FileBuffer serializeMe(){
+		int bcount = banks.size();
+		FileBuffer buff = new FileBuffer(8+(bcount<<2), true);
+		buff.addToFile(uid);
+		buff.addToFile((byte)medium);
+		buff.addToFile((byte)cachePolicy);
+		buff.addToFile((short)bcount);
+		for(int buid : banks){
+			buff.addToFile(buid);
+		}
+		return buff;
+	}
 
 }

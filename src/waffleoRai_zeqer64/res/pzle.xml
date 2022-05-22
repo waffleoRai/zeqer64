@@ -16,6 +16,7 @@
 		<nusrommd5>"cd09029edcfb7c097ac01986a0f83d3f"</nusrommd5>
 		<nusromname>"The Legend of Zelda: Ocarina of Time (GC NTSC-U)"</nusromname>
 		<nusromgame>oot</nusromgame>
+		<region_tv>NTSC</region_tv>
 		<offset_dmadata>"0x7170"</offset_dmadata> 
 		<dmaidx_code>27</dmaidx_code>
 		<dmaidx_bnkarc>3</dmaidx_bnkarc>
@@ -31,6 +32,7 @@
 		<nusrommd5>"ac0751dbc23ab2ec0c3144203aca0003"</nusrommd5>
 		<nusromname>"The Legend of Zelda: Majora's Mask (GC NTSC-U)"</nusromname>
 		<nusromgame>mm</nusromgame>
+		<region_tv>NTSC</region_tv>
 		<offset_dmadata>"0x1ae90"</offset_dmadata> 
 		<dmaidx_code>31</dmaidx_code>
 		<dmaidx_bnkarc>3</dmaidx_bnkarc>

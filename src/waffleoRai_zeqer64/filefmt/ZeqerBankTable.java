@@ -37,7 +37,7 @@ public class ZeqerBankTable {
 	/*----- Constants -----*/
 	
 	public static final String MAGIC = "zeqrBNKt";
-	public static final short CURRENT_VERSION = 2;
+	public static final short CURRENT_VERSION = 3;
 	
 	private static final char SEP = File.separatorChar;
 	
@@ -45,7 +45,7 @@ public class ZeqerBankTable {
 	
 	public static class BankTableEntry{
 		
-		private static final int BASE_SIZE = 4+4+16+4+4+8+8+2;
+		private static final int BASE_SIZE = 4+4+16+4+4+8+8+6;
 	
 		private int uid;
 		private int flags = 0;
@@ -61,6 +61,7 @@ public class ZeqerBankTable {
 		private ZonedDateTime time_modified;
 		
 		private String name;
+		private String enm_str;
 		private Set<String> tags;
 		
 		private BankTableEntry(){icounts = new int[3]; tags = new HashSet<String>();}
@@ -102,13 +103,23 @@ public class ZeqerBankTable {
 					String[] taglist = tagstr.split(";");
 					for(String s : taglist) entry.tags.add(s);
 				}
-				in.skipBytes(ss.getSizeOnDisk());	
+				in.skipBytes(ss.getSizeOnDisk());
+				if(version >= 3){
+					cpos = in.getCurrentPosition();
+					ss = in.readVariableLengthString("UTF8", cpos, BinFieldSize.WORD, 2);
+					entry.enm_str = ss.getString();
+					in.skipBytes(ss.getSizeOnDisk());
+				}
+				else{
+					entry.enm_str = RecompFiles.genEnumStrFromName(entry.name);
+				}
 			}
 			
 			return entry;
 		}
 		
 		public String getName(){return name;}
+		public String getEnumString(){return enm_str;}
 		public int getUID(){return uid;}
 		public int getWarcIndex(){return Byte.toUnsignedInt(warc_idx);}
 		public int getSecondaryWarcIndex(){return Byte.toUnsignedInt(warc2_idx);}
@@ -127,6 +138,8 @@ public class ZeqerBankTable {
 			name = s;
 			time_modified = ZonedDateTime.now();
 		}
+		
+		public void setEnumString(String s){enm_str = s;}
 		
 		public void setInstCounts(int i0, int i1, int i2){
 			icounts[0] = i0;
@@ -173,8 +186,11 @@ public class ZeqerBankTable {
 				size += name.length();
 				if(size % 2 != 0) size++;
 			}
+			if(enm_str != null){
+				size += enm_str.length();
+				if(size % 2 != 0) size++;
+			}
 			//Tags
-			size += 2;
 			for(String tag:tags){
 				size += tag.length();
 			}
@@ -226,6 +242,7 @@ public class ZeqerBankTable {
 				first = false;
 			}
 			out.addVariableLengthString("UTF8", sb.toString(), BinFieldSize.WORD, 2);
+			out.addVariableLengthString("UTF8", enm_str, BinFieldSize.WORD, 2);
 			
 			return (int)out.getFileSize() - initsize;
 		}
@@ -411,6 +428,9 @@ public class ZeqerBankTable {
 					}
 				}
 			}
+			
+			key = "ENUM";
+			if(cidx_map.containsKey(key)) entry.setEnumString(fields[cidx_map.get(key)]);
 
 			update_count++;
 		}
@@ -485,7 +505,7 @@ public class ZeqerBankTable {
 	public void exportTo(String dirpath) throws IOException{
 		String tsvpath = dirpath + File.separator + "_zubnk_tbl.tsv";
 		BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(tsvpath), StandardCharsets.UTF_8));
-		bw.write("#NAME\tUID\tMD5\tDATE_CREATED\tDATE_MOD\tINST_COUNT\tWARC_IDX\tTAGS\n");
+		bw.write("#NAME\tUID\tMD5\tENUM\tDATE_CREATED\tDATE_MOD\tINST_COUNT\tWARC_IDX\tTAGS\n");
 		int ecount = entries.size();
 		List<Integer> uids = new ArrayList<Integer>(ecount+1);
 		uids.addAll(entries.keySet());
@@ -496,6 +516,7 @@ public class ZeqerBankTable {
 			bw.write(entry.getName() + "\t");
 			bw.write(String.format("0x%08x\t", entry.getUID()));
 			bw.write(FileUtils.bytes2str(entry.md5).toLowerCase() + "\t");
+			bw.write(entry.getEnumString() + "\t");
 			bw.write(entry.time_created.format(DateTimeFormatter.ISO_ZONED_DATE_TIME) + "\t");
 			bw.write(entry.time_modified.format(DateTimeFormatter.ISO_ZONED_DATE_TIME) + "\t");
 			

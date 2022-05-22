@@ -122,6 +122,7 @@ public class BankExtractor {
 		boolean good = true;
 		
 		Set<Integer> preset_ids = new TreeSet<Integer>();
+		Set<Integer> ref_idxs = new TreeSet<Integer>();
 		
 		NusRomInfo rominfo = z_rom.getRomInfo();
 		if(rominfo == null) return false;
@@ -138,6 +139,11 @@ public class BankExtractor {
 			int pcount = bank_tbl[i].getPercussionCount();
 			int xcount = bank_tbl[i].getSFXCount();
 			int warc = bank_tbl[i].getPrimaryWaveArcIndex();
+			
+			if(filelen <= 0){
+				ref_idxs.add(i);
+				continue;
+			}
 			
 			FileBuffer bdat = audiobank.createReadOnlyCopy(stpos, stpos+filelen);
 			Z64Bank mybank = Z64Bank.readBank(bdat, icount, pcount, xcount);
@@ -191,6 +197,7 @@ public class BankExtractor {
 					//If no match, need new entry
 					//Create new entry
 					bentry = table.newEntry(md5);
+					bentry.setEnumString("AUDIOBANK_" + z_rom.getRomInfo().getZeqerID().toUpperCase() + String.format("_%03d", i));
 					bentry.setInstCounts(icount, pcount, xcount);
 					bentry.setWarcIndex(warc);
 					bentry.setWarc2Index(bank_tbl[i].getSecondaryWaveArcIndex());
@@ -334,8 +341,14 @@ public class BankExtractor {
 		}
 		
 		//DEBUG
-		System.err.println("Presets Found in ROM:");
-		for(Integer id : preset_ids) System.err.println(String.format("%08x", id));
+		//System.err.println("Presets Found in ROM:");
+		//for(Integer id : preset_ids) System.err.println(String.format("%08x", id));
+		
+		//Resolve references
+		for(Integer ridx : ref_idxs){
+			int tidx = bank_tbl[ridx].getOffset();
+			bank_ids[ridx] = bank_ids[tidx];
+		}
 
 		//Write
 		String idtblpath = getIDTablePath();

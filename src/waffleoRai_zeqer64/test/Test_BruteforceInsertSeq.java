@@ -1,8 +1,10 @@
 package waffleoRai_zeqer64.test;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -184,7 +186,7 @@ public class Test_BruteforceInsertSeq {
 			List<Z64WaveInfo> add_samples = new LinkedList<Z64WaveInfo>();
 			int font_bin_alloc = 0;
 			if(custom_font != null){
-				int[][][] vwav_tbl = ZeqerCore.loadVersionTable(rom.getRomInfo().getZeqerID());
+				int[][][] vwav_tbl = ZeqerCore.loadWaveVersionTable(rom.getRomInfo().getZeqerID());
 				Map<Integer, Integer> wid_map_b1 = new HashMap<Integer, Integer>(); //Map offsets in bank 1 to UIDs
 				int b1_scount = vwav_tbl[0].length;
 				for(int i = 0; i < b1_scount; i++){
@@ -235,6 +237,9 @@ public class Test_BruteforceInsertSeq {
 				ins_pos += sz_fnt;
 				if(debugdir != null){
 					font_bin.writeFile(debugdir + File.separator + "zeqer_seqins_bnk.bin");
+					BufferedWriter dbgw = new BufferedWriter(new FileWriter(debugdir + File.separator + "zeqer_seqins_bnk.txt"));
+					custom_font.printMeTo(dbgw);
+					dbgw.close();
 				}
 			}
 

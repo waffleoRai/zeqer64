@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import waffleoRai_Sound.nintendo.Z64WaveInfo;
+import waffleoRai_Utils.BinFieldSize;
 import waffleoRai_Utils.FileBuffer;
 import waffleoRai_Utils.FileUtils;
 import waffleoRai_soundbank.nintendo.z64.Z64Envelope;
@@ -18,6 +19,7 @@ public class ZeqerInstPreset extends ZeqerPreset{
 	private int waveid_lo;
 	private int waveid_mid;
 	private int waveid_hi;
+	private String enm_str;
 	
 	private boolean hashmode = false;
 	
@@ -29,6 +31,7 @@ public class ZeqerInstPreset extends ZeqerPreset{
 	}
 	
 	public String getName(){return inst.getName();}
+	public String getEnumStringBase(){return enm_str;}
 	public int getType(){return ZeqerPreset.PRESET_TYPE_INST;}
 	public Z64Instrument getInstrument(){return inst;}
 	public int getWaveIDLo(){return waveid_lo;}
@@ -44,6 +47,7 @@ public class ZeqerInstPreset extends ZeqerPreset{
 	}
 	
 	public void setName(String s){inst.setName(s);}
+	public void setEnumStringBase(String s){enm_str = s;}
 	public void setWaveIDLo(int val){waveid_lo = val;}
 	public void setWaveIDMid(int val){waveid_mid = val;}
 	public void setWaveIDHi(int val){waveid_hi = val;}
@@ -127,12 +131,22 @@ public class ZeqerInstPreset extends ZeqerPreset{
 			else buffer.addToFile(Float.floatToRawIntBits(inst.getTuningHigh()));
 		}
 		
+		if(enm_str == null){
+			enm_str = String.format("IPRE_%08x", uid);
+		}
+		buffer.addVariableLengthString("UTF8", enm_str, BinFieldSize.WORD, 2);
+		
 		return (int)(buffer.getFileSize() - init_size);
 	}
 
 	public void exportTSVLine(Writer w) throws IOException{
 		w.write(getName() + "\t");
 		w.write(String.format("%08x\t", uid));
+		
+		if(enm_str == null){
+			enm_str = String.format("IPRE_%08x", uid);
+		}
+		w.write(enm_str + "\t");
 		
 		Z64Envelope env = inst.getEnvelope();
 		if(env == null) w.write("-1\t");

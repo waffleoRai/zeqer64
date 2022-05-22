@@ -4,6 +4,8 @@ import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.Set;
+import java.util.TreeSet;
 
 import waffleoRai_Utils.FileBuffer;
 import waffleoRai_Utils.FileBuffer.UnsupportedFileTypeException;
@@ -22,6 +24,7 @@ public class SeqExtractor {
 	public static final int MODE_USER = 0;
 	public static final int MODE_SYS_Z5 = 1;
 	public static final int MODE_SYS_Z6 = 2;
+	public static final int MODE_SYS = 3;
 	
 	private static final char SEP = File.separatorChar;
 	
@@ -73,8 +76,9 @@ public class SeqExtractor {
 	/*----- Paths -----*/
 	
 	public String getTablePath(){
-		if(z_rom.getRomInfo().isZ5()) return dir_base + SEP + ZeqerCore.FN_SYSSEQ_OOT;
-		return dir_base + SEP + ZeqerCore.FN_SYSSEQ_MM;
+		//if(z_rom.getRomInfo().isZ5()) return dir_base + SEP + ZeqerCore.FN_SYSSEQ_OOT;
+		//return dir_base + SEP + ZeqerCore.FN_SYSSEQ_MM;
+		return dir_base + SEP + ZeqerCore.FN_SYSSEQ;
 	}
 	
 	public String getIDTablePath(){
@@ -84,8 +88,9 @@ public class SeqExtractor {
 	/*----- Setters -----*/
 	
 	public void setUserMode(){mode = MODE_USER;}
-	public void setSysZ5Mode(){mode = MODE_SYS_Z5;}
-	public void setSysZ6Mode(){mode = MODE_SYS_Z6;}
+	public void setSysMode(){mode = MODE_SYS;}
+	//public void setSysZ5Mode(){mode = MODE_SYS_Z5;}
+	//public void setSysZ6Mode(){mode = MODE_SYS_Z6;}
 	
 	/*----- Extraction -----*/
 	
@@ -162,8 +167,10 @@ public class SeqExtractor {
 		//FileBuffer code = z_rom.loadCode(); code.setEndian(true);
 		NusRomInfo rominfo = z_rom.getRomInfo();
 		if(rominfo == null) return false;
+		String zid = rominfo.getZeqerID();
 		FileBuffer audioseq = z_rom.loadAudioseq(); audioseq.setEndian(true);
 		SeqInfoEntry[] cseq_tbl = z_rom.loadSeqEntries();
+		Set<Integer> ref_idxs = new TreeSet<Integer>();
 		
 		//Iterate thru seq table
 		int scount = cseq_tbl.length;
@@ -172,7 +179,8 @@ public class SeqExtractor {
 			long stoff = cseq_tbl[i].getOffset();
 			long size = cseq_tbl[i].getSize();
 			if(size <= 0L){
-				System.err.println("SeqExtractor.extractSeqs || Seq " + i + " appears to be empty. Skipping...");
+				//System.err.println("SeqExtractor.extractSeqs || Seq " + i + " appears to be empty. Skipping...");
+				ref_idxs.add(i);
 				continue;
 			}
 			
@@ -187,6 +195,7 @@ public class SeqExtractor {
 				//Create if write enabled.
 				if(mode != MODE_USER){
 					entry = seq_tbl.newEntry(md5);
+					entry.setEnumString("AUDIOSEQ_" + zid.toUpperCase() + String.format("_%03d", i));
 					entry.setMedium((byte)cseq_tbl[i].getMedium());
 					entry.setCache((byte)cseq_tbl[i].getCachePolicy());
 					
@@ -209,6 +218,12 @@ public class SeqExtractor {
 			}
 			
 			myseq.dispose();
+		}
+		
+		//Resolve references
+		for(Integer ridx : ref_idxs){
+			int tidx = cseq_tbl[ridx].getOffset();
+			uid_tbl[ridx] = uid_tbl[tidx];
 		}
 		
 		//Save tables

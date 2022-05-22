@@ -152,8 +152,7 @@ public class ZeqerPercPreset extends ZeqerPreset{
 				if(winfo == null) buffer.addToFile(wave_ids[i]);
 				else buffer.addToFile(winfo.getUID());
 				
-				float tune = drum.getTuning();
-				tune = Z64Drum.commonToLocalTuning(i, tune);
+				float tune = Z64Drum.commonToLocalTuning(i, drum.getTuning());
 				buffer.addToFile(Float.floatToRawIntBits(tune));
 			}
 			else{

@@ -70,7 +70,7 @@ public class ImportMetadata {
 	public static void main(String[] args) {
 		/*
 		 * Command Line Args:
-		 * [zeqer_dir] [wav_info.tsv] [seq_info.tsv] [inst_info.tsv] [font_info.tsv]
+		 * [zeqer_dir] [wav_info.tsv] [seq_info.tsv] [inst_info.tsv] [inst_info.tsv] [font_info.tsv]
 		 */
 		
 		if(args.length < 5){
@@ -129,10 +129,12 @@ public class ImportMetadata {
 			tbl_wav.importTSV(wav_tsv_path);
 			
 			//Update seq tables
-			ZeqerSeqTable tbl_seq5 = ZeqerCore.getZeqerZ5SeqTable();
+			/*ZeqerSeqTable tbl_seq5 = ZeqerCore.getZeqerZ5SeqTable();
 			tbl_seq5.importTSV(seq_tsv_path);
 			ZeqerSeqTable tbl_seq6 = ZeqerCore.getZeqerZ6SeqTable();
-			tbl_seq6.importTSV(seq_tsv_path);
+			tbl_seq6.importTSV(seq_tsv_path);*/
+			ZeqerSeqTable tbl_seq = ZeqerCore.getZeqerSeqTable();
+			tbl_seq.importTSV(seq_tsv_path);
 			
 			//Update preset table
 			ZeqerPresetTable tbl_prs = ZeqerCore.getZeqerPresetTable();
@@ -150,12 +152,14 @@ public class ImportMetadata {
 			//Print tables to tsv
 			tbl_wav = ZeqerCore.getZeqerWaveTable();
 			tbl_wav.exportTo(zdir, zdir + File.separator + "wav");
-			tbl_seq5 = ZeqerCore.getZeqerZ5SeqTable();
+			/*tbl_seq5 = ZeqerCore.getZeqerZ5SeqTable();
 			tbl_seq5.exportTo(zdir, zdir + File.separator + "seq" + File.separator + "zseqs");
 			Files.move(Paths.get(zdir + File.separator + "_zuseq_tbl.tsv"), Paths.get(zdir + File.separator + "_zuseq5_tbl.tsv"));
 			tbl_seq6 = ZeqerCore.getZeqerZ6SeqTable();
 			tbl_seq6.exportTo(zdir, zdir + File.separator + "seq" + File.separator + "zseqs");
-			Files.move(Paths.get(zdir + File.separator + "_zuseq_tbl.tsv"), Paths.get(zdir + File.separator + "_zuseq6_tbl.tsv"));
+			Files.move(Paths.get(zdir + File.separator + "_zuseq_tbl.tsv"), Paths.get(zdir + File.separator + "_zuseq6_tbl.tsv"));*/
+			tbl_seq = ZeqerCore.getZeqerSeqTable();
+			tbl_seq.exportTo(zdir, zdir + File.separator + "seq");
 			tbl_prs = ZeqerCore.getZeqerPresetTable();
 			tbl_prs.exportTo(zdir);
 			tbl_bnk = ZeqerCore.getZeqerBankTable();

@@ -1,5 +1,9 @@
 package waffleoRai_zeqer64.engine;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedList;
@@ -17,6 +21,7 @@ import waffleoRai_soundbank.nintendo.z64.Z64Envelope;
 import waffleoRai_soundbank.nintendo.z64.Z64Instrument;
 import waffleoRai_soundbank.nintendo.z64.Z64SoundEffect;
 import waffleoRai_zeqer64.SoundTables.WaveArcInfoEntry;
+import waffleoRai_zeqer64.filefmt.RecompFiles;
 import waffleoRai_zeqer64.ZeqerCore;
 import waffleoRai_zeqer64.ZeqerRom;
 
@@ -26,10 +31,6 @@ public class ZeqerPlaybackEngine {
 	
 	public static final String MAGICNO = "aBld";
 	public static final short VERSION = 1;
-	
-	public static final int TV_TYPE__NTSC = 1;
-	public static final int TV_TYPE__PAL  = 0;
-	public static final int TV_TYPE__MPAL = 2;
 	
 	public static final int DEFO_VCART_ALLOC = 0x800000;
 	
@@ -119,7 +120,7 @@ public class ZeqerPlaybackEngine {
 	private ArrayList<EngineWaveArcInfo> warcs;
 	
 	//-> settings
-	private int tv_type = TV_TYPE__NTSC;
+	private int tv_type = ZeqerRom.TV_TYPE__NTSC;
 	private boolean oot_mode = false;
 	
 	//-> state
@@ -158,10 +159,6 @@ public class ZeqerPlaybackEngine {
 	}
 	
 	public void saveBuild(String path){
-		//TODO
-	}
-	
-	public void exportForRecomp(String dirpath){
 		//TODO
 	}
 	

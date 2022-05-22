@@ -1,5 +1,6 @@
 package waffleoRai_zeqer64.engine;
 
+import waffleoRai_Utils.FileBuffer;
 import waffleoRai_zeqer64.SoundTables;
 
 public class EngineBankInfo {
@@ -33,4 +34,16 @@ public class EngineBankInfo {
 	public void setCachePolicy(int val) {cachePolicy = val;}
 	public void setMedium(int val) {medium = val;}
 
+	/*----- Serialize -----*/
+	
+	public FileBuffer serializeMe(){
+		FileBuffer buff = new FileBuffer(8, true);
+		buff.addToFile(uid);
+		buff.addToFile((byte)medium);
+		buff.addToFile((byte)cachePolicy);
+		buff.addToFile((byte)warc1);
+		buff.addToFile((byte)warc2);
+		return buff;
+	}
+	
 }
