@@ -5,7 +5,10 @@
 		<nusrommd5>"f0b7f35375f9cc8ca1b2d59d78e35405"</nusrommd5>
 		<nusromname>"The Legend of Zelda: Ocarina of Time Master Quest (PAL Debug)"</nusromname>
 		<nusromgame>ootmq</nusromgame>
+		<nusromgamever>"1.1D"</nusromgamever>
 		<region_tv>PAL</region_tv>
+		<headercrc>"917d18f669bc5453"</headercrc>
+		<ucheadercrc>"917d18f669bc5453"</ucheadercrc>
 		<offset_dmadata>"0x12f70"</offset_dmadata> 
 		<dmaidx_code>28</dmaidx_code>
 		<dmaidx_bnkarc>3</dmaidx_bnkarc>

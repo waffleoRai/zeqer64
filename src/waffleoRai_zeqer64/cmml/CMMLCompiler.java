@@ -10,6 +10,16 @@ public class CMMLCompiler {
 
 	/*----- Constants -----*/
 	
+	/*----- Inner Classes -----*/
+	
+	public static class CMMLParseException extends Exception{
+		public CMMLParseException(String string) {
+			super(string);
+		}
+
+		private static final long serialVersionUID = 8070082949554182764L;
+	}
+	
 	/*----- Instance Variables -----*/
 	
 	private CMMLPreprocessor preprocessor;

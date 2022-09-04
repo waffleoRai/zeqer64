@@ -12,6 +12,11 @@ public enum CMMLStatementType {
 	WHILE_TRUE,
 	DO_WHILE_TRUE,
 	IF_TRUE,
+	ELIF_TRUE,
+	WHILE_FALSE,
+	DO_WHILE_FALSE,
+	IF_FALSE,
+	ELIF_FALSE,
 	
 	//Blocks
 	FUNC_DECL,

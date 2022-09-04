@@ -1,5 +1,7 @@
 package waffleoRai_zeqer64.cmml;
 
+import java.io.IOException;
+import java.io.Writer;
 import java.util.LinkedList;
 
 public class CMMLDefine {
@@ -240,6 +242,38 @@ public class CMMLDefine {
 		}
 		
 		return output;
+	}
+	
+	/*----- Debug -----*/
+	
+	public void debugPrint(Writer out, int indent) throws IOException{
+		if(indent > 0){
+			for(int i = 0; i < indent; i++) out.write("\t");
+		}
+
+		out.write(key);
+		if(args != null && args.length > 0){
+			out.write("(");
+			for(int i = 0; i < args.length; i++){
+				if(i > 0) out.write(",");
+				out.write(args[i]);
+			}
+			out.write(")");
+		}
+		
+		//Value chunks.
+		if(value != null){
+			out.write(" ");
+			for(int i = 0; i < value.length; i++){
+				if(value[i].arg_idx < 0){
+					out.write(value[i].text);
+				}
+				else{
+					out.write(args[value[i].arg_idx]);
+				}
+			}
+		}
+		
 	}
 	
 }

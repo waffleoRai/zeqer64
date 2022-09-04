@@ -10,6 +10,10 @@ public class NusRomInfo extends RomInfoNode{
 	
 	private String game_id;
 	private int tv_type = ZeqerRom.TV_TYPE__NTSC;
+	private int gamever_enum = ZeqerRom.GAME_UNK;
+	
+	private long crc_distro = 0L;
+	private long crc_uncomp = 0L;
 	
 	private long offset_dmadata;
 	private long codeoffset_bnktbl;
@@ -30,6 +34,10 @@ public class NusRomInfo extends RomInfoNode{
 	
 	public boolean isZ5(){return game_id.contains("oot");}
 	public boolean isZ6(){return game_id.equals("mm");}
+	public int getGameVersionEnum(){return gamever_enum;}
+	
+	public long getMakeromCRC(){return crc_distro;}
+	public long getMakeromCRC_Uncompressed(){return crc_uncomp;}
 	
 	public long getCodeRAMAddress(){return ramaddr_code;}
 	public long getDMADataOffset(){return offset_dmadata;}
@@ -45,6 +53,7 @@ public class NusRomInfo extends RomInfoNode{
 	protected void readIn(Element xml_element){
 		super.zeqer_id = xml_element.getAttribute("id");
 		game_id = "unk";
+		String gver_str = null;
 		
 		NodeList list = xml_element.getChildNodes();
 		int ccount = list.getLength();
@@ -109,11 +118,24 @@ public class NusRomInfo extends RomInfoNode{
 						else if(key.endsWith("game")){
 							game_id = txt;
 						}
+						else if(key.endsWith("gamever")){
+							gver_str = txt;
+						}
 					}
 					else if(key.startsWith("region_tv")){
 						if(txt.equalsIgnoreCase("NTSC")) tv_type = ZeqerRom.TV_TYPE__NTSC;
 						else if(txt.equalsIgnoreCase("MPAL")) tv_type = ZeqerRom.TV_TYPE__MPAL;
 						else if(txt.equalsIgnoreCase("PAL")) tv_type = ZeqerRom.TV_TYPE__PAL;
+					}
+					else if(key.endsWith("headercrc")){
+						if(key.equals("ucheadercrc")){
+							try{crc_uncomp = Long.parseUnsignedLong(txt, 16);}
+							catch(NumberFormatException ex){ex.printStackTrace();}
+						}
+						else if(key.equals("headercrc")){
+							try{crc_distro = Long.parseUnsignedLong(txt, 16);}
+							catch(NumberFormatException ex){ex.printStackTrace();}
+						}
 					}
 				}
 				catch(NumberFormatException ex){
@@ -122,6 +144,35 @@ public class NusRomInfo extends RomInfoNode{
 				
 			}
 		}
+		
+		//Try to resolve game version string
+		if(gver_str != null){
+			if(game_id.equals("oot")){
+				if(gver_str.equals("1.0")) this.gamever_enum = ZeqerRom.GAME_OCARINA_V1_0;
+				else if(gver_str.equals("1.1")) this.gamever_enum = ZeqerRom.GAME_OCARINA_V1_1;
+				else if(gver_str.equals("1.2")) this.gamever_enum = ZeqerRom.GAME_OCARINA_V1_2;
+				else if(gver_str.equals("0.9")) this.gamever_enum = ZeqerRom.GAME_OCARINA_V0_9;
+				else if(gver_str.equals("1.1GC")) this.gamever_enum = ZeqerRom.GAME_OCARINA_GC_V1_1;
+				else if(gver_str.equals("1.2GC")) this.gamever_enum = ZeqerRom.GAME_OCARINA_GC_V1_2;
+				else if(gver_str.equals("GZ")) this.gamever_enum = ZeqerRom.GAME_OCARINA_GZ;
+				else if(gver_str.equals("MOD")) this.gamever_enum = ZeqerRom.GAME_OCARINA_MOD;
+			}
+			else if(game_id.equals("ootmq")){
+				if(gver_str.equals("1.1")) this.gamever_enum = ZeqerRom.GAME_OCARINA_MQ_V1_1;
+				else if(gver_str.equals("1.2")) this.gamever_enum = ZeqerRom.GAME_OCARINA_MQ_V1_2;
+				else if(gver_str.equals("1.1D")) this.gamever_enum = ZeqerRom.GAME_OCARINA_MQDBG_V1_1;
+				else if(gver_str.equals("GZ")) this.gamever_enum = ZeqerRom.GAME_OCARINA_MQ_GZ;
+				else if(gver_str.equals("MOD")) this.gamever_enum = ZeqerRom.GAME_OCARINA_MQ_MOD;
+			}
+			else if(game_id.equals("mm")){
+				if(gver_str.equals("1.0J")) this.gamever_enum = ZeqerRom.GAME_MAJORA_V1_0_J;
+				else if(gver_str.equals("1.0I")) this.gamever_enum = ZeqerRom.GAME_MAJORA_V1_0_I;
+				else if(gver_str.equals("GC")) this.gamever_enum = ZeqerRom.GAME_MAJORA_GC;
+				else if(gver_str.equals("KZ")) this.gamever_enum = ZeqerRom.GAME_MAJORA_KZ;
+				else if(gver_str.equals("MOD")) this.gamever_enum = ZeqerRom.GAME_MAJORA_MOD;
+			}
+		}
+		
 	}
 
 	public void printToStderr(int indent){

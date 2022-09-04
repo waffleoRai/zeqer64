@@ -21,6 +21,32 @@ public class ZeqerRom {
 	public static final int TV_TYPE__NTSC = 1;
 	public static final int TV_TYPE__PAL  = 0;
 	public static final int TV_TYPE__MPAL = 2;
+	
+	public static final int GAME_UNK = -1;
+	public static final int GAME_OCARINA_V1_0 = 0x100;
+	public static final int GAME_OCARINA_V1_1 = 0x101;
+	public static final int GAME_OCARINA_V1_2 = 0x102;
+	public static final int GAME_OCARINA_GC_V1_1 = 0x103;
+	public static final int GAME_OCARINA_GC_V1_2 = 0x104;
+	public static final int GAME_OCARINA_V0_9 = 0x105; //The prerelease ver that is floating around.
+	
+	public static final int GAME_OCARINA_MQ_V1_1 = 0x201;
+	public static final int GAME_OCARINA_MQ_V1_2 = 0x202;
+	public static final int GAME_OCARINA_MQDBG_V1_1 = 0x203; //PAL debug ROM
+	
+	public static final int GAME_MAJORA_V1_0_J = 0x300; //Japan version
+	public static final int GAME_MAJORA_V1_0_I = 0x301; //International release
+	public static final int GAME_MAJORA_GC = 0x302; 
+	
+	//Practice ROMs (any ver)
+	public static final int GAME_OCARINA_GZ = 0x1000;
+	public static final int GAME_OCARINA_MQ_GZ = 0x2000;
+	public static final int GAME_MAJORA_KZ = 0x3000;
+	
+	//Unspecific modded ROMs
+	public static final int GAME_OCARINA_MOD = 0x1fff;
+	public static final int GAME_OCARINA_MQ_MOD = 0x2fff;
+	public static final int GAME_MAJORA_MOD = 0x3fff;
 
 	/*----- Instance Variables -----*/
 	
@@ -49,6 +75,7 @@ public class ZeqerRom {
 	
 	public String getRomPath(){return rom_path;}
 	public NusRomInfo getRomInfo(){return info;}
+	public N64ROMImage getRomHead(){return head;}
 	
 	public int getVirtualRomSize(){
 		if(dmadata == null) return 0;

@@ -1,8 +1,43 @@
 package waffleoRai_zeqer64.cmml;
 
+import java.io.File;
 import java.util.LinkedList;
 
 public class CMMLTextProcessing {
+	
+	public static String findIncludePath(String dir, String inclstr){
+		if(inclstr.contains("/")){
+			String[] pieces = inclstr.split("/");
+			String[] pathpieces = dir.split(File.separator);
+			int curdir = pathpieces.length-1;
+			LinkedList<String> usepieces = new LinkedList<String>();
+			for(String piece : pieces){
+				if(piece.equals(".")){
+					//Skip.
+					continue;
+				}
+				else if(piece.equals("..")){
+					curdir--;
+				}
+				else{
+					usepieces.add(piece);
+				}
+			}
+			StringBuilder outpath = new StringBuilder(dir.length() + inclstr.length() + 16);
+			for(int i = 0; i <= curdir; i++){
+				outpath.append(pathpieces[i]);
+				outpath.append(File.separator);
+			}
+			while(!usepieces.isEmpty()){
+				String piece = usepieces.pop();
+				outpath.append(piece);
+				if(!usepieces.isEmpty()) outpath.append(File.separator);
+			}
+			
+			return outpath.toString();
+		}
+		else return dir + File.separator + inclstr;
+	}
 	
 	public static int findStandalone(String target, String query){
 		//Looks for something as a keyword or operator. Substring must be flanked by whitespace or reserved characters.

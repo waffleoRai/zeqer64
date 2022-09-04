@@ -1,5 +1,7 @@
 package waffleoRai_zeqer64.cmml;
 
+import java.io.IOException;
+import java.io.Writer;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -100,4 +102,62 @@ public class CMMLStatementGroup {
 		return this == o;
 	}
 
+	/*----- Debug -----*/
+	
+	public void debugPrint(Writer out, int indent) throws IOException{
+		String tabs = "";
+		if(indent > 0){
+			StringBuilder sb = new StringBuilder(indent+1);
+			for(int i = 0; i < indent; i++) sb.append('\t');
+			tabs = sb.toString();
+		}
+		
+		//Write little context thing BEFORE tabs.
+		out.write('[');
+		switch(mml_context){
+		case NUSALSeqReader.PARSEMODE_SEQ: out.write("S"); break;
+		case NUSALSeqReader.PARSEMODE_CHANNEL: out.write("C"); break;
+		case NUSALSeqReader.PARSEMODE_LAYER: out.write("L"); break;
+		case NUSALSeqReader.PARSEMODE_UNDEFINED: out.write("U"); break;
+		}
+		out.write(',');
+		
+		if(mml_dtype != null){
+			switch(mml_dtype){
+			case BINARY: out.write("b"); break;
+			case BUFFER: out.write("m"); break;
+			case CALLTABLE: out.write("s"); break;
+			case CH_PARAMS: out.write("c"); break;
+			case ENVELOPE: out.write("e"); break;
+			case FILTER: out.write("f"); break;
+			case GATE_TABLE: out.write("g"); break;
+			case P_TABLE: out.write("p"); break;
+			case Q_TABLE: out.write("q"); break;
+			case VEL_TABLE: out.write("v"); break;
+			default: out.write("-"); break;
+			}
+		}
+		else out.write("-");
+		out.write(']');
+		
+		out.write(tabs);
+		if(this.isGroup()){
+			out.write(getPreText());
+			if(!children.isEmpty()){
+				for(CMMLStatementGroup child : children){
+					out.write('\n');
+					child.debugPrint(out, indent+1);
+				}
+			}
+			if(this.post_text != null && !this.post_text.isEmpty()){
+				out.write('\n');
+				out.write(tabs);
+				out.write(this.post_text);
+			}
+		}
+		else{
+			out.write(getText());
+		}
+	}
+	
 }

@@ -5,7 +5,10 @@
 		<nusrommd5>"2a0a8acb61538235bc1094d297fb6556"</nusrommd5>
 		<nusromname>"The Legend of Zelda: Majora's Mask (NTSC-U)"</nusromname>
 		<nusromgame>mm</nusromgame>
+		<nusromgamever>"1.0I"</nusromgamever>
 		<region_tv>NTSC</region_tv>
+		<headercrc>"5354631c03a2def0"</headercrc>
+		<ucheadercrc>"da6994c7ee01ebce"</ucheadercrc>
 		<offset_dmadata>"0x1a500"</offset_dmadata> 
 		<dmaidx_code>31</dmaidx_code>
 		<dmaidx_bnkarc>3</dmaidx_bnkarc>

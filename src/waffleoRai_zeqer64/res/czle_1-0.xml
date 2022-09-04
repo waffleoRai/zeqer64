@@ -5,7 +5,10 @@
 		<nusrommd5>"5bd1fe107bf8106b2ab6650abecd54d6"</nusrommd5>
 		<nusromname>"The Legend of Zelda: Ocarina of Time (NTSC-U 1.0)"</nusromname>
 		<nusromgame>oot</nusromgame>
+		<nusromgamever>"1.0"</nusromgamever>
 		<region_tv>NTSC</region_tv>
+		<headercrc>"ec7011b77616d72b"</headercrc>
+		<ucheadercrc>"93525d9b7c7e9f51"</ucheadercrc>
 		<offset_dmadata>"0x7430"</offset_dmadata> 
 		<dmaidx_code>27</dmaidx_code>
 		<dmaidx_bnkarc>3</dmaidx_bnkarc>

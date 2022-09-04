@@ -104,4 +104,42 @@ public class StatementNode {
 		return !insert_first;
 	}
 	
+	public void trimFromBeginning(int count){
+		boolean cmode = insert_first; //check children
+		int i1 = 0;
+		int i2 = 0;
+		for(int i = 0; i < count; i++){
+			if(cmode) i2++;
+			else i1++;
+			cmode = !cmode;
+		}
+		
+		if(i1 >= content.length){
+			content = new String[1];
+			content[0] = "";
+		}
+		else{
+			int newsize = content.length - i1;
+			String[] old = content;
+			content = new String[newsize];
+			for(int i = 0; i < newsize; i++){
+				content[i] = old[i+i1];
+			}
+		}
+		
+		if(i2 >= children.length){
+			children = null;
+		}
+		else{
+			int newsize = children.length - i2;
+			StatementNode[] old = children;
+			children = new StatementNode[newsize];
+			for(int i = 0; i < newsize; i++){
+				children[i] = old[i+i2];
+			}
+		}
+		
+		if(count % 2 != 0) insert_first = !insert_first;
+	}
+	
 }

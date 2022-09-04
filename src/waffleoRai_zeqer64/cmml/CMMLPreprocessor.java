@@ -2,6 +2,9 @@ package waffleoRai_zeqer64.cmml;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.Writer;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -28,6 +31,7 @@ public class CMMLPreprocessor {
 	private static final int READMODE_CODE = 2;
 	private static final int READMODE_ONELINECMT = 3;
 	private static final int READMODE_MULTILINECMT = 4;
+	private static final int READMODE_STRINGLIT = 5;
 	
 	public static final int FILEMODE_MODULE_CODE = 0;
 	public static final int FILEMODE_MODULE_HEADER = 1;
@@ -47,11 +51,14 @@ public class CMMLPreprocessor {
 	private int line_number = 1;
 	private boolean macromode_nlescape = false;
 	private boolean ignore_code = false;
+	private int paren_depth = 0;
 	
 	private CMMLStatementGroup current_block;
 	private boolean codemode_textpost = false;
 	private int current_context = NUSALSeqReader.PARSEMODE_UNDEFINED;
 	private NUSALSeqDataType current_dtype;
+	
+	private Map<String, String> string_lit;
 
 	private Stack<Boolean> ifstack; //For preprocessor ifs (eg. #ifndef)
 	private List<CMMLStatementGroup> output;
@@ -79,6 +86,7 @@ public class CMMLPreprocessor {
 		ifstack = new Stack<Boolean>();
 		output = new LinkedList<CMMLStatementGroup>();
 		included = new LinkedList<CMMLStatementGroup>();
+		string_lit = new HashMap<String, String>();
 	}
 	
 	/*----- Getters -----*/
@@ -233,7 +241,7 @@ public class CMMLPreprocessor {
 		else if(statement.startsWith("#include")){
 			if(cidx >= 0){
 				val = statement.substring(cidx+1);
-				val.replace("\"", "");
+				val = val.replace("\"", "").trim();
 				include_queue.add(val);
 			}
 		}
@@ -311,6 +319,115 @@ public class CMMLPreprocessor {
 		}
 	}
 	
+	private boolean processCodeCharacter(char c_last, char c_this){
+		if(!ignore_code){
+			switch(c_this){
+			case '(':
+				paren_depth++;
+				break;
+			case ')':
+				paren_depth--;
+				break;
+			case '{':
+				//Start block
+				CMMLStatementGroup myblock = new CMMLStatementGroup(current_block);
+				current_block = myblock;
+				//Put text through defines.
+				myblock.setPreText(substituteDefines(textbuffer.toString()));
+				clearTextBuffer();
+				myblock.setMMLContext(current_context);
+				myblock.setMMLDataType(current_dtype);
+				codemode_textpost = false;
+				break;
+			case '}':
+				//End block, or start end block
+				clearTextBuffer();
+				if(current_block == null || !current_block.isGroup()){
+					System.err.println("Preprocessor Syntax Error | Line " + line_number + ": End of block with no start?");
+					return false;
+				}
+				codemode_textpost = current_block.expectsPost();
+				if(!codemode_textpost){
+					//Finish with block.
+					CMMLStatementGroup parent = current_block.getParent();
+					if(parent == null){
+						saveStatement(current_block);
+						current_block = null;
+					}
+					else{
+						current_block = parent;
+					}
+				}
+				break;
+			case ';':
+				//For now, if it paren level is > 1 (ie. if within any paren), integrates it into existing statement.
+				if(paren_depth < 1){
+					//End statement
+					if(codemode_textpost){
+						//Assumed to be tail for previous block.
+						if(current_block == null || !current_block.isGroup()){
+							//Regular statement (erroneous)
+							System.err.println("Preprocessor Syntax Warning | Line " + line_number + ": Statement expected to be part of nonexistent block?");
+							CMMLStatement statement = new CMMLStatement(null);
+							statement.setText(substituteDefines(textbuffer.toString()));
+							clearTextBuffer();
+							statement.setMMLContext(current_context);
+							statement.setMMLDataType(current_dtype);
+							saveStatement(statement);
+							current_block = null;
+						}
+						else{
+							current_block.setPostText(substituteDefines(textbuffer.toString()));
+							CMMLStatementGroup parent = current_block.getParent();
+							if(parent == null){
+								saveStatement(current_block);
+								current_block = null;
+							}
+							else{
+								current_block = parent;
+							}
+						}
+						codemode_textpost = false;
+					}
+					else{
+						//Assumed regular statement.
+						CMMLStatement statement = new CMMLStatement(current_block);
+						statement.setText(substituteDefines(textbuffer.toString()));
+						clearTextBuffer();
+						statement.setMMLContext(current_context);
+						statement.setMMLDataType(current_dtype);
+						if(current_block == null) saveStatement(statement);
+					}
+				}
+				else{
+					//Integrate into existing statement.
+					if(!checkMacroEntry(c_this) && !checkCommentEntry(c_last, c_this)){
+						textbuffer.append(c_this);
+					}
+				}
+				break;
+			case '\"':
+				if(c_last != '\\'){
+					pushParseState();
+					readmode = READMODE_STRINGLIT;
+				}
+				else{
+					if(!checkMacroEntry(c_this) && !checkCommentEntry(c_last, c_this)){
+						textbuffer.append(c_this);
+					}
+				}
+				break;
+			default:
+				if(!checkMacroEntry(c_this) && !checkCommentEntry(c_last, c_this)){
+					//System.err.println("Appending code char: " + c_this);
+					textbuffer.append(c_this);
+				}
+				break;
+			}	
+		}
+		return true;
+	}
+	
 	private void pushParseState(){
 		ParserState state = new ParserState();
 		state.buffer = textbuffer;
@@ -360,14 +477,20 @@ public class CMMLPreprocessor {
 	}
 	
 	public boolean preprocess(InputStream input) throws IOException{
+		//Have preprocessor handle:
+		//	Removal of string literals
+		//	keeping while/for/if etc. conditions w/ ; together
+		line_number = 1;
 		textbuffer = new StringBuilder(1024);
 		current_context = NUSALSeqReader.PARSEMODE_UNDEFINED;
+		current_block = null;
 		
 		int c = -1;
 		char c_this = '\0';
 		char c_last = '\0';
 		while((c = input.read()) != -1){
 			c_this = (char)c;
+			//System.err.println("Next character: " + c_this + " | Read Mode: " + readmode);
 			switch(readmode){
 			case READMODE_NONE:
 				//Ignore whitespace. Look for characters that signal beginning of statement
@@ -377,6 +500,8 @@ public class CMMLPreprocessor {
 						if(Character.isAlphabetic(c_this)){
 							//Assumed code
 							readmode = READMODE_CODE;
+							//And send it to code case!
+							if(!processCodeCharacter(c_last, c_this)) return false;
 						}
 						else{
 							System.err.println("Preprocessor Syntax Error | Unexpected character found in line " + line_number);
@@ -410,84 +535,7 @@ public class CMMLPreprocessor {
 				}
 				break;
 			case READMODE_CODE:
-				if(!ignore_code){
-					switch(c_this){
-					case '{':
-						//Start block
-						CMMLStatementGroup myblock = new CMMLStatementGroup(current_block);
-						current_block = myblock;
-						//Put text through defines.
-						myblock.setPreText(substituteDefines(textbuffer.toString()));
-						clearTextBuffer();
-						myblock.setMMLContext(current_context);
-						myblock.setMMLDataType(current_dtype);
-						codemode_textpost = false;
-						break;
-					case '}':
-						//End block, or start end block
-						clearTextBuffer();
-						if(current_block == null || !current_block.isGroup()){
-							System.err.println("Preprocessor Syntax Error | Line " + line_number + ": End of block with no start?");
-							return false;
-						}
-						codemode_textpost = current_block.expectsPost();
-						if(!codemode_textpost){
-							//Finish with block.
-							CMMLStatementGroup parent = current_block.getParent();
-							if(parent == null){
-								saveStatement(current_block);
-								current_block = null;
-							}
-							else{
-								current_block = parent;
-							}
-						}
-						break;
-					case ';':
-						//End statement
-						if(codemode_textpost){
-							//Assumed to be tail for previous block.
-							if(current_block == null || !current_block.isGroup()){
-								//Regular statement (erroneous)
-								System.err.println("Preprocessor Syntax Warning | Line " + line_number + ": Statement expected to be part of nonexistent block?");
-								CMMLStatement statement = new CMMLStatement(null);
-								statement.setText(substituteDefines(textbuffer.toString()));
-								clearTextBuffer();
-								statement.setMMLContext(current_context);
-								statement.setMMLDataType(current_dtype);
-								saveStatement(statement);
-								current_block = null;
-							}
-							else{
-								current_block.setPostText(substituteDefines(textbuffer.toString()));
-								CMMLStatementGroup parent = current_block.getParent();
-								if(parent == null){
-									saveStatement(current_block);
-									current_block = null;
-								}
-								else{
-									current_block = parent;
-								}
-							}
-							codemode_textpost = false;
-						}
-						else{
-							//Assumed regular statement.
-							CMMLStatement statement = new CMMLStatement(current_block);
-							statement.setText(substituteDefines(textbuffer.toString()));
-							clearTextBuffer();
-							statement.setMMLContext(current_context);
-							statement.setMMLDataType(current_dtype);
-							if(current_block == null) saveStatement(statement);
-						}
-						break;
-					default:
-						if(!checkMacroEntry(c_this) && !checkCommentEntry(c_last, c_this)){
-							textbuffer.append(c_this);
-						}
-						break;
-					}	
-				}
+				if(!processCodeCharacter(c_last, c_this)) return false;
 				break;
 			case READMODE_ONELINECMT:
 				if(c_this == '\n'){
@@ -500,6 +548,21 @@ public class CMMLPreprocessor {
 					popParseState();
 				}
 				//else do nothing
+				break;
+			case READMODE_STRINGLIT:
+				if(c_this == '\"'){
+					//If it's not escaped, save string, switch back to code mode
+					if(c_last != '\\'){
+						String lit = textbuffer.toString();
+						int key = lit.hashCode();
+						String s_key = "%s_" + String.format("%08x", key);
+						string_lit.put(s_key, lit);
+						popParseState();
+						textbuffer.append(s_key);
+					}
+					else textbuffer.append(c_this);
+				}
+				else textbuffer.append(c_this);
 				break;
 			}
 			if(c_this == '\n') line_number++;
@@ -517,6 +580,85 @@ public class CMMLPreprocessor {
 		else if(file_mode == FILEMODE_MODULE_HEADER) file_mode = FILEMODE_INCLUDED_HEADER;
 		
 		return true;
+	}
+	
+	/*----- Debug -----*/
+	
+	public void debugPrint(Writer out) throws IOException{
+		//Defines
+		if(!defines.isEmpty()){
+			out.write("======= DEFINES =======\n");
+			List<String> defkeys = new ArrayList<String>(defines.size());
+			defkeys.addAll(defines.keySet());
+			Collections.sort(defkeys);
+			for(String key : defkeys){
+				CMMLDefine def = defines.get(key);
+				def.debugPrint(out, 0);
+				out.write('\n');
+			}
+			out.write('\n');
+		}
+		
+		//IO Alias
+		if(!io_alias.isEmpty()){
+			out.write("======= IOALIAS =======\n");
+			List<String> keys = new ArrayList<String>(io_alias.size());
+			keys.addAll(io_alias.keySet());
+			Collections.sort(keys);
+			for(String key : keys){
+				int ioval = io_alias.get(key);
+				if((ioval & FLAG_SEQIO_ALIAS) != 0){
+					out.write(key); out.write(" seqio[");
+					out.write(Integer.toString(ioval & 0x7)); out.write(']');
+				}
+				else if((ioval & FLAG_CHIO_ALIAS) != 0){
+					out.write(key); out.write(" chio[");
+					out.write(Integer.toString(ioval & 0x7)); out.write(']');
+				}
+				else if((ioval & FLAG_OCHIO_ALIAS) != 0){
+					out.write(key); out.write(" ochio[");
+					out.write(Integer.toString((ioval >> 8) & 0xf)); out.write("][");
+					out.write(Integer.toString(ioval & 0x7)); out.write(']');
+				}
+				out.write('\n');
+			}
+			out.write('\n');
+		}
+		
+		//String literals
+		if(!string_lit.isEmpty()){
+			out.write("======= STRING LITERALS =======\n");
+			List<String> keys = new ArrayList<String>(string_lit.size());
+			keys.addAll(string_lit.keySet());
+			Collections.sort(keys);
+			for(String key : keys){
+				String val = string_lit.get(key);
+				out.write(key);
+				out.write('\t');
+				out.write(val);
+				out.write('\n');
+			}
+			out.write('\n');
+		}
+		
+		//Statements
+		if(!included.isEmpty()){
+			out.write("======= INCLUDED =======\n");
+			for(CMMLStatementGroup statement : included){
+				statement.debugPrint(out, 1);
+				out.write('\n');
+			}
+			out.write('\n');
+		}
+		if(!output.isEmpty()){
+			out.write("======= CODE BODY =======\n");
+			for(CMMLStatementGroup statement : output){
+				statement.debugPrint(out, 1);
+				out.write('\n');
+			}
+			out.write('\n');
+		}
+		
 	}
 	
 }
