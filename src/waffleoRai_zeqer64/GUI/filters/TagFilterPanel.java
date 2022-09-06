@@ -8,8 +8,12 @@ import java.awt.GridBagConstraints;
 import java.awt.Insets;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.Collection;
 import java.util.LinkedList;
+import java.util.Set;
+import java.util.TreeSet;
 
+import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JSeparator;
 import javax.swing.SwingConstants;
@@ -17,13 +21,14 @@ import javax.swing.SwingConstants;
 import waffleoRai_Utils.VoidCallbackMethod;
 
 import java.awt.Font;
+import javax.swing.JButton;
 
 public class TagFilterPanel<T> extends FilterPanel<T>{
-	
+
 	private static final long serialVersionUID = 6237017886522922609L;
 	
 	public static final int MIN_WIDTH = 270;
-	public static final int MIN_HEIGHT = 60;
+	public static final int MIN_HEIGHT = 75;
 	
 	/*----- Inner Classes -----*/
 	
@@ -36,6 +41,10 @@ public class TagFilterPanel<T> extends FilterPanel<T>{
 	}
 	
 	/*----- Instance Variables -----*/
+	
+	private JFrame parent;
+	private ZeqerFilter<T> pool_filter;
+	private Set<String> pool;
 	
 	private TagNode<T> head_tag = null;
 	private TagNode<T> tail_tag = null;
@@ -53,10 +62,13 @@ public class TagFilterPanel<T> extends FilterPanel<T>{
 	
 	private Color tag_std = Color.black;
 	private Color tag_not = Color.red;
+	private JPanel panel;
+	private JButton btnAdd;
 	
 	/*----- Init -----*/
 	
-	public TagFilterPanel(){
+	public TagFilterPanel(JFrame parent_frame){
+		parent = parent_frame;
 		action_callbacks = new LinkedList<VoidCallbackMethod>();
 		initGUI();
 	}
@@ -68,9 +80,9 @@ public class TagFilterPanel<T> extends FilterPanel<T>{
 		setMinimumSize(new Dimension(MIN_WIDTH, MIN_HEIGHT));
 		GridBagLayout gridBagLayout = new GridBagLayout();
 		gridBagLayout.columnWidths = new int[]{0, 0};
-		gridBagLayout.rowHeights = new int[]{0, 0, 0};
+		gridBagLayout.rowHeights = new int[]{0, 0, 0, 0};
 		gridBagLayout.columnWeights = new double[]{1.0, Double.MIN_VALUE};
-		gridBagLayout.rowWeights = new double[]{0.0, 1.0, Double.MIN_VALUE};
+		gridBagLayout.rowWeights = new double[]{0.0, 1.0, 0.0, Double.MIN_VALUE};
 		setLayout(gridBagLayout);
 		
 		JPanel pnlOp = new JPanel();
@@ -124,11 +136,38 @@ public class TagFilterPanel<T> extends FilterPanel<T>{
 		
 		pnlTags = new JPanel();
 		GridBagConstraints gbc_pnlTags = new GridBagConstraints();
+		gbc_pnlTags.insets = new Insets(0, 0, 5, 0);
 		gbc_pnlTags.fill = GridBagConstraints.BOTH;
 		gbc_pnlTags.gridx = 0;
 		gbc_pnlTags.gridy = 1;
 		add(pnlTags, gbc_pnlTags);
 		pnlTags.setLayout(new FlowLayout(FlowLayout.LEFT, 2, 2));
+		
+		panel = new JPanel();
+		GridBagConstraints gbc_panel = new GridBagConstraints();
+		gbc_panel.fill = GridBagConstraints.BOTH;
+		gbc_panel.gridx = 0;
+		gbc_panel.gridy = 2;
+		add(panel, gbc_panel);
+		GridBagLayout gbl_panel = new GridBagLayout();
+		gbl_panel.columnWidths = new int[]{0, 0, 0};
+		gbl_panel.rowHeights = new int[]{0, 0};
+		gbl_panel.columnWeights = new double[]{1.0, 0.0, Double.MIN_VALUE};
+		gbl_panel.rowWeights = new double[]{0.0, Double.MIN_VALUE};
+		panel.setLayout(gbl_panel);
+		
+		btnAdd = new JButton("Add...");
+		GridBagConstraints gbc_btnAdd = new GridBagConstraints();
+		gbc_btnAdd.insets = new Insets(5, 5, 5, 5);
+		gbc_btnAdd.gridx = 1;
+		gbc_btnAdd.gridy = 0;
+		panel.add(btnAdd, gbc_btnAdd);
+		btnAdd.addMouseListener(new MouseAdapter(){
+			public void mouseClicked(MouseEvent e) {
+				onButtonAdd();
+			}
+		});
+		btnAdd.setEnabled(false);
 	}
 	
 	/*----- Getters -----*/
@@ -138,7 +177,7 @@ public class TagFilterPanel<T> extends FilterPanel<T>{
 		TagNode<T> node = head_tag;
 		while(node != null){
 			if(node.filter != null){
-				pass = node.filter.itemPasses(item);
+				pass = node.filter.itemPasses(item, node.tag.getText());
 				if(node.tag.inNotMode()) pass = !pass;
 				if(pass){
 					if(!and_mode) return true;
@@ -150,6 +189,16 @@ public class TagFilterPanel<T> extends FilterPanel<T>{
 			node = node.next;
 		}
 		return true;
+	}
+	
+	public Set<String> getAllTagStrings(){
+		Set<String> set = new TreeSet<String>();
+		TagNode<T> node = head_tag;
+		while(node != null){
+			set.add(node.tag.getText());
+			node = node.next;
+		}
+		return set;
 	}
 	
 	/*----- Setters -----*/
@@ -225,6 +274,20 @@ public class TagFilterPanel<T> extends FilterPanel<T>{
 		updateTags();
 	}
 	
+	public void addTagPool(Collection<String> tags, ZeqerFilter<T> condition){
+		if(tags == null){
+			pool.clear();
+			btnAdd.setEnabled(false);
+			return;
+		}
+		pool = new TreeSet<String>();
+		pool.addAll(tags);
+		pool_filter = condition;
+		if(!tags.isEmpty()) btnAdd.setEnabled(true);
+		else btnAdd.setEnabled(false);
+		clearTags();
+	}
+	
 	/*----- Draw -----*/
 	
 	private void updateANDORSwitches(){
@@ -266,6 +329,30 @@ public class TagFilterPanel<T> extends FilterPanel<T>{
 		}
 	}
 	
+	public void disableAll(){
+		btnAdd.setEnabled(false);
+		lblOr.setEnabled(false);
+		lblAnd.setEnabled(false);
+		
+		TagNode<T> node = head_tag;
+		while(node != null){
+			node.tag.setEnabled(false);
+			node = node.next;
+		}
+	}
+	
+	public void enableAll(){
+		btnAdd.setEnabled(pool == null && !pool.isEmpty());
+		lblOr.setEnabled(true);
+		lblAnd.setEnabled(true);
+		
+		TagNode<T> node = head_tag;
+		while(node != null){
+			node.tag.setEnabled(true);
+			node = node.next;
+		}
+	}
+	
 	/*----- Actions -----*/
 	
 	private void onRightClickTag(TagNode<T> node){
@@ -294,4 +381,38 @@ public class TagFilterPanel<T> extends FilterPanel<T>{
 		updateANDORSwitches();
 	}
 
+	private void onButtonAdd(){
+		if(pool == null || pool.isEmpty()) return;
+		TagPickDialog dialog = new TagPickDialog(parent, true);
+		//Add tag pool...
+		dialog.setTagPool(pool);
+		Set<String> incl = getAllTagStrings();
+		dialog.addIncluded(incl);
+		
+		dialog.pack();
+		dialog.setVisible(true);
+		
+		if(dialog.getSelection() == TagPickDialog.SELECTION_OKAY){
+			head_tag = null;
+			tail_tag = null;
+			Collection<String> incl_tags = dialog.getIncluded();
+			TagNode<T> last_node = null;
+			TagNode<T> node = null;
+			for(String tag: incl_tags){
+				node = new TagNode<T>();
+				node.prev = last_node;
+				if(last_node != null){
+					last_node.next = node;
+				}
+				else{
+					head_tag = node;
+				}
+				node.filter = pool_filter;
+				node.tag = new TagLabel(tag);
+			}
+			tail_tag = node;
+		}
+		updateTags();
+	}
+	
 }

@@ -111,6 +111,7 @@ public class LabelSwitch extends JLabel{
 	/*----- Actions -----*/
 	
 	private void onMouseClick(){
+		if(!isEnabled()) return;
 		switch(current_state){
 		case SWITCHSTATE_OFF:
 			current_state = SWITCHSTATE_ON;

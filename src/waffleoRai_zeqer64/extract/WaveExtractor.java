@@ -46,7 +46,7 @@ public class WaveExtractor {
 	/*----- Init -----*/
 	
 	public WaveExtractor(ZeqerRom rom) throws IOException{
-		this(ZeqerCore.getProgramDirectory() + File.separator + ZeqerCore.DIRNAME_WAVE, null, rom);
+		this(ZeqerCore.getActiveCore().getProgramDirectory() + File.separator + ZeqerCore.DIRNAME_WAVE, null, rom);
 	}
 	
 	public WaveExtractor(String dir, ZeqerRom rom) throws IOException{
@@ -337,7 +337,7 @@ public class WaveExtractor {
 			System.err.println("inpath = " + inpath);
 			System.err.println("outpath = " + outpath);
 			
-			RomInfoNode rin = ZeqerCore.detectROM(inpath);
+			RomInfoNode rin = ZeqerCore.getActiveCore().detectROM(inpath);
 			if(rin == null){
 				System.err.println("ROM was not recognized: " + inpath);
 				System.exit(1);

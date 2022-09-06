@@ -21,7 +21,7 @@ public class Test_BankWaveOrdering {
 		String outdir = args[1];
 
 		try{
-			RomInfoNode rin = ZeqerCore.detectROM(rompath);
+			RomInfoNode rin = ZeqerCore.getActiveCore().detectROM(rompath);
 			if(rin == null){
 				System.err.println("ROM was not recognized: " + rompath);
 				System.exit(1);

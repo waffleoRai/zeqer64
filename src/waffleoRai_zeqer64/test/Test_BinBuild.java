@@ -28,9 +28,9 @@ public class Test_BinBuild {
 		String outdir = args[2];
 		
 		try{
-			ZeqerCore.setProgramDirectory(zeqer_dir);
-			ZeqerCore.loadCore();
-			AbldFile abld = ZeqerCore.loadSysBuild(rom_id);
+			ZeqerCore.getActiveCore().setProgramDirectory(zeqer_dir);
+			ZeqerCore.getActiveCore().loadCore();
+			AbldFile abld = ZeqerCore.getActiveCore().loadSysBuild(rom_id);
 			if(abld == null){
 				System.err.println("Couldn't find sys build with ID: " + rom_id);
 				System.exit(1);

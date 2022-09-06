@@ -369,7 +369,7 @@ public class ExtractSound {
 		
 		//Load ROMs
 		for(int i = 0; i < romcount; i++){
-			RomInfoNode rin = ZeqerCore.detectROM(inpaths[i]);
+			RomInfoNode rin = ZeqerCore.getActiveCore().detectROM(inpaths[i]);
 			if(rin == null){
 				System.err.println("ROM was not recognized: " + inpaths[i]);
 				printUsage();

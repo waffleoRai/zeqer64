@@ -31,7 +31,7 @@ public class SoundExtractor {
 	/*----- Init -----*/
 	
 	public SoundExtractor(ZeqerRom rom) throws IOException{
-		this(rom, ZeqerCore.getProgramDirectory());
+		this(rom, ZeqerCore.getActiveCore().getProgramDirectory());
 	}
 	
 	public SoundExtractor(ZeqerRom rom, String base_dir) throws IOException{
@@ -119,7 +119,7 @@ public class SoundExtractor {
 		
 		try{
 			//Try to detect ROM
-			ZeqerRom rom = ZeqerCore.loadNUSROM(inpath);
+			ZeqerRom rom = ZeqerCore.getActiveCore().loadNUSROM(inpath);
 			if(rom == null){
 				System.err.println("ROM was not recognized. Exiting...");
 				System.exit(1);

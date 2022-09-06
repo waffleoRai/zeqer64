@@ -47,7 +47,7 @@ public class BankExtractor {
 	/*----- Init -----*/
 	
 	public BankExtractor(ZeqerRom rom) throws IOException{
-		this(rom, ZeqerCore.getProgramDirectory() + SEP + ZeqerCore.DIRNAME_BANK + SEP + ZeqerCore.DIRNAME_ZBANK);
+		this(rom, ZeqerCore.getActiveCore().getProgramDirectory() + SEP + ZeqerCore.DIRNAME_BANK + SEP + ZeqerCore.DIRNAME_ZBANK);
 	}
 	
 	public BankExtractor(ZeqerRom rom, String base_dir) throws IOException{

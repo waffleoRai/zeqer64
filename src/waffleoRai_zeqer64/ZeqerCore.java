@@ -81,6 +81,27 @@ public class ZeqerCore {
 	
 	private static final char SEP = File.separatorChar;
 	
+	/*----- Core Management -----*/
+	
+	private static ZeqerCore active_core;
+	
+	public static ZeqerCore getActiveCore(){return active_core;}
+	public static ZeqerCore bootNewCore() throws IOException{
+		active_core = new ZeqerCore();
+		if(!active_core.loadCore()){
+			active_core = null;
+			return null;
+		}
+		else return active_core;
+	}
+	
+	public static boolean shutdownActiveCore() throws IOException{
+		if(active_core == null) return false;
+		active_core.shutdownCore();
+		active_core = null;
+		return true;
+	}
+	
 	/*----- Font -----*/
 	
 	public static final String IKEY_UNIFONT_NAME = "UNICODE_FONT";
@@ -88,9 +109,9 @@ public class ZeqerCore {
 			"AppleGothic", "Takao PGothic",
 			"Hiragino Maru Gothic Pro", "Hiragino Kaku Gothic Pro"};
 	
-	private static String my_unifont;
+	private String my_unifont;
 	
-	public static Font getUnicodeFont(int style, int size){
+	public Font getUnicodeFont(int style, int size){
 		if(my_unifont != null) return new Font(my_unifont, style, size);
 		
 		//Try the key...
@@ -118,7 +139,7 @@ public class ZeqerCore {
 
 	/*----- Initialize -----*/
 	
-	public static boolean loadCore() throws IOException{
+	public boolean loadCore() throws IOException{
 		String pdir = getProgramDirectory();
 		if(pdir == null) return false; //Not installed or other issue
 		
@@ -144,7 +165,7 @@ public class ZeqerCore {
 	private static String ini_path;
 	private static String root_dir;
 	
-	public static String getIniPath(){
+	public String getIniPath(){
 		if(ini_path != null) return ini_path;
 		
 		String osname = System.getProperty("os.name");
@@ -170,7 +191,7 @@ public class ZeqerCore {
 		}
 	}
 	
-	public static String getProgramDirectory(){
+	public String getProgramDirectory(){
 		if(root_dir != null) return root_dir;
 		String initpath = getIniPath(); 
 		if(initpath == null) return null;
@@ -189,18 +210,18 @@ public class ZeqerCore {
 		return root_dir;
 	}
 	
-	public static void setProgramDirectory(String path){
+	public void setProgramDirectory(String path){
 		//To force load from outside installation setup
 		root_dir = path;
 	}
 	
 	/*----- Paths -----*/
 	
-	public static String getWaveDirectoryPath(){
+	public String getWaveDirectoryPath(){
 		return getProgramDirectory() + SEP + DIRNAME_WAVE;
 	}
 	
-	public static String getSysWaveDirectoryPath(){
+	public String getSysWaveDirectoryPath(){
 		return getWaveDirectoryPath() + SEP + DIRNAME_ZWAVE;
 	}
 	
@@ -208,19 +229,19 @@ public class ZeqerCore {
 	
 	public static final String SETTINGS_FILE_NAME = "settings.ini";
 	
-	private static Map<String, String> init_values;
+	private Map<String, String> init_values;
 	
-	public static String getIniValue(String key){
+	public String getIniValue(String key){
 		if(init_values == null) return null;
 		return init_values.get(key);
 	}
 	
-	public static void setIniValue(String key, String value){
+	public void setIniValue(String key, String value){
 		if(init_values == null) return;
 		init_values.put(key, value);
 	}
 	
-	public static void loadSettingsFile(String filepath) throws IOException{
+	public void loadSettingsFile(String filepath) throws IOException{
 		init_values = new HashMap<String, String>();
 		if(!FileBuffer.fileExists(filepath)) return;
 		BufferedReader br = new BufferedReader(new FileReader(filepath));
@@ -234,7 +255,7 @@ public class ZeqerCore {
 		br.close();
 	}
 	
-	public static void saveSettingsFile(String filepath) throws IOException{
+	public void saveSettingsFile(String filepath) throws IOException{
 		if(init_values == null) return;
 		BufferedWriter bw = new BufferedWriter(new FileWriter(filepath));
 		for(Entry<String, String> entry : init_values.entrySet()){
@@ -261,7 +282,7 @@ public class ZeqerCore {
 		return false;
 	}
 	
-	public static boolean installTo(String dirpath) throws IOException{
+	public boolean installTo(String dirpath) throws IOException{
 		if(dirpath == null) return false;
 		if(dirpath.isEmpty()) return false;
 		
@@ -346,7 +367,7 @@ public class ZeqerCore {
 		return good;
 	}
 	
-	public static boolean uninstall() throws IOException{
+	public boolean uninstall() throws IOException{
 		String pdir = getProgramDirectory();
 		if(pdir == null) return false;
 		
@@ -356,7 +377,7 @@ public class ZeqerCore {
 		return true;
 	}
 	
-	public static boolean importUserDataFrom(String dirpath) throws UnsupportedFileTypeException, IOException{
+	public boolean importUserDataFrom(String dirpath) throws UnsupportedFileTypeException, IOException{
 		//Copies user seqs and banks back into program dir
 		//	in case of re-install or import from someone else
 		String pdir = getProgramDirectory();
@@ -415,7 +436,7 @@ public class ZeqerCore {
 		return true;
 	}
 	
-	public static boolean copyUserDataTo(String dirpath) throws IOException{
+	public boolean copyUserDataTo(String dirpath) throws IOException{
 		//Basically copies all the user seqs and banks (and meta tables)
 		//	to another place on disk in case uninstall is wanted.
 		
@@ -489,7 +510,7 @@ public class ZeqerCore {
 	
 	/*----- ShutDown -----*/
 	
-	public static void shutdownCore() throws IOException{
+	public void shutdownCore() throws IOException{
 		//Save settings and all that.
 		String pdir = getProgramDirectory();
 		if(pdir == null) return;
@@ -517,7 +538,7 @@ public class ZeqerCore {
 	
 	private static RomDetector romdetector; //Mapped by md5sum string
 	
-	private static boolean loadRomInfoMap_fs() throws IOException{
+	private boolean loadRomInfoMap_fs() throws IOException{
 		String rootdir = getProgramDirectory();
 		if(rootdir == null || rootdir.isEmpty()) return false;
 		
@@ -580,7 +601,7 @@ public class ZeqerCore {
 		return true;
 	}
 	
-	private static boolean loadRomInfoMap(){
+	private boolean loadRomInfoMap(){
 		romdetector = new RomDetector();
 		try{
 			if(!loadRomInfoMap_fs()) return loadRomInfoMap_jar();
@@ -592,12 +613,12 @@ public class ZeqerCore {
 		}
 	}
 	
-	public static RomInfoNode detectROM(String path) throws IOException{
+	public RomInfoNode detectROM(String path) throws IOException{
 		if(romdetector == null) loadRomInfoMap();
 		return romdetector.detectRomVersion(path);
 	}
 	
-	public static ZeqerRom loadNUSROM(String path) throws IOException{
+	public ZeqerRom loadNUSROM(String path) throws IOException{
 		RomInfoNode info = detectROM(path);
 		if(info == null) return null;
 		if(info.isGamecube()) return null;
@@ -608,24 +629,24 @@ public class ZeqerCore {
 		return rom;
 	}
 	
-	public static ZeqerPlaybackEngine loadRomBuild(String zeqer_id){
+	public ZeqerPlaybackEngine loadRomBuild(String zeqer_id){
 		//TODO
 		return null;
 	}
 	
 	/*----- Tables -----*/
 	
-	private static ZeqerWaveTable wav_table_sys;
-	private static ZeqerSeqTable seq_table_sys;
-	private static ZeqerBankTable bnk_table_sys;
-	private static ZeqerPresetTable preset_table_sys;
+	private ZeqerWaveTable wav_table_sys;
+	private ZeqerSeqTable seq_table_sys;
+	private ZeqerBankTable bnk_table_sys;
+	private ZeqerPresetTable preset_table_sys;
 	
-	private static ZeqerWaveTable wav_table_user;
-	private static ZeqerSeqTable seq_table_user;
-	private static ZeqerBankTable bnk_table_user;
-	private static ZeqerPresetTable preset_table_user;
+	private ZeqerWaveTable wav_table_user;
+	private ZeqerSeqTable seq_table_user;
+	private ZeqerBankTable bnk_table_user;
+	private ZeqerPresetTable preset_table_user;
 	
-	public static void loadSoundTables() throws IOException, UnsupportedFileTypeException{
+	public void loadSoundTables() throws IOException, UnsupportedFileTypeException{
 		String pdir = getProgramDirectory();
 		if(pdir == null) return;
 		
@@ -701,7 +722,7 @@ public class ZeqerCore {
 		}
 	}
 	
-	public static void saveZeqerTables() throws IOException{
+	public void saveZeqerTables() throws IOException{
 		String pdir = getProgramDirectory();
 		if(pdir == null) return;
 
@@ -725,7 +746,7 @@ public class ZeqerCore {
 		if(wav_table_sys != null) wav_table_sys.writeTo(savepath);
 	}
 	
-	public static void saveSoundTables() throws IOException{
+	public void saveSoundTables() throws IOException{
 		String pdir = getProgramDirectory();
 		if(pdir == null) return;
 		
@@ -743,36 +764,36 @@ public class ZeqerCore {
 		if(preset_table_user != null) preset_table_user.writeTo(savepath);
 	}
 
-	public static ZeqerWaveTable getZeqerWaveTable(){return wav_table_sys;}
+	public ZeqerWaveTable getZeqerWaveTable(){return wav_table_sys;}
 	//public static ZeqerSeqTable getZeqerZ5SeqTable(){return seq_table_sys_oot;}
 	//public static ZeqerSeqTable getZeqerZ6SeqTable(){return seq_table_sys_mm;}
-	public static ZeqerSeqTable getZeqerSeqTable(){return seq_table_sys;}
-	public static ZeqerBankTable getZeqerBankTable(){return bnk_table_sys;}
-	public static ZeqerPresetTable getZeqerPresetTable(){return preset_table_sys;}
+	public ZeqerSeqTable getZeqerSeqTable(){return seq_table_sys;}
+	public ZeqerBankTable getZeqerBankTable(){return bnk_table_sys;}
+	public ZeqerPresetTable getZeqerPresetTable(){return preset_table_sys;}
 	
-	public static ZeqerBankTable getUserBankTable(){
+	public ZeqerBankTable getUserBankTable(){
 		if(bnk_table_user == null) bnk_table_user = ZeqerBankTable.createTable();
 		return bnk_table_user;
 	}
 	
-	public static ZeqerWaveTable getUserWaveTable(){
+	public ZeqerWaveTable getUserWaveTable(){
 		if(wav_table_user == null) wav_table_user = ZeqerWaveTable.createTable();
 		return wav_table_user;
 	}
 	
-	public static ZeqerPresetTable getUserPresetTable(){
+	public ZeqerPresetTable getUserPresetTable(){
 		if(preset_table_user == null) preset_table_user = ZeqerPresetTable.createTable();
 		return preset_table_user;
 	}
 	
-	public static ZeqerSeqTable getUserSeqTable(){
+	public ZeqerSeqTable getUserSeqTable(){
 		if(seq_table_user == null) seq_table_user = ZeqerSeqTable.createTable();
 		return seq_table_user;
 	}
 	
 	/*----- Data Loading -----*/
 	
-	public static AbldFile loadSysBuild(String rom_id) throws UnsupportedFileTypeException, IOException{
+	public AbldFile loadSysBuild(String rom_id) throws UnsupportedFileTypeException, IOException{
 		String dirpath = getProgramDirectory();
 		if(dirpath == null) return null;
 		dirpath += SEP + DIRNAME_ABLD + SEP + DIRNAME_ZBLD;
@@ -781,7 +802,7 @@ public class ZeqerCore {
 		return abld;
 	}
 	
-	public static Z64WaveInfo getWaveByName(String wave_name){
+	public Z64WaveInfo getWaveByName(String wave_name){
 		String wdir = null;
 		WaveTableEntry entry = null;
 		if(wav_table_sys != null){
@@ -815,7 +836,7 @@ public class ZeqerCore {
 		return winfo;
 	}
 	
-	public static Z64WaveInfo getWaveInfo(int wave_uid){
+	public Z64WaveInfo getWaveInfo(int wave_uid){
 		String wdir = null;
 		WaveTableEntry entry = null;
 		if(wav_table_sys != null){
@@ -849,7 +870,7 @@ public class ZeqerCore {
 		return winfo;
 	}
 	
-	public static Z64Wave loadWave(int wave_uid){
+	public Z64Wave loadWave(int wave_uid){
 		String wdir = null;
 		WaveTableEntry entry = null;
 		if(wav_table_sys != null){
@@ -886,7 +907,7 @@ public class ZeqerCore {
 		return Z64Wave.readZ64Wave(sounddat, winfo);
 	}
 	
-	public static FileBuffer loadWaveData(int wave_uid){
+	public FileBuffer loadWaveData(int wave_uid){
 		String wdir = null;
 		WaveTableEntry entry = null;
 		if(wav_table_sys != null){
@@ -921,7 +942,7 @@ public class ZeqerCore {
 		return sounddat;
 	}
 	
-	public static BankTableEntry getBankInfo(int bank_uid){
+	public BankTableEntry getBankInfo(int bank_uid){
 		BankTableEntry entry = null;
 		if(bnk_table_sys != null) entry = bnk_table_sys.getBank(bank_uid);
 		if(entry == null && bnk_table_user != null) {
@@ -930,7 +951,7 @@ public class ZeqerCore {
 		return entry;
 	}
 	
-	public static Z64Bank loadBank(int bank_uid){
+	public Z64Bank loadBank(int bank_uid){
 		BankTableEntry entry = null;
 		String basedir = null;
 		if(bnk_table_sys != null) entry = bnk_table_sys.getBank(bank_uid);
@@ -962,7 +983,7 @@ public class ZeqerCore {
 		}
 	}
 	
-	public static Z64Instrument getPresetInstrumentByName(String preset_name){
+	public Z64Instrument getPresetInstrumentByName(String preset_name){
 		//Look thru preset tables for ZeqerPreset
 		if(preset_table_sys == null) return null; //Should not be null...
 		ZeqerPreset preset = preset_table_sys.getPresetByName(preset_name);
@@ -982,21 +1003,21 @@ public class ZeqerCore {
 		int wuid = ipreset.getWaveIDMid();
 		if(inst.getSampleMiddle() == null){
 			if(wuid != 0 && wuid != -1){
-				inst.setSampleMiddle(ZeqerCore.getWaveInfo(wuid));
+				inst.setSampleMiddle(getWaveInfo(wuid));
 			}
 		}
 		
 		wuid = ipreset.getWaveIDLo();
 		if(inst.getSampleLow() == null){
 			if(wuid != 0 && wuid != -1){
-				inst.setSampleLow(ZeqerCore.getWaveInfo(wuid));
+				inst.setSampleLow(getWaveInfo(wuid));
 			}
 		}
 		
 		wuid = ipreset.getWaveIDHi();
 		if(inst.getSampleHigh() == null){
 			if(wuid != 0 && wuid != -1){
-				inst.setSampleHigh(ZeqerCore.getWaveInfo(wuid));
+				inst.setSampleHigh(getWaveInfo(wuid));
 			}
 		}
 		inst.setID(ipreset.getUID());
@@ -1004,7 +1025,7 @@ public class ZeqerCore {
 		return inst;
 	}
 	
-	public static SeqTableEntry getSeqInfo(int seq_uid){
+	public SeqTableEntry getSeqInfo(int seq_uid){
 		SeqTableEntry entry = null;
 		if(seq_table_sys != null) entry = seq_table_sys.getSequence(seq_uid);
 		if(entry == null && seq_table_user != null) {
@@ -1013,7 +1034,7 @@ public class ZeqerCore {
 		return entry;
 	}
 	
-	public static FileBuffer loadSeqData(int seq_uid){
+	public FileBuffer loadSeqData(int seq_uid){
 		SeqTableEntry entry = null;
 		String basedir = null;
 		if(seq_table_sys != null) entry = seq_table_sys.getSequence(seq_uid);
@@ -1039,15 +1060,15 @@ public class ZeqerCore {
 		}
 	}
 	
-	public static int[][][] loadWaveVersionTable(String rom_id) throws IOException{
+	public int[][][] loadWaveVersionTable(String rom_id) throws IOException{
 		if(wav_table_sys == null) return null;
-		String wavdir = ZeqerCore.getSysWaveDirectoryPath();
+		String wavdir = getSysWaveDirectoryPath();
 		return ZeqerWaveTable.loadVersionTable(wavdir, rom_id);
 	}
 	
-	public static List<Map<Integer, Integer>> loadVersionWaveOffsetIDMap(String rom_id) throws IOException{
+	public List<Map<Integer, Integer>> loadVersionWaveOffsetIDMap(String rom_id) throws IOException{
 		if(wav_table_sys == null) return null;
-		String wavdir = ZeqerCore.getSysWaveDirectoryPath();
+		String wavdir = getSysWaveDirectoryPath();
 		return ZeqerWaveTable.loadVersionWaveOffsetIDMap(wavdir, rom_id);
 	}
 	

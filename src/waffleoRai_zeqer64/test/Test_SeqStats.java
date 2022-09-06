@@ -19,7 +19,7 @@ public class Test_SeqStats {
 	
 	public static void doRom(String inpath, String outstem) throws IOException{
 		//TODO
-		RomInfoNode rin = ZeqerCore.detectROM(inpath);
+		RomInfoNode rin = ZeqerCore.getActiveCore().detectROM(inpath);
 		if(rin == null){
 			System.err.println("ROM was not recognized: " + inpath);
 			System.exit(1);

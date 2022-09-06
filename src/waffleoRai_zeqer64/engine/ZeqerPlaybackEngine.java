@@ -280,7 +280,7 @@ public class ZeqerPlaybackEngine {
 				Z64WaveInfo info = winfomap.get(id);
 				if(info == null){
 					//Load
-					info = ZeqerCore.getWaveInfo(id);
+					info = ZeqerCore.getActiveCore().getWaveInfo(id);
 					if(info == null){
 						System.err.println("No sample with ID 0x" + String.format("%08x", id) + " found.");
 						return false;
@@ -293,7 +293,7 @@ public class ZeqerPlaybackEngine {
 				FileBuffer wbuff = loaded_wdat.get(id);
 				//Load if not
 				if(wbuff == null){
-					wbuff = ZeqerCore.loadWaveData(id);
+					wbuff = ZeqerCore.getActiveCore().loadWaveData(id);
 					if(wbuff == null){
 						System.err.println("No sample data with ID 0x" + String.format("%08x", id) + " found.");
 						return false;
@@ -595,7 +595,7 @@ public class ZeqerPlaybackEngine {
 			
 			if(refid < 0){
 				//Have to actually serialize font
-				Z64Bank mybank = ZeqerCore.loadBank(bnkid);
+				Z64Bank mybank = ZeqerCore.getActiveCore().loadBank(bnkid);
 				if(mybank == null){
 					System.err.println("ZeqerPlaybackEngine.transferAudiobank || ERROR: Bank with ID 0x" + 
 							String.format("%08x", bnkid) + " could not be found!");

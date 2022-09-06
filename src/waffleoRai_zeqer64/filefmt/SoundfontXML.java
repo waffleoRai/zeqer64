@@ -241,7 +241,7 @@ public class SoundfontXML {
 		
 		//Find sample
 		if(attrstr.endsWith(".aifc")) attrstr = attrstr.substring(0, attrstr.length() - 5);
-		Z64WaveInfo wave = ZeqerCore.getWaveByName(attrstr);
+		Z64WaveInfo wave = ZeqerCore.getActiveCore().getWaveByName(attrstr);
 		if(wave == null){
 			System.err.println("Could not find sample by name \"" + attrstr + "\"" + " for SoundEffect \"" + entry.sfx.getName() + "\"!");
 			return null;
@@ -314,7 +314,7 @@ public class SoundfontXML {
 		
 		//Find sample
 		if(attrstr.endsWith(".aifc")) attrstr = attrstr.substring(0, attrstr.length() - 5);
-		Z64WaveInfo wave = ZeqerCore.getWaveByName(attrstr);
+		Z64WaveInfo wave = ZeqerCore.getActiveCore().getWaveByName(attrstr);
 		if(wave == null){
 			System.err.println("Could not find sample by name \"" + attrstr + "\"" + " for Drum \"" + entry.drum.getName() + "\"!");
 			return null;
@@ -413,7 +413,7 @@ public class SoundfontXML {
 		}
 		
 		if(attrstr.endsWith(".aifc")) attrstr = attrstr.substring(0, attrstr.length() - 5);
-		Z64WaveInfo wave = ZeqerCore.getWaveByName(attrstr);
+		Z64WaveInfo wave = ZeqerCore.getActiveCore().getWaveByName(attrstr);
 		if(wave == null) return null;
 		
 		//Set. Add note range
@@ -512,7 +512,7 @@ public class SoundfontXML {
 		//See if it's a preset or not.
 		if(xml_element.hasAttribute("PresetName")){
 			String presetname = xml_element.getAttribute("PresetName");
-			entry.inst = ZeqerCore.getPresetInstrumentByName(presetname);
+			entry.inst = ZeqerCore.getActiveCore().getPresetInstrumentByName(presetname);
 			if(entry.inst == null){
 				System.err.println("Could not find preset \"" + presetname + "\"!");
 				return null;

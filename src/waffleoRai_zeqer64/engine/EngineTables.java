@@ -70,7 +70,7 @@ public class EngineTables {
 				Map<Integer, Z64WaveInfo> offmap = ret.id_offset_map.getMap(i);
 				for(Integer sid : samples){
 					int wsize = 0; int dsize = 0;
-					FileBuffer wdat = ZeqerCore.loadWaveData(sid);
+					FileBuffer wdat = ZeqerCore.getActiveCore().loadWaveData(sid);
 					if(wdat == null){
 						System.err.println("EngineTables.buildAudiotable || ERROR: Sample with UID 0x" + String.format("%08x", sid) + " not found!");
 						return null;
@@ -78,7 +78,7 @@ public class EngineTables {
 					dsize = (int)wdat.getFileSize();
 					wsize = (dsize + 0xf) & ~0xf;
 					
-					Z64WaveInfo winfo = ZeqerCore.getWaveInfo(sid);
+					Z64WaveInfo winfo = ZeqerCore.getActiveCore().getWaveInfo(sid);
 					if(winfo == null){
 						System.err.println("EngineTables.buildAudiotable || ERROR: Sample info with UID 0x" + String.format("%08x", sid) + " not found!");
 						return null;
@@ -154,7 +154,7 @@ public class EngineTables {
 				
 				//Load
 				//System.err.println("Looking at bank " + i + String.format(" (%08x)", buid));
-				Z64Bank mybank = ZeqerCore.loadBank(buid);
+				Z64Bank mybank = ZeqerCore.getActiveCore().loadBank(buid);
 				if(mybank == null){
 					System.err.println("EngineTables.buildAudiobank || ERROR: Bank with UID 0x" + String.format("%08x", buid) + " not found!");
 					return null;
@@ -255,7 +255,7 @@ public class EngineTables {
 				entry.setOffset(global_pos);
 				sid_idx_map.put(sid, i);
 				
-				FileBuffer seqdat = ZeqerCore.loadSeqData(sid);
+				FileBuffer seqdat = ZeqerCore.getActiveCore().loadSeqData(sid);
 				if(seqdat == null){
 					System.err.println("EngineTables.buildAudioseq || ERROR: Seq with UID 0x" + String.format("%08x", sid) + " not found!");
 					return null;

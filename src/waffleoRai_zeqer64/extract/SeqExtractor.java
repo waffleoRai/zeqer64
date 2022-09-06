@@ -40,7 +40,7 @@ public class SeqExtractor {
 	/*----- Init -----*/
 	
 	public SeqExtractor(ZeqerRom rom) throws IOException{
-		this(rom, ZeqerCore.getProgramDirectory() + SEP + ZeqerCore.DIRNAME_SEQ + SEP + ZeqerCore.DIRNAME_ZSEQ);
+		this(rom, ZeqerCore.getActiveCore().getProgramDirectory() + SEP + ZeqerCore.DIRNAME_SEQ + SEP + ZeqerCore.DIRNAME_ZSEQ);
 	}
 	
 	public SeqExtractor(ZeqerRom rom, String base_dir) throws IOException{

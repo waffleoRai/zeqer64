@@ -65,6 +65,10 @@ public class FlagFilterPanel<T> extends FilterPanel<T>{
 	/*----- Init -----*/
 	
  	public FlagFilterPanel(){
+ 		this("");
+	}
+ 	
+ 	public FlagFilterPanel(String name){
  		action_callbacks = new LinkedList<VoidCallbackMethod>();
 		initGUI();
 	}
@@ -164,6 +168,8 @@ public class FlagFilterPanel<T> extends FilterPanel<T>{
 		
 		return true;
 	}
+	
+	public String getName(){return group_name;}
 	
 	/*----- Setters -----*/
 	
@@ -331,14 +337,30 @@ public class FlagFilterPanel<T> extends FilterPanel<T>{
 		super.paintComponent(g);
 	}
 	
+	public void disableAll(){
+		setEnabled(false);
+		lblOr.setEnabled(false);
+		lblAnd.setEnabled(false);
+		for(FlagNode<T> node : flags) node.label.setEnabled(false);
+	}
+	
+	public void enableAll(){
+		setEnabled(true);
+		lblOr.setEnabled(true);
+		lblAnd.setEnabled(true);
+		for(FlagNode<T> node : flags) node.label.setEnabled(true);
+	}
+	
 	/*----- Actions -----*/
 	
 	private void onClickAND(){
+		if(!this.isEnabled()) return;
 		and_mode = true;
 		updateANDORSwitches();
 	}
 	
 	private void onClickOR(){
+		if(!this.isEnabled()) return;
 		and_mode = false;
 		updateANDORSwitches();
 	}

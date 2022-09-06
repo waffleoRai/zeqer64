@@ -1,5 +1,6 @@
 package waffleoRai_zeqer64.GUI.filters;
 
+import java.awt.Cursor;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -29,6 +30,19 @@ public abstract class FilterPanel<T> extends JPanel {
 	
 	protected void onAction(){
 		for(VoidCallbackMethod func : action_callbacks) func.doMethod();
+	}
+	
+	public abstract void disableAll();
+	public abstract void enableAll();
+	
+	public void setWait(){
+		disableAll();
+		setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+	}
+	
+	public void unsetWait(){
+		enableAll();
+		setCursor(null);
 	}
 	
 }

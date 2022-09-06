@@ -250,6 +250,26 @@ public class TextFilterPanel<T> extends FilterPanel<T> {
 		super.paintComponent(g);
 	}
 	
+	public void disableAll(){
+		txtSearch.setEnabled(false);
+		btnSearch.setEnabled(false);
+		if(flag_boxes != null){
+			for(JCheckBox cb : flag_boxes){
+				cb.setEnabled(false);
+			}
+		}
+	}
+	
+	public void enableAll(){
+		txtSearch.setEnabled(true);
+		btnSearch.setEnabled(true);
+		if(flag_boxes != null){
+			for(JCheckBox cb : flag_boxes){
+				cb.setEnabled(true);
+			}
+		}
+	}
+	
 	/*----- Actions -----*/
 	
 	private void onButton_Clear(){

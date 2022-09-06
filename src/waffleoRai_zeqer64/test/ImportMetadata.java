@@ -28,7 +28,7 @@ public class ImportMetadata {
 	private static void updateInstNames(ZeqerBankTable bnk_tbl, ZeqerPresetTable prs_tbl){
 		Collection<BankTableEntry> bentries = bnk_tbl.getAllEntries();
 		for(BankTableEntry e : bentries){
-			Z64Bank zbank = ZeqerCore.loadBank(e.getUID());
+			Z64Bank zbank = ZeqerCore.getActiveCore().loadBank(e.getUID());
 			if(zbank == null){
 				System.err.println("ImportMetadata.updateInstNames || WARNING: Could not load data for bank " + String.format("%08x", e.getUID()));
 			}
@@ -86,8 +86,8 @@ public class ImportMetadata {
 		String bnk_tsv_path = args[4];
 		
 		try{
-			ZeqerCore.setProgramDirectory(zdir);
-			ZeqerCore.loadSoundTables();
+			ZeqerCore.getActiveCore().setProgramDirectory(zdir);
+			ZeqerCore.getActiveCore().loadSoundTables();
 			
 			//Trim meta wav UIDs (I just exported MD5s because lazy)
 			BufferedReader br = new BufferedReader(new FileReader(wav_tsv_path));
@@ -125,7 +125,7 @@ public class ImportMetadata {
 			}
 			
 			//Update wav table
-			ZeqerWaveTable tbl_wav = ZeqerCore.getZeqerWaveTable();
+			ZeqerWaveTable tbl_wav = ZeqerCore.getActiveCore().getZeqerWaveTable();
 			tbl_wav.importTSV(wav_tsv_path);
 			
 			//Update seq tables
@@ -133,24 +133,24 @@ public class ImportMetadata {
 			tbl_seq5.importTSV(seq_tsv_path);
 			ZeqerSeqTable tbl_seq6 = ZeqerCore.getZeqerZ6SeqTable();
 			tbl_seq6.importTSV(seq_tsv_path);*/
-			ZeqerSeqTable tbl_seq = ZeqerCore.getZeqerSeqTable();
+			ZeqerSeqTable tbl_seq = ZeqerCore.getActiveCore().getZeqerSeqTable();
 			tbl_seq.importTSV(seq_tsv_path);
 			
 			//Update preset table
-			ZeqerPresetTable tbl_prs = ZeqerCore.getZeqerPresetTable();
+			ZeqerPresetTable tbl_prs = ZeqerCore.getActiveCore().getZeqerPresetTable();
 			tbl_prs.importTSV(ins_tsv_path);
 			
 			//Update bank table (don't forget inst names)
-			ZeqerBankTable tbl_bnk = ZeqerCore.getZeqerBankTable();
+			ZeqerBankTable tbl_bnk = ZeqerCore.getActiveCore().getZeqerBankTable();
 			tbl_bnk.importTSV(bnk_tsv_path);
 			updateInstNames(tbl_bnk, tbl_prs);
 			
 			//Close, then reload tables
-			ZeqerCore.saveZeqerTables();
-			ZeqerCore.loadSoundTables();
+			ZeqerCore.getActiveCore().saveZeqerTables();
+			ZeqerCore.getActiveCore().loadSoundTables();
 			
 			//Print tables to tsv
-			tbl_wav = ZeqerCore.getZeqerWaveTable();
+			tbl_wav = ZeqerCore.getActiveCore().getZeqerWaveTable();
 			tbl_wav.exportTo(zdir, zdir + File.separator + "wav");
 			/*tbl_seq5 = ZeqerCore.getZeqerZ5SeqTable();
 			tbl_seq5.exportTo(zdir, zdir + File.separator + "seq" + File.separator + "zseqs");
@@ -158,11 +158,11 @@ public class ImportMetadata {
 			tbl_seq6 = ZeqerCore.getZeqerZ6SeqTable();
 			tbl_seq6.exportTo(zdir, zdir + File.separator + "seq" + File.separator + "zseqs");
 			Files.move(Paths.get(zdir + File.separator + "_zuseq_tbl.tsv"), Paths.get(zdir + File.separator + "_zuseq6_tbl.tsv"));*/
-			tbl_seq = ZeqerCore.getZeqerSeqTable();
+			tbl_seq = ZeqerCore.getActiveCore().getZeqerSeqTable();
 			tbl_seq.exportTo(zdir, zdir + File.separator + "seq");
-			tbl_prs = ZeqerCore.getZeqerPresetTable();
+			tbl_prs = ZeqerCore.getActiveCore().getZeqerPresetTable();
 			tbl_prs.exportTo(zdir);
-			tbl_bnk = ZeqerCore.getZeqerBankTable();
+			tbl_bnk = ZeqerCore.getActiveCore().getZeqerBankTable();
 			tbl_bnk.exportTo(zdir);
 		}
 		catch(Exception ex){

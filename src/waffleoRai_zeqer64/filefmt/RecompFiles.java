@@ -128,8 +128,8 @@ public class RecompFiles {
 		int i = 0;
 		for(Integer suid : samps){
 			String outstem = warcdir + File.separator + String.format("%03d", i) + " "; //Need wave info to get name
-			Z64WaveInfo winfo = ZeqerCore.getWaveInfo(suid);
-			Z64Wave mywave = ZeqerCore.loadWave(suid);
+			Z64WaveInfo winfo = ZeqerCore.getActiveCore().getWaveInfo(suid);
+			Z64Wave mywave = ZeqerCore.getActiveCore().loadWave(suid);
 			if(winfo == null || mywave == null){
 				System.err.println("ERROR: Could not find sample with UID " + String.format("%08x", suid));
 				return false;
@@ -149,9 +149,9 @@ public class RecompFiles {
 		//Load bank information
 		if(sf == null) return false;
 		int buid = sf.getBankUID();
-		Z64Bank mybank = ZeqerCore.loadBank(buid);
+		Z64Bank mybank = ZeqerCore.getActiveCore().loadBank(buid);
 		if(mybank == null) return false;
-		BankTableEntry bankmeta = ZeqerCore.getBankInfo(buid);
+		BankTableEntry bankmeta = ZeqerCore.getActiveCore().getBankInfo(buid);
 		if(bankmeta == null) return false;
 		
 		//Get envelopes.
@@ -327,7 +327,7 @@ public class RecompFiles {
 		bw.write("\n");
 		i = 0;
 		for(EngineBankInfo binfo : banklist){
-			BankTableEntry bankmeta = ZeqerCore.getBankInfo(binfo.getBankUID());
+			BankTableEntry bankmeta = ZeqerCore.getActiveCore().getBankInfo(binfo.getBankUID());
 			if(bankmeta == null){
 				System.err.println("WARNING: Could not find metadata for bank with UID 0x" + String.format("%08x", binfo.getBankUID()));
 				i++; continue;
@@ -409,7 +409,7 @@ public class RecompFiles {
 			if(rcount > 0){
 				rsuffix = String.format("_R%02d", rcount);
 			}
-			BankTableEntry bentry = ZeqerCore.getBankInfo(buid);
+			BankTableEntry bentry = ZeqerCore.getActiveCore().getBankInfo(buid);
 			if(bentry == null){
 				hout.close(); dataout.close();
 				System.err.println("ERROR: Could not find bank table entry with ID 0x" + String.format("%08x", buid));
@@ -464,7 +464,7 @@ public class RecompFiles {
 			if(rcount > 0){
 				rsuffix = String.format("_R%02d", rcount);
 			}
-			SeqTableEntry sentry = ZeqerCore.getSeqInfo(suid);
+			SeqTableEntry sentry = ZeqerCore.getActiveCore().getSeqInfo(suid);
 			if(sentry == null){
 				hout.close(); dataout.close();
 				System.err.println("ERROR: Could not find seq table entry with ID 0x" + String.format("%08x", suid));

@@ -39,7 +39,7 @@ public class Test_BookAnalysis {
 	private static void analyzeSamples(String inpath, String outdir) throws IOException{
 		
 		//Load ROM
-		RomInfoNode rin = ZeqerCore.detectROM(inpath);
+		RomInfoNode rin = ZeqerCore.getActiveCore().detectROM(inpath);
 		if(rin == null){
 			System.err.println("ROM was not recognized: " + inpath);
 			printUsage();

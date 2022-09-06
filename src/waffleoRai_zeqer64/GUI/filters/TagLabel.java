@@ -103,6 +103,7 @@ public class TagLabel extends JLabel{
 	/*----- Actions -----*/
 	
 	public void onLeftClick(){
+		if(!isEnabled()) return;
 		setNotMode(!not_mode);
 		for(VoidCallbackMethod func : lc_callbacks){
 			func.doMethod();
@@ -110,6 +111,7 @@ public class TagLabel extends JLabel{
 	}
 	
 	public void onRightClick(){
+		if(!isEnabled()) return;
 		for(VoidCallbackMethod func : rc_callbacks){
 			func.doMethod();
 		}

@@ -14,8 +14,10 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 
 import waffleoRai_Sound.nintendo.N64ADPCMTable;
@@ -35,15 +37,31 @@ public class ZeqerWaveTable {
 	/*----- Constants -----*/
 	
 	public static final String MAGIC = "zeqrWAVt";
-	public static final short CURRENT_VERSION = 2;
+	public static final short CURRENT_VERSION = 3;
 	
 	public static final int FLAG_ISMUSIC = 0x00000001;
 	public static final int FLAG_ISACTOR = 0x00000002;
 	public static final int FLAG_ISENV = 0x00000004;
 	public static final int FLAG_ISSFX = 0x00000008;
+	public static final int FLAG_ISVOX = 0x00000010;
+	public static final int FLAG_ISUNUSED = 0x00000020;
+	public static final int FLAG_ISIN_INST = 0x00000040;
+	public static final int FLAG_ISIN_PERC = 0x00000080;
+	public static final int FLAG_ISIN_SFX = 0x00000100;
+	public static final int FLAG_ISIN_OOTv0 = 0x00000200;
+	public static final int FLAG_ISIN_OOT = 0x00000400;
+	public static final int FLAG_ISIN_MM = 0x00000800;
+	public static final int FLAG_ISIN_OOTv0_MAINARC = 0x00001000;
+	public static final int FLAG_ISIN_OOT_MAINARC = 0x00002000;
+	public static final int FLAG_ISIN_MM_MAINARC = 0x00004000;
+	public static final int FLAG_ISCUSTOM = 0x00008000;
 	
 	//public static final int FLAG_2BIT = 0x40000000; //DEPRECATED
 	public static final int FLAG_ADPCM = 0x80000000;
+	
+	public static final String[] FLAG_NAMES = {"Music", "Actor", "Environment", "SFX", "Voice", "Unused", 
+			"In Instrument", "In Drum", "In SFX", "Ocarina 1.0", "Ocarina", "Majora", "Ocarina 1.0 Main Bank",
+			"Ocarina Main Bank", "Majora Main Bank", "User Custom"};
 	
 	/*----- Inner Classes -----*/
 	
@@ -55,6 +73,7 @@ public class ZeqerWaveTable {
 		private byte unity_key = 60;
 		private byte fine_tune = 0;
 		private int flags = 0;
+		private Set<String> tags;
 		
 		private Z64WaveInfo wave_info;
 		
@@ -109,6 +128,19 @@ public class ZeqerWaveTable {
 			entry.wave_info.setName(ss.getString());
 			in.skipBytes(ss.getSizeOnDisk());
 			
+			if(version >= 3){
+				ss = in.readVariableLengthString("UTF8", pos, BinFieldSize.WORD, 2);
+				String rawtags = ss.getString();
+				if(rawtags != null && !rawtags.isEmpty()){
+					entry.tags = new HashSet<String>();
+					String[] spl = rawtags.split(";");
+					for(String s : spl){
+						entry.tags.add(s);
+					}
+				}
+				in.skipBytes(ss.getSizeOnDisk());
+			}
+			
 			return entry;
 		}
 		
@@ -129,6 +161,10 @@ public class ZeqerWaveTable {
 		
 		public boolean isFlagSet(int flagMask){
 			return (flags & flagMask) != 0; 
+		}
+		
+		public Set<String> getTagSet(){
+			return tags;
 		}
 		
 		public void setName(String s){wave_info.setName(s);}
@@ -161,6 +197,20 @@ public class ZeqerWaveTable {
 			size += nlen;
 			if(nlen % 2 != 0) size++;
 			
+			//Tags size
+			size += 2;
+			int tlen = 0;
+			if(tags != null){
+				int tag_count = tags.size() - 1;
+				if(tag_count < 0) tag_count = 0;
+				for(String tag:tags){
+					tlen += tag.length();
+				}
+				tlen += tag_count;
+			}
+			size += tlen;
+			if(tlen % 2 != 0) size++;
+			
 			return size;
 		}
 		
@@ -181,6 +231,18 @@ public class ZeqerWaveTable {
 				for(int i = 0; i < 4; i++) out.addToFile(0);
 			}
 			out.addVariableLengthString("UTF8", wave_info.getName(), BinFieldSize.WORD, 2);
+			
+			if(tags != null && !tags.isEmpty()){
+				String fulltags = "";
+				boolean first = true;
+				for(String tag : tags){
+					if(!first) fulltags += ";";
+					fulltags += tag;
+					first = false;
+				}
+				out.addVariableLengthString("UTF8", fulltags, BinFieldSize.WORD, 2);
+			}
+			else out.addToFile((short)0);
 			
 			return (int)(out.getFileSize() - initsize);
 		}
