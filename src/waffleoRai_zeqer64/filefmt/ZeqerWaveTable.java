@@ -67,7 +67,7 @@ public class ZeqerWaveTable {
 	
 	public static class WaveTableEntry{
 		
-		private static final int BASE_SIZE = 4+2+1+1+16+2; //V2
+		private static final int BASE_SIZE = 4+2+1+1+16; //V2+
 		
 		private byte[] md5;
 		private byte unity_key = 60;
@@ -77,12 +77,15 @@ public class ZeqerWaveTable {
 		
 		private Z64WaveInfo wave_info;
 		
+		private int read_amt = 0; //For parsing.
+		
 		private WaveTableEntry(){wave_info = new Z64WaveInfo();}
 		
 		public static WaveTableEntry read(FileBuffer in, long offset, int version){
 			//System.err.println("DEBUG: Starting entry read at 0x" + Long.toHexString(offset));
 			WaveTableEntry entry = new WaveTableEntry();
 			in.setCurrentPosition(offset);
+			long stpos = offset;
 			
 			entry.wave_info.setUID(in.nextInt());
 			if(version < 2){
@@ -140,6 +143,7 @@ public class ZeqerWaveTable {
 				}
 				in.skipBytes(ss.getSizeOnDisk());
 			}
+			entry.read_amt = (int)(in.getCurrentPosition() - stpos);
 			
 			return entry;
 		}
@@ -147,12 +151,14 @@ public class ZeqerWaveTable {
 		public int getUID(){return wave_info.getUID();}
 		public String getName(){return wave_info.getName();}
 		
+		public int getReadBytes(){return read_amt;}
+		
 		public int getSampleRate(){
 			return Math.round(32000f * wave_info.getTuning());
 		}
 		
 		private void updateFlags(){
-			flags = 0;
+			clearFlags(FLAG_ISACTOR | FLAG_ISENV | FLAG_ISSFX | FLAG_ISMUSIC);
 			if(wave_info.actorFlag()) flags |= FLAG_ISACTOR;
 			if(wave_info.envFlag()) flags |= FLAG_ISENV;
 			if(wave_info.sfxFlag()) flags |= FLAG_ISSFX;
@@ -178,6 +184,10 @@ public class ZeqerWaveTable {
 			flags |= flagMask;
 		}
 		
+		public void clearFlags(int flagMask){
+			flags &= ~flagMask;
+		}
+		
 		public Z64WaveInfo getWaveInfo(){
 			return wave_info;
 		}
@@ -191,11 +201,13 @@ public class ZeqerWaveTable {
 			int size = BASE_SIZE;
 			
 			//Add name size
+			size += 2;
 			String wname = wave_info.getName();
-			if(wname == null) return size;
-			int nlen = wname.length();
-			size += nlen;
-			if(nlen % 2 != 0) size++;
+			if(wname != null){
+				int nlen = wname.length();
+				size += nlen;
+				if(size % 2 != 0) size++;	
+			}
 			
 			//Tags size
 			size += 2;
@@ -209,7 +221,7 @@ public class ZeqerWaveTable {
 				tlen += tag_count;
 			}
 			size += tlen;
-			if(tlen % 2 != 0) size++;
+			if(size % 2 != 0) size++;
 			
 			return size;
 		}
@@ -307,6 +319,7 @@ public class ZeqerWaveTable {
 			}
 		}
 		entry.wave_info.setUID(uid);
+		entry.setFlags(FLAG_ISUNUSED);
 		
 		entries.put(uid, entry);
 		md5_map.put(FileUtils.bytes2str(md5sum), entry);
@@ -342,7 +355,7 @@ public class ZeqerWaveTable {
 			WaveTableEntry entry = WaveTableEntry.read(data, cpos, version);
 			table.entries.put(entry.getUID(), entry);
 			table.md5_map.put(FileUtils.bytes2str(entry.md5).toLowerCase(), entry);
-			cpos += entry.getSerializedSize();
+			cpos += entry.getReadBytes();
 		}
 		
 		return table;
@@ -461,6 +474,24 @@ public class ZeqerWaveTable {
 				if(raw.equals("y")) entry.wave_info.flagAsSFX(true);
 				else entry.wave_info.flagAsSFX(false);
 			}
+			key = "IS_VOX";
+			if(cidx_map.containsKey(key)){
+				raw = fields[cidx_map.get(key)].toLowerCase();
+				if(raw.equals("y")) entry.setFlags(FLAG_ISVOX);
+				else entry.clearFlags(FLAG_ISVOX);
+			}
+			key = "TAGS";
+			if(cidx_map.containsKey(key)){
+				raw = fields[cidx_map.get(key)];
+				if(raw != null && !raw.isEmpty()){
+					String[] tagsplit = raw.split(";");
+					if(entry.tags == null){
+						entry.tags = new HashSet<String>();
+					}
+					for(String tag:tagsplit) entry.tags.add(tag);
+				}
+			}
+		
 			update_count++;
 		}
 		
@@ -572,7 +603,7 @@ public class ZeqerWaveTable {
 		String tsvpath = dirpath + File.separator + "_zuwav_tbl.tsv";
 		BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(tsvpath), StandardCharsets.UTF_8));
 		bw.write("#NAME\tUID\tMD5\tSAMPLERATE\tUNITYKEY\tFINETUNE\tLOOPSTART\tLOOPEND\tLOOPCOUNT\t" +
-		 "PREDORDER\tPREDCOUNT\tCODEC\tIS_MUSIC\tIS_ACTOR\tIS_ENV\tIS_SFX\n");
+		 "PREDORDER\tPREDCOUNT\tCODEC\tIS_MUSIC\tIS_ACTOR\tIS_ENV\tIS_SFX\tTAGS\n");
 		int ecount = entries.size();
 		List<Integer> uids = new ArrayList<Integer>(ecount+1);
 		uids.addAll(entries.keySet());
@@ -632,8 +663,19 @@ public class ZeqerWaveTable {
 			else bw.write("n\t");
 			if(entry.wave_info.envFlag()) bw.write("y\t");
 			else bw.write("n\t");
-			if(entry.wave_info.sfxFlag()) bw.write("y\n");
-			else bw.write("n\n");
+			if(entry.wave_info.sfxFlag()) bw.write("y\t");
+			else bw.write("n\t");
+			
+			if(entry.tags != null && !entry.tags.isEmpty()){
+				boolean first = true;
+				for(String tag : entry.tags){
+					if(!first) bw.write(";");
+					bw.write(tag);
+					first = false;
+				}
+				bw.write("\n");
+			}
+			else bw.write("\n");
 		}
 		
 		bw.close();

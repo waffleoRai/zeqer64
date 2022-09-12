@@ -7,13 +7,17 @@ import java.io.IOException;
 import java.util.Set;
 import java.util.TreeSet;
 
+import waffleoRai_SeqSound.SeqVoiceCounter;
+import waffleoRai_SeqSound.n64al.NUSALSeq;
 import waffleoRai_Utils.FileBuffer;
 import waffleoRai_Utils.FileBuffer.UnsupportedFileTypeException;
 import waffleoRai_Utils.FileUtils;
 import waffleoRai_zeqer64.SoundTables.SeqInfoEntry;
 import waffleoRai_zeqer64.ZeqerCore;
 import waffleoRai_zeqer64.ZeqerRom;
+import waffleoRai_zeqer64.ZeqerSeq;
 import waffleoRai_zeqer64.filefmt.NusRomInfo;
+import waffleoRai_zeqer64.filefmt.UltraSeqFile;
 import waffleoRai_zeqer64.filefmt.ZeqerSeqTable;
 import waffleoRai_zeqer64.filefmt.ZeqerSeqTable.SeqTableEntry;
 
@@ -189,6 +193,8 @@ public class SeqExtractor {
 			byte[] md5 = FileUtils.getMD5Sum(myseq.getBytes());
 			String md5str = FileUtils.bytes2str(md5).toLowerCase();
 			
+			System.err.println(String.format("Processing seq %d of %d: Size 0x%08x", i, scount, myseq.getFileSize()));
+			
 			//See if this sequence is already registered.
 			SeqTableEntry entry = seq_tbl.matchSequenceMD5(md5str);
 			if(entry == null){
@@ -202,7 +208,29 @@ public class SeqExtractor {
 					//Copy data
 					String datapath = dir_base + SEP + entry.getDataFileName();
 					if(!FileBuffer.fileExists(datapath)){
-						myseq.writeFile(datapath);
+						ZeqerSeq zseq = new ZeqerSeq(entry);
+						if(z_rom.getRomInfo().isZ5()) zseq.setOoTCompatible(true);
+						
+						//Add data.
+						try{
+							//Also try to parse flags and voice count??
+							NUSALSeq nseq = NUSALSeq.readNUSALSeq(myseq);
+							if(nseq != null){
+								SeqVoiceCounter vctr = new SeqVoiceCounter();
+								nseq.playTo(vctr, false);
+								zseq.setMaxVoiceLoad(vctr.getMaxTotalVoiceCount());
+								int lyrch = nseq.getMaxLayersPerChannel();
+								zseq.setMoreThanFourLayers(lyrch > 4);
+							}
+							else{
+								System.err.println("Could not parse seq data for sequence 0x" + String.format("%08x", entry.getUID()));
+							}
+						} catch(Exception ex){
+							System.err.println("Could not parse seq data for sequence 0x" + String.format("%08x", entry.getUID()));
+							ex.printStackTrace();
+						}
+						UltraSeqFile.writeUSEQ(zseq, datapath, myseq);
+						//myseq.writeFile(datapath);
 					}
 					
 					//Mark uid
@@ -212,7 +240,28 @@ public class SeqExtractor {
 			else{
 				String datapath = dir_base + SEP + entry.getDataFileName();
 				if(!FileBuffer.fileExists(datapath)){
-					myseq.writeFile(datapath);
+					ZeqerSeq zseq = new ZeqerSeq(entry);
+					if(z_rom.getRomInfo().isZ5()) zseq.setOoTCompatible(true);
+					
+					//Add data.
+					try{
+						//Also try to parse flags and voice count??
+						NUSALSeq nseq = NUSALSeq.readNUSALSeq(myseq);
+						if(nseq != null){
+							SeqVoiceCounter vctr = new SeqVoiceCounter();
+							nseq.playTo(vctr, false);
+							zseq.setMaxVoiceLoad(vctr.getMaxTotalVoiceCount());
+							int lyrch = nseq.getMaxLayersPerChannel();
+							zseq.setMoreThanFourLayers(lyrch > 4);
+						}
+						else{
+							System.err.println("Could not parse seq data for sequence 0x" + String.format("%08x", entry.getUID()));
+						}
+					} catch(Exception ex){
+						System.err.println("Could not parse seq data for sequence 0x" + String.format("%08x", entry.getUID()));
+						ex.printStackTrace();
+					}
+					UltraSeqFile.writeUSEQ(zseq, datapath, myseq);
 				}
 				uid_tbl[i] = entry.getUID();
 			}

@@ -11,6 +11,8 @@ public class ZeqerManagerForm extends JFrame{
 
 	private static final long serialVersionUID = -2977885456814658055L;
 
+	/*----- Init -----*/
+	
 	public ZeqerManagerForm(){
 		initGUI();
 	}
@@ -52,5 +54,13 @@ public class ZeqerManagerForm extends JFrame{
 		JMenuBar menuBar = new JMenuBar();
 		setJMenuBar(menuBar);
 	}
+	
+	/*----- Getters -----*/
+	
+	/*----- Setters -----*/
+	
+	/*----- Draw -----*/
+	
+	/*----- Action -----*/
 	
 }

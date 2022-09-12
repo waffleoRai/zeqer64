@@ -1,13 +1,10 @@
 package waffleoRai_zeqer64.filefmt;
 
 import java.io.BufferedOutputStream;
-import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
@@ -48,8 +45,12 @@ public class ZeqerSeqTable {
 	
 	public static class SeqTableEntry{
 		
+		/*----- Constants -----*/
+		
 		private static final int BASE_SIZE = 4+4+16+8+8+6;
 	
+		/*----- Instance Variables -----*/
+		
 		private int uid;
 		private int flags = 0;
 		private byte medium;
@@ -65,6 +66,8 @@ public class ZeqerSeqTable {
 		private String name;
 		private String enm_str;
 		private Set<String> tags;
+		
+		/*----- Init -----*/
 		
 		private SeqTableEntry(){tags = new HashSet<String>();}
 		
@@ -126,6 +129,8 @@ public class ZeqerSeqTable {
 			return entry;
 		}
 		
+		/*----- Getters -----*/
+		
 		public boolean flagSet(int flag){
 			return ((flags & flag) != 0);
 		}
@@ -144,9 +149,23 @@ public class ZeqerSeqTable {
 		}
 		
 		public String getDataFileName(){
-			return String.format("%08x.zuseq", uid);
+			return String.format("%08x.buseq", uid);
 		}
 			
+		public int getBankCount(){
+			if(banks == null) return 0;
+			return banks.size();
+		}
+		
+		public List<Integer> getLinkedBankUIDs(){
+			if(banks == null) return new LinkedList<Integer>();
+			ArrayList<Integer> copy = new ArrayList<Integer>(banks.size() + 1);
+			copy.addAll(banks);
+			return copy;
+		}
+		
+		/*----- Setters -----*/
+		
 		public void setName(String s){
 			name = s;
 			time_modified = ZonedDateTime.now();
@@ -190,6 +209,8 @@ public class ZeqerSeqTable {
 		public void clearTags(){
 			tags.clear();
 		}
+		
+		/*----- Serialization -----*/
 		
 		public int getSerializedSize(){
 			int size = BASE_SIZE;
@@ -385,101 +406,51 @@ public class ZeqerSeqTable {
 		if(tsv_path == null) return 0;
 		if(!FileBuffer.fileExists(tsv_path)) return 0;
 		
-		//This only updates specific fields.
-		Map<String, Integer> cidx_map = new HashMap<String, Integer>();
+		int import_count = 0;
+		TSVTables tsv = new TSVTables(tsv_path);
 		
-		int update_count = 0;
-		BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(tsv_path), StandardCharsets.UTF_8));
-		//Process header to determine column indices
-		String line = br.readLine();
-		if(!line.startsWith("#")){
-			System.err.println("ZeqerSeqTable.importTSV || tsv header not formatted correctly!");
-			br.close();
-			return 0;
-		}
-		line = line.substring(1);
-		String[] fields = line.split("\t");
-		for(int i = 0; i < fields.length; i++){
-			if(fields[i].startsWith("#")) fields[i] = fields[i].substring(1);
-			String k = fields[i].toUpperCase();
-			cidx_map.put(k, i);
-			System.err.println("ZeqerSeqTable.importTSV || Field Key Found: " + k);
-		}
+		//Check for required fields...
+		if(!tsv.hasField("UID")){tsv.closeReader(); return 0;}
 		
-		//Make sure mandatory fields are present
-		if(!cidx_map.containsKey("UID")){
-			System.err.println("ZeqerSeqTable.importTSV || UID field is required!");
-			br.close();
-			return 0;
-		}
-		
-		//Process records
-		String raw = null;
-		int n = 0;
-		int cidx_uid = cidx_map.get("UID");
-		while((line = br.readLine()) != null){
-			fields = line.split("\t");
-			
-			//Look for matching record
-			raw = fields[cidx_uid];
-			if(raw.startsWith("0x")) raw = raw.substring(2); //Chop 0x prefix
-			n = Integer.parseUnsignedInt(raw, 16); //Let the exception be thrown
-			SeqTableEntry entry = entries.get(n);
-			if(entry == null){
-				System.err.println("ZeqerSeqTable.importTSV || Seq table entry with UID " + raw + " not found in table. Skipping this record...");
-				continue;
-			}
-			
-			//Update update-able fields.
-			String key = "NAME";
-			if(cidx_map.containsKey(key)){
-				entry.setName(fields[cidx_map.get(key)]);
-			}
-			key = "BANKID";
-			if(cidx_map.containsKey(key)){
-				raw = fields[cidx_map.get(key)];
-				if(raw != null){
-					String[] blist = raw.split(";");
-					if(blist.length > 1){
-						raw = blist[0];
-						if(raw.startsWith("0x")) raw = raw.substring(2);
-						n = Integer.parseUnsignedInt(raw, 16);
-						entry.setSingleBank(n);
+		//Loop through records...
+		try{
+			while(tsv.nextRecord()){
+				int seqid = tsv.getValueAsHexInt("UID");
+				SeqTableEntry entry = getSequence(seqid);
+				if(entry == null){
+					System.err.println("ZeqerSeqTable.importTSV || Sequence " + String.format("%08x could not be found. Skipping...", seqid));
+					continue;
+				}
+				
+				String value = tsv.getValue("NAME");
+				if(value != null) entry.setName(value);
+				
+				value = tsv.getValue("ENUM");
+				if(value != null) entry.setEnumString(value);
+				
+				value = tsv.getValue("TAGS");
+				if(value != null && !value.isEmpty()){
+					String[] split = value.split(";");
+					if(split == null) continue;
+					if(entry.tags == null){
+						entry.tags = new HashSet<String>();
 					}
-					else{
-						if(entry.banks != null) entry.banks.clear();
-						for(String bid : blist){
-							if(bid.startsWith("0x")) bid = bid.substring(2);
-							n = Integer.parseUnsignedInt(bid, 16);
-							entry.addBank(n);
-						}
+					for(String s : split){
+						if(!s.isEmpty()) entry.tags.add(s);
 					}
 				}
+				
 			}
-			key = "TAGS";
-			if(cidx_map.containsKey(key)){
-				raw = fields[cidx_map.get(key)];
-				if(raw != null && !raw.isEmpty()){
-					if(!raw.startsWith("<NONE>")){
-						String[] taglist = raw.split(";");
-						for(String tag:taglist) entry.addTag(tag);	
-					}
-				}
-			}
-			key = "ENUM";
-			if(cidx_map.containsKey(key)){
-				entry.setEnumString(fields[cidx_map.get(key)]);
-			}
-
-
-			update_count++;
+		}catch(NumberFormatException ex){
+			System.err.println("ZeqerSeqTable.importTSV || Number parsing error caught!");
+			ex.printStackTrace();
 		}
 		
-		br.close();
-		
-		return update_count;
+		tsv.closeReader();
+
+		return import_count;
 	}
-	
+
 	public static int[] loadVersionTable(String dir_base, String zeqer_id) throws IOException{
 		String path = dir_base + SEP + "seq_" + zeqer_id + ".bin";
 		if(!FileBuffer.fileExists(path)) return null;

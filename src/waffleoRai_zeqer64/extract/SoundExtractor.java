@@ -118,8 +118,13 @@ public class SoundExtractor {
 		System.err.println("Output Directory: " + outdir);
 		
 		try{
+			ZeqerCore core = ZeqerCore.getActiveCore();
+			if(core == null){
+				core = ZeqerCore.instantiateActiveCore(outdir, true);
+			}
+			
 			//Try to detect ROM
-			ZeqerRom rom = ZeqerCore.getActiveCore().loadNUSROM(inpath);
+			ZeqerRom rom = core.loadNUSROM(inpath);
 			if(rom == null){
 				System.err.println("ROM was not recognized. Exiting...");
 				System.exit(1);
@@ -143,7 +148,7 @@ public class SoundExtractor {
 			if(!FileBuffer.directoryExists(tblpath)) Files.createDirectories(Paths.get(tblpath));
 			ZeqerWaveTable wtbl = ZeqerWaveTable.readTable(FileBuffer.createBuffer(srcpath, true));
 			wtbl.exportTo(tblpath, null);
-			
+
 			tblpath = tbldir + SEP + "bnk";
 			srcdir = outdir + SEP + ZeqerCore.DIRNAME_BANK + SEP + ZeqerCore.DIRNAME_ZBANK;
 			srcpath = srcdir + SEP + ZeqerCore.FN_SYSBANK;
@@ -155,23 +160,6 @@ public class SoundExtractor {
 			if(!FileBuffer.directoryExists(tblpath)) Files.createDirectories(Paths.get(tblpath));
 			ZeqerPresetTable ptbl = ZeqerPresetTable.readTable(FileBuffer.createBuffer(srcpath, true));
 			ptbl.exportTo(tblpath);
-			
-			/*tblpath = tbldir + SEP + "seq" + SEP + "z5";
-			srcdir = outdir + SEP + ZeqerCore.DIRNAME_SEQ + SEP + ZeqerCore.DIRNAME_ZSEQ;
-			srcpath = srcdir + SEP + ZeqerCore.FN_SYSSEQ_OOT;
-			if(!FileBuffer.directoryExists(tblpath)) Files.createDirectories(Paths.get(tblpath));
-			if(FileBuffer.fileExists(srcpath)){
-				ZeqerSeqTable stbl = ZeqerSeqTable.readTable(FileBuffer.createBuffer(srcpath, true));
-				stbl.exportTo(tblpath, srcdir);
-			}
-			
-			tblpath = tbldir + SEP + "seq" + SEP + "z6";
-			srcpath = srcdir + SEP + ZeqerCore.FN_SYSSEQ_MM;
-			if(!FileBuffer.directoryExists(tblpath)) Files.createDirectories(Paths.get(tblpath));
-			if(FileBuffer.fileExists(srcpath)){
-				ZeqerSeqTable stbl = ZeqerSeqTable.readTable(FileBuffer.createBuffer(srcpath, true));
-				stbl.exportTo(tblpath, srcdir);
-			}*/
 			
 			tblpath = tbldir + SEP + "seq";
 			srcpath = srcdir + SEP + ZeqerCore.FN_SYSSEQ;
