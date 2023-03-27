@@ -38,6 +38,8 @@ public class ZeqerInstPreset extends ZeqerPreset{
 	public int getWaveIDMid(){return waveid_mid;}
 	public int getWaveIDHi(){return waveid_hi;}
 	
+	public Z64Envelope getEnvelope(){return inst.getEnvelope();}
+	
 	public List<Z64Envelope> getEnvelopes(){
 		Z64Envelope env = inst.getEnvelope();
 		if(env == null) return null;
@@ -51,6 +53,10 @@ public class ZeqerInstPreset extends ZeqerPreset{
 	public void setWaveIDLo(int val){waveid_lo = val;}
 	public void setWaveIDMid(int val){waveid_mid = val;}
 	public void setWaveIDHi(int val){waveid_hi = val;}
+	
+	public void setEnvelope(Z64Envelope env){
+		inst.setEnvelope(env);
+	}
 	
 	public int hashToUID(){
 		FileBuffer buff = new FileBuffer(64, true);

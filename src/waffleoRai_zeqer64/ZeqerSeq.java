@@ -5,6 +5,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 import waffleoRai_SeqSound.n64al.NUSALSeq;
+import waffleoRai_Utils.FileBuffer;
 import waffleoRai_zeqer64.filefmt.ZeqerSeqTable.SeqTableEntry;
 
 public class ZeqerSeq {
@@ -147,6 +148,7 @@ public class ZeqerSeq {
 	private List<IOAlias> common_aliases;
 	
 	private NUSALSeq sequence = null;
+	private FileBuffer raw_data = null; //Only used if seq cannot be parsed!
 	
 	/*----- Initialization -----*/
 	
@@ -180,7 +182,9 @@ public class ZeqerSeq {
 		return copy;
 	}
 	
+	public boolean isParsable(){return sequence != null;}
 	public NUSALSeq getSequence(){return sequence;}
+	public FileBuffer getRawData(){return raw_data;}
 	
  	public Module getModule(int index){
 		if(index < 0 || modules == null) return null;
@@ -212,6 +216,7 @@ public class ZeqerSeq {
 	public void setSFXSeqFlag(boolean b){sfx_seq = b;}
 	public void setMaxVoiceLoad(int val){max_voice_load = val;}
 	public void setSequence(NUSALSeq seq){sequence = seq;}
+	public void setRawData(FileBuffer val){raw_data = val;}
 	
 	public void allocModuleList(int size){modules = new ArrayList<Module>(size+1);}
 	public void addModule(Module mod){mod.setIndex(modules.size()); modules.add(mod);}

@@ -105,9 +105,14 @@ public class UltraSeqFile {
 		chunk_data.setCurrentPosition(0L);
 		int raw_size = chunk_data.nextInt();
 		FileBuffer rawdat = chunk_data.createCopy(4L, 4L + raw_size);
-		NUSALSeq seq = NUSALSeq.readNUSALSeq(rawdat);
-		rawdat.dispose();
-		dest.setSequence(seq);
+		try{
+			NUSALSeq seq = NUSALSeq.readNUSALSeq(rawdat);
+			dest.setSequence(seq);
+			rawdat.dispose();
+		}
+		catch(Exception ex){
+			dest.setRawData(rawdat);
+		}
 	}
 	
 	private static void readLMOD(FileBuffer chunk_data, ZeqerSeq dest){
