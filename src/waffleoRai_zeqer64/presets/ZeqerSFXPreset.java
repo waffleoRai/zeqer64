@@ -3,6 +3,7 @@ package waffleoRai_zeqer64.presets;
 import java.io.IOException;
 import java.io.Writer;
 
+import waffleoRai_Utils.BinFieldSize;
 import waffleoRai_Utils.FileBuffer;
 import waffleoRai_Utils.FileUtils;
 import waffleoRai_zeqer64.ZeqerPreset;
@@ -13,6 +14,8 @@ public class ZeqerSFXPreset extends ZeqerPreset{
 	private int group_idx;
 	private int[] wave_ids;
 	private float[] tuning;
+	private String[] slot_enums;
+	private String[] slot_names;
 	
 	private boolean hashmode = false;
 	
@@ -21,6 +24,8 @@ public class ZeqerSFXPreset extends ZeqerPreset{
 		name = String.format("sfxgroup_%08x", uid);
 		wave_ids = new int[64];
 		tuning = new float[64];
+		slot_enums = new String[64];
+		slot_names = new String[64];
 	}
 
 	public String getName() {return name;}
@@ -47,8 +52,13 @@ public class ZeqerSFXPreset extends ZeqerPreset{
 		return c;
 	}
 
+	public String getSlotEnumString(int slot){return slot_enums[slot];}
+	public String getSlotNameString(int slot){return slot_names[slot];}
+	
 	public void setName(String s) {name = s;}
 	public void setGroupIndex(int value){group_idx = value;}
+	public void setSlotEnumString(int slot, String value){slot_enums[slot] = value;}
+	public void setSlotNameString(int slot, String value){slot_names[slot] = value;}
 	
 	public void setWaveID(int idx, int value){
 		if(idx < 0 || idx >= 64) return;
@@ -95,6 +105,34 @@ public class ZeqerSFXPreset extends ZeqerPreset{
 				buffer.addToFile(Float.floatToRawIntBits(tuning[i]));
 			}
 		}
+		
+		//String table (V4+)
+		int strtbl_size = 0;
+		for(int i = 0; i < scount; i++){
+			if(slot_enums[i] != null){
+				strtbl_size += slot_enums[i].length();
+				if((strtbl_size & 0x1) != 0) strtbl_size++;
+			}
+			else strtbl_size += 2;
+			if(slot_names[i] != null){
+				strtbl_size += slot_names[i].length();
+				if((strtbl_size & 0x1) != 0) strtbl_size++;
+			}
+			else strtbl_size += 2;
+		}
+		buffer.addToFile(strtbl_size);
+		
+		for(int i = 0; i < scount; i++){
+			if(slot_enums[i] != null){
+				buffer.addVariableLengthString(slot_enums[i], BinFieldSize.WORD, 2);
+			}
+			else buffer.addToFile((short)0);
+			if(slot_names[i] != null){
+				buffer.addVariableLengthString(slot_names[i], BinFieldSize.WORD, 2);
+			}
+			else buffer.addToFile((short)0);
+		}
+		
 		return (int)(buffer.getFileSize() - init_size);
 	}
 

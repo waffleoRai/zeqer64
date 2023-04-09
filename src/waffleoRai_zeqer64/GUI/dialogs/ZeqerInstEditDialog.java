@@ -3,6 +3,8 @@ package waffleoRai_zeqer64.GUI.dialogs;
 import javax.swing.JDialog;
 import javax.swing.JFrame;
 
+import waffleoRai_zeqer64.ZeqerCoreInterface;
+import waffleoRai_zeqer64.ZeqerUtils;
 import waffleoRai_zeqer64.GUI.dialogs.envedit.ZeqerEnvEditDialog;
 import waffleoRai_zeqer64.presets.ZeqerInstPreset;
 import java.awt.GridBagLayout;
@@ -21,6 +23,7 @@ import javax.swing.JTextField;
 
 import waffleoRai_GUITools.ComponentGroup;
 import waffleoRai_GUITools.RadioButtonGroup;
+import waffleoRai_Sound.nintendo.Z64Sound;
 import waffleoRai_Utils.VoidCallbackMethod;
 import waffleoRai_soundbank.nintendo.z64.Z64Envelope;
 
@@ -48,6 +51,7 @@ public class ZeqerInstEditDialog extends JDialog{
 	/*----- Instance Variables -----*/
 	
 	private JFrame parent;
+	private ZeqerCoreInterface core;
 	
 	private ComponentGroup globalEnable;
 	private RadioButtonGroup rbgRelUnits;
@@ -66,17 +70,19 @@ public class ZeqerInstEditDialog extends JDialog{
 	/**
 	 * @wbp.parser.constructor
 	 */
-	public ZeqerInstEditDialog(JFrame parent_frame){
+	public ZeqerInstEditDialog(JFrame parent_frame, ZeqerCoreInterface core_iface){
 		super(parent_frame, true);
 		parent = parent_frame;
+		core = core_iface;
 		myInst = null;
 		initGUI();
 		loadInstrument(null);
 	}
 	
-	public ZeqerInstEditDialog(JFrame parent_frame, ZeqerInstPreset inst){
+	public ZeqerInstEditDialog(JFrame parent_frame, ZeqerCoreInterface core_iface, ZeqerInstPreset inst){
 		super(parent_frame, true);
 		parent = parent_frame;
+		core = core_iface;
 		myInst = null;
 		initGUI();
 		loadInstrument(myInst);
@@ -224,7 +230,7 @@ public class ZeqerInstEditDialog extends JDialog{
 			}
 		});
 		
-		ZeqerInstEditPanel pnlLo = new ZeqerInstEditPanel(ZeqerInstEditPanel.REGION_TYPE_LO);
+		ZeqerInstEditPanel pnlLo = new ZeqerInstEditPanel(parent, core, ZeqerInstEditPanel.REGION_TYPE_LO);
 		pnlLo.setBorder(new EtchedBorder(EtchedBorder.LOWERED, null, null));
 		GridBagConstraints gbc_pnlLo = new GridBagConstraints();
 		gbc_pnlLo.insets = new Insets(0, 0, 5, 5);
@@ -234,7 +240,7 @@ public class ZeqerInstEditDialog extends JDialog{
 		getContentPane().add(pnlLo, gbc_pnlLo);
 		pnlRegions[0] = pnlLo;
 		
-		ZeqerInstEditPanel pnlMid = new ZeqerInstEditPanel(ZeqerInstEditPanel.REGION_TYPE_MID);
+		ZeqerInstEditPanel pnlMid = new ZeqerInstEditPanel(parent, core, ZeqerInstEditPanel.REGION_TYPE_MID);
 		pnlMid.setBorder(new EtchedBorder(EtchedBorder.LOWERED, null, null));
 		GridBagConstraints gbc_pnlMid = new GridBagConstraints();
 		gbc_pnlMid.insets = new Insets(0, 0, 5, 5);
@@ -244,7 +250,7 @@ public class ZeqerInstEditDialog extends JDialog{
 		getContentPane().add(pnlMid, gbc_pnlMid);
 		pnlRegions[1] = pnlMid;
 		
-		ZeqerInstEditPanel pnlHi = new ZeqerInstEditPanel(ZeqerInstEditPanel.REGION_TYPE_HI);
+		ZeqerInstEditPanel pnlHi = new ZeqerInstEditPanel(parent, core, ZeqerInstEditPanel.REGION_TYPE_HI);
 		pnlHi.setBorder(new EtchedBorder(EtchedBorder.LOWERED, null, null));
 		GridBagConstraints gbc_pnlHi = new GridBagConstraints();
 		gbc_pnlHi.insets = new Insets(0, 0, 5, 0);
@@ -331,19 +337,168 @@ public class ZeqerInstEditDialog extends JDialog{
 	
 	/*----- Getters -----*/
 	
+	public boolean getExitSelection(){return exitSelection;}
+	public ZeqerInstPreset getInstrument(){return myInst;}
+	
 	/*----- Setters -----*/
 	
 	public void loadInstrument(ZeqerInstPreset ipreset){
-		//TODO
+		setWait();
+		txtName.setText(ipreset.getName());
+		txtEnum.setText(ipreset.getEnumStringBase());
+		rbgRelUnits.select(RELRB_INDEX_RAW);
+		txtRelease.setText(Integer.toString(Byte.toUnsignedInt(ipreset.getInstrument().getDecay())));
+		
+		//Low region
+		int sid = ipreset.getWaveIDLo();
+		if(sid == 0 || sid == -1){
+			//Blank.
+			pnlRegions[0].setLimitNote((byte)0);
+			pnlRegions[0].clearSample();
+			pnlRegions[0].setUnityKey((byte)60);
+			pnlRegions[0].setFineTune(0);
+			pnlRegions[0].setRegionIncluded(false);
+		}
+		else{
+			pnlRegions[0].setRegionIncluded(true);
+			//TODO Uh oh, we need a sample link... Assume it is in instr then?
+			pnlRegions[0].setSample(ipreset.getInstrument().getSampleLow());
+			pnlRegions[0].setLimitNote(ipreset.getInstrument().getLowRangeTop());
+			
+			//Calculate tuning
+			float tune = ipreset.getInstrument().getTuningLow();
+			Z64Sound.Z64Tuning miditune = Z64Sound.calculateTuning((byte)60, tune);
+			pnlRegions[0].setUnityKey(miditune.root_key);
+			pnlRegions[0].setFineTune(miditune.fine_tune);
+		}
+		
+		//Middle region
+		sid = ipreset.getWaveIDMid();
+		if(sid == 0 || sid == -1){
+			//Blank. This is... not great.
+			pnlRegions[1].clearSample();
+			pnlRegions[1].setUnityKey((byte)60);
+			pnlRegions[1].setFineTune(0);
+		}
+		else{
+			pnlRegions[1].setSample(ipreset.getInstrument().getSampleMiddle());
+			
+			//Calculate tuning
+			float tune = ipreset.getInstrument().getTuningMiddle();
+			Z64Sound.Z64Tuning miditune = Z64Sound.calculateTuning((byte)60, tune);
+			pnlRegions[1].setUnityKey(miditune.root_key);
+			pnlRegions[1].setFineTune(miditune.fine_tune);
+		}
+		
+		//High region
+		sid = ipreset.getWaveIDHi();
+		if(sid == 0 || sid == -1){
+			//Blank.
+			pnlRegions[2].setLimitNote((byte)0);
+			pnlRegions[2].clearSample();
+			pnlRegions[2].setUnityKey((byte)60);
+			pnlRegions[2].setFineTune(0);
+			pnlRegions[2].setRegionIncluded(false);
+		}
+		else{
+			pnlRegions[2].setRegionIncluded(true);
+			pnlRegions[2].setSample(ipreset.getInstrument().getSampleHigh());
+			pnlRegions[2].setLimitNote(ipreset.getInstrument().getHighRangeBottom());
+			
+			//Calculate tuning
+			float tune = ipreset.getInstrument().getTuningHigh();
+			Z64Sound.Z64Tuning miditune = Z64Sound.calculateTuning((byte)60, tune);
+			pnlRegions[2].setUnityKey(miditune.root_key);
+			pnlRegions[2].setFineTune(miditune.fine_tune);
+		}
+		
+		unsetWait();
 	}
 	
 	/*----- GUI Management -----*/
 	
 	private int updateInstrument(){
-		//TODO
 		//Returns an error code
+		//Envelope Release
+		try{
+			int rtype = rbgRelUnits.getSelectedIndex();
+			int rel = Integer.parseInt(txtRelease.getText());
+			if(rtype == RELRB_INDEX_MILLIS){
+				//Convert
+				rel = Z64Sound.releaseMillisToValue(rel);
+			}
+			
+			//Must be between 0 and 255
+			if(rel < 0 || rel > 255) return INSTLOAD_INVALID_RELEASE;
+			myInst.getInstrument().setDecay((byte)rel);
+		}
+		catch(NumberFormatException ex){
+			return INSTLOAD_INVALID_RELEASE;
+		}
 		
+		//Regions
+		for(int i = 0; i < 3; i++){
+			if(!pnlRegions[i].regionIncluded()){
+				//Clear region in instrument.
+				if(i == 0){
+					myInst.setWaveIDLo(0);
+					myInst.getInstrument().setTuningLow(1.0f);
+				}
+				else if(i == 2){
+					myInst.setWaveIDHi(0);
+					myInst.getInstrument().setTuningHigh(1.0f);
+				}
+			}
+			else{
+				//Calculate tuning
+				byte rootNote = (byte)pnlRegions[i].getUnityKey();
+				byte fineTune = (byte)pnlRegions[i].getFineTune();
+				float tune = Z64Sound.calculateTuning((byte)60, rootNote, fineTune);
+				
+				//Check wave ID
+				int sampleUID = pnlRegions[i].getSelectedSampleUID();
+				if(sampleUID == 0 || sampleUID == -1){
+					//Invalid
+					return INSTLOAD_INVALID_SAMPLE;
+				}
+				
+				switch(i){
+				case 0:
+					myInst.setWaveIDLo(sampleUID);
+					myInst.getInstrument().setTuningLow(tune);
+					myInst.getInstrument().setLowRangeTop((byte)pnlRegions[i].getLimitNote());
+					break;
+				case 1:
+					myInst.setWaveIDMid(sampleUID);
+					myInst.getInstrument().setTuningMiddle(tune);
+					break;
+				case 2:
+					myInst.setWaveIDHi(sampleUID);
+					myInst.getInstrument().setTuningHigh(tune);
+					myInst.getInstrument().setHighRangeBottom((byte)pnlRegions[i].getLimitNote());
+					break;
+				}
+			}
+		}
 		
+		//Name & EnumID (Do last)
+		String txt = txtName.getText();
+		if(txt == null || txt.isEmpty()){
+			txt = "Untitled Instrument";
+			txtName.setText(txt);
+			txtName.repaint();
+		}
+		myInst.setName(txt);
+		
+		txt = txtEnum.getText();
+		if(txt == null || txt.isEmpty()){
+			txt = "UNKINST_PRESET_" + String.format("%08x", myInst.hashToUID());
+		}
+		//Also make sure it is valid (All caps, no C reserved chars)
+		txt = ZeqerUtils.fixHeaderEnumID(txt, true);
+		txtEnum.setText(txt);
+		txtEnum.repaint();
+		myInst.setEnumStringBase(txt);
 		
 		return INSTLOAD_ERR_NONE;
 	}
@@ -475,7 +630,7 @@ public class ZeqerInstEditDialog extends JDialog{
 	
 	private void btnEditEnvCallback(){
 		setWait();
-		ZeqerEnvEditDialog dialog = new ZeqerEnvEditDialog(parent);
+		ZeqerEnvEditDialog dialog = new ZeqerEnvEditDialog(parent, core);
 		if(myInst != null) dialog.loadEnvelope(myInst.getEnvelope());
 		else myInst = new ZeqerInstPreset();
 		

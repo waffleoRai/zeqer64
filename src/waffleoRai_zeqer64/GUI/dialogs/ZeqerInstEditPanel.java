@@ -12,14 +12,16 @@ import java.awt.event.ActionListener;
 import javax.swing.JSpinner;
 import javax.swing.JLabel;
 import javax.swing.JCheckBox;
+import javax.swing.JFrame;
 import javax.swing.JTextField;
 import javax.swing.SpinnerNumberModel;
-import javax.swing.border.EtchedBorder;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
 import waffleoRai_GUITools.ComponentGroup;
+import waffleoRai_Sound.nintendo.Z64WaveInfo;
 import waffleoRai_Utils.VoidCallbackMethod;
+import waffleoRai_zeqer64.ZeqerCoreInterface;
 import waffleoRai_zeqer64.filefmt.ZeqerWaveTable.WaveTableEntry;
 
 import javax.swing.JButton;
@@ -43,6 +45,9 @@ public class ZeqerInstEditPanel extends JPanel{
 	
 	/*----- Instance Variables -----*/
 	
+	private JFrame parent;
+	private ZeqerCoreInterface core;
+	
 	private ComponentGroup incl_enable;
 	
 	private JTextField txtSample;
@@ -63,11 +68,15 @@ public class ZeqerInstEditPanel extends JPanel{
 	/**
 	 * @wbp.parser.constructor
 	 */
-	public ZeqerInstEditPanel(){
+	public ZeqerInstEditPanel(JFrame parent_frame, ZeqerCoreInterface core_iface){
+		parent = parent_frame;
+		core = core_iface;
 		initGUI(REGION_TYPE_LO);
 	}
 	
-	public ZeqerInstEditPanel(int region_type){
+	public ZeqerInstEditPanel(JFrame parent_frame, ZeqerCoreInterface core_iface, int region_type){
+		parent = parent_frame;
+		core = core_iface;
 		initGUI(region_type);
 	}
 	
@@ -307,7 +316,30 @@ public class ZeqerInstEditPanel extends JPanel{
 	
 	/*----- Setters -----*/
 	
+	public void setRegionIncluded(boolean val){
+		cbInclude.setSelected(val);
+		setEnabled();
+	}
+	
+	public void clearSample(){
+		txtSample.setText("");
+		sampleUID = -1;
+		txtSample.repaint();
+	}
+	
 	public void setSample(WaveTableEntry smpl){
+		if(smpl != null){
+			txtSample.setText(smpl.getName());
+			sampleUID = smpl.getUID();
+		}
+		else{
+			txtSample.setText("");
+			sampleUID = -1;
+		}
+		txtSample.repaint();
+	}
+	
+	public void setSample(Z64WaveInfo smpl){
 		if(smpl != null){
 			txtSample.setText(smpl.getName());
 			sampleUID = smpl.getUID();
@@ -378,9 +410,17 @@ public class ZeqerInstEditPanel extends JPanel{
 	}
 	
 	private void btnSetSampleCallback(){
-		//TODO
 		if(setSampleStartCallback != null) setSampleStartCallback.doMethod();
+		setDisabled();
+		SamplePickDialog dialog = new SamplePickDialog(parent, core);
+		dialog.setVisible(true);
 		
+		if(dialog.getExitSelection()){
+			WaveTableEntry sel = dialog.getSelectedSample();
+			setSample(sel);
+		}
+
+		setEnabled();
 		if(setSampleDoneCallback != null) setSampleDoneCallback.doMethod();
 	}
 	

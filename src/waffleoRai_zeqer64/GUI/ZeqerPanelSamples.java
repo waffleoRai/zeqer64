@@ -125,13 +125,22 @@ public class ZeqerPanelSamples extends JPanel{
 	
 	/*----- Init -----*/
 	
+	/**
+	 * @wbp.parser.constructor
+	 */
 	public ZeqerPanelSamples(JFrame parent_frame, ZeqerCoreInterface core_iface){
 		parent = parent_frame;
 		core = core_iface;
-		initGUI();
+		initGUI(true);
 	}
 	
-	private void initGUI(){
+	public ZeqerPanelSamples(JFrame parent_frame, ZeqerCoreInterface core_iface, boolean editable_mode){
+		parent = parent_frame;
+		core = core_iface;
+		initGUI(editable_mode);
+	}
+	
+	private void initGUI(boolean editable_mode){
 		GridBagLayout gridBagLayout = new GridBagLayout();
 		gridBagLayout.columnWidths = new int[]{0, 0, 0};
 		gridBagLayout.rowHeights = new int[]{0, 0};
@@ -198,30 +207,32 @@ public class ZeqerPanelSamples extends JPanel{
 		gbl_pnlCtrl.rowWeights = new double[]{0.0, Double.MIN_VALUE};
 		pnlCtrl.setLayout(gbl_pnlCtrl);
 		
-		btnImport = new JButton("Import...");
-		GridBagConstraints gbc_btnImport = new GridBagConstraints();
-		gbc_btnImport.insets = new Insets(5, 5, 5, 5);
-		gbc_btnImport.gridx = 0;
-		gbc_btnImport.gridy = 0;
-		pnlCtrl.add(btnImport, gbc_btnImport);
-		btnImport.addActionListener(new ActionListener(){
-			public void actionPerformed(ActionEvent e) {
-				onButton_import();
-			}
-		});
-		
-		btnExport = new JButton("Export...");
-		GridBagConstraints gbc_btnExport = new GridBagConstraints();
-		gbc_btnExport.insets = new Insets(5, 5, 5, 5);
-		gbc_btnExport.gridx = 1;
-		gbc_btnExport.gridy = 0;
-		pnlCtrl.add(btnExport, gbc_btnExport);
-		btnExport.addActionListener(new ActionListener(){
-			public void actionPerformed(ActionEvent e) {
-				onButton_export();
-			}
-		});
-		btnExport.setEnabled(false);
+		if(editable_mode){
+			btnImport = new JButton("Import...");
+			GridBagConstraints gbc_btnImport = new GridBagConstraints();
+			gbc_btnImport.insets = new Insets(5, 5, 5, 5);
+			gbc_btnImport.gridx = 0;
+			gbc_btnImport.gridy = 0;
+			pnlCtrl.add(btnImport, gbc_btnImport);
+			btnImport.addActionListener(new ActionListener(){
+				public void actionPerformed(ActionEvent e) {
+					onButton_import();
+				}
+			});
+			
+			btnExport = new JButton("Export...");
+			GridBagConstraints gbc_btnExport = new GridBagConstraints();
+			gbc_btnExport.insets = new Insets(5, 5, 5, 5);
+			gbc_btnExport.gridx = 1;
+			gbc_btnExport.gridy = 0;
+			pnlCtrl.add(btnExport, gbc_btnExport);
+			btnExport.addActionListener(new ActionListener(){
+				public void actionPerformed(ActionEvent e) {
+					onButton_export();
+				}
+			});
+			btnExport.setEnabled(false);
+		}
 		
 		btnPlay = new JButton("Play");
 		GridBagConstraints gbc_btnPlay = new GridBagConstraints();

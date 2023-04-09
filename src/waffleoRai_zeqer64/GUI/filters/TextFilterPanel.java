@@ -103,7 +103,7 @@ public class TextFilterPanel<T> extends FilterPanel<T> {
 		pnlText.add(btnSearch, gbc_btnSearch);
 		btnSearch.addActionListener(new ActionListener(){
 			public void actionPerformed(ActionEvent e) {
-				onAction();
+				triggerRefilterCallbacks();
 			}
 		});
 		
@@ -143,7 +143,7 @@ public class TextFilterPanel<T> extends FilterPanel<T> {
 			flag_boxes[i] = new JCheckBox(flag_names[i]);
 			flag_boxes[i].addActionListener(new ActionListener(){
 				public void actionPerformed(ActionEvent e) {
-					onAction();
+					triggerRefilterCallbacks();
 				}
 			});
 		}
@@ -275,7 +275,7 @@ public class TextFilterPanel<T> extends FilterPanel<T> {
 	private void onButton_Clear(){
 		txtSearch.setText("");
 		txtSearch.repaint();
-		onAction();
+		triggerRefilterCallbacks();
 	}
 	
 }

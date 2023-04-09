@@ -213,7 +213,7 @@ public class FlagFilterPanel<T> extends FilterPanel<T>{
 		
 		node.label.addCallback(new VoidCallbackMethod(){
 			public void doMethod() {
-				onAction();
+				triggerRefilterCallbacks();
 			}
 		});
 		

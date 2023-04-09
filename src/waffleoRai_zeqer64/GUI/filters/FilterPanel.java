@@ -28,7 +28,7 @@ public abstract class FilterPanel<T> extends JPanel {
 		action_callbacks.clear();
 	}
 	
-	protected void onAction(){
+	protected void triggerRefilterCallbacks(){
 		for(VoidCallbackMethod func : action_callbacks) func.doMethod();
 	}
 	

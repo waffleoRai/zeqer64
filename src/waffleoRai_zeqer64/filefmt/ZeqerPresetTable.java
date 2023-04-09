@@ -33,7 +33,7 @@ import waffleoRai_zeqer64.presets.ZeqerSFXPreset;
 public class ZeqerPresetTable {
 	
 	public static final String TBL_MAGIC = "zeqrINSt";
-	public static final int TBL_CURRENT_VERSION = 3;
+	public static final int TBL_CURRENT_VERSION = 4;
 	
 	private static final int HEADER_SIZE = 16+8;
 	
@@ -122,27 +122,10 @@ public class ZeqerPresetTable {
 					preset = ipreset;
 					break;
 				case ZeqerPreset.PRESET_TYPE_PERC:
-					scount = Byte.toUnsignedInt(data.nextByte());
 					data.skipBytes(3);//Reserved
 					ZeqerPercPreset ppreset = new ZeqerPercPreset(uid);
-					for(int j = 0; j < scount; j++){
-						Z64Drum drum = new Z64Drum();
-						drum.setDecay(data.nextByte());
-						drum.setPan(data.nextByte());
-						eidx = Short.toUnsignedInt(data.nextShort());
-						if(eidx >= 0) drum.setEnvelope(envs[eidx]);
-						int wid = data.nextInt();
-						if(wid == 0 || wid == -1){
-							data.skipBytes(4L);
-							continue;
-						}
-						else{
-							ppreset.setWaveID(j, wid);
-							//drum.setTuning(Z64Drum.commonToLocalTuning(j, Float.intBitsToFloat(data.nextInt())));
-							drum.setTuning(Z64Drum.localToCommonTuning(j, Float.intBitsToFloat(data.nextInt())));
-							ppreset.setDrumToSlot(j, drum);	
-						}
-					}
+					long amtread = ppreset.readIn(data.getReferenceAt(data.getCurrentPosition()), envs, version);
+					data.skipBytes(amtread);
 					preset = ppreset;
 					break;
 				case ZeqerPreset.PRESET_TYPE_SFX:
@@ -157,6 +140,19 @@ public class ZeqerPresetTable {
 						}
 						else data.skipBytes(4L);
 					}
+					
+					//Read string table, if present
+					if(version >= 4){
+						for(int j = 0; j < scount; j++){
+							SerializedString ss = data.readVariableLengthString("UTF8", data.getCurrentPosition(), BinFieldSize.WORD, 2);
+							spreset.setSlotEnumString(j, ss.getString());
+							data.skipBytes(ss.getSizeOnDisk());
+							ss = data.readVariableLengthString("UTF8", data.getCurrentPosition(), BinFieldSize.WORD, 2);
+							spreset.setSlotNameString(j, ss.getString());
+							data.skipBytes(ss.getSizeOnDisk());
+						}
+					}
+					
 					preset = spreset;
 					break;
 				default:
@@ -403,7 +399,6 @@ public class ZeqerPresetTable {
 		return name_map.get(name.toUpperCase());
 	}
 	
-
 	/*----- Setters -----*/
 	
 	public void addPreset(ZeqerPreset preset){

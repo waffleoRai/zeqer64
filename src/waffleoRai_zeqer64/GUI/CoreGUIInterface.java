@@ -1,7 +1,10 @@
 package waffleoRai_zeqer64.GUI;
 
 import java.util.Collection;
+import java.util.Map;
 
+import waffleoRai_Sound.nintendo.Z64WaveInfo;
+import waffleoRai_soundbank.nintendo.z64.Z64Envelope;
 import waffleoRai_zeqer64.ZeqerCoreInterface;
 import waffleoRai_zeqer64.ZeqerRom;
 import waffleoRai_zeqer64.GUI.dialogs.progress.IndefProgressDialog;
@@ -68,6 +71,23 @@ public class CoreGUIInterface implements ZeqerCoreInterface{
 	@Override
 	public boolean exportSample(WaveTableEntry wave, String path) {
 		// TODO Auto-generated method stub
+		return false;
+	}
+	
+	public Z64WaveInfo getDefaultPercussionSample(){
+		//TODO
+		return null;
+	}
+	
+	/*----- Envelope Management -----*/
+	
+	public Map<String, Z64Envelope> getAllEnvelopePresets(){
+		//TODO
+		return null;
+	}
+	
+	public boolean addEnvelopePreset(String name, Z64Envelope env){
+		//TODO
 		return false;
 	}
 

@@ -261,7 +261,7 @@ public class TagFilterPanel<T> extends FilterPanel<T>{
 		});
 		tagnode.tag.addLeftClickCallback(new VoidCallbackMethod(){
 			public void doMethod() {
-				onAction();
+				triggerRefilterCallbacks();
 			}
 		});
 		
@@ -368,7 +368,7 @@ public class TagFilterPanel<T> extends FilterPanel<T>{
 		if(head_tag == node) head_tag = node.next;
 		
 		updateTags();
-		onAction();
+		triggerRefilterCallbacks();
 	}
 	
 	private void onClickAND(){

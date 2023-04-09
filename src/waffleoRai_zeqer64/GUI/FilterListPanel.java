@@ -82,7 +82,9 @@ public class FilterListPanel<T> extends FilterPanel<T>{
 		filters.add(pnl);
 		pnl.addRefilterCallback(new VoidCallbackMethod(){
 			public void doMethod() {
-				onAction();
+				//The FilterListPanel is a FilterPanel, so this calls the
+				//	FilterListPanel's own callbacks
+				triggerRefilterCallbacks();
 			}
 		});
 		updateGrid();
@@ -92,6 +94,7 @@ public class FilterListPanel<T> extends FilterPanel<T>{
 		filters.clear();
 		updateGrid();
 	}
+
 	
 	/*----- Drawing -----*/
 	

@@ -5,18 +5,24 @@ import java.io.Writer;
 import java.util.LinkedList;
 import java.util.List;
 
+import waffleoRai_Sound.nintendo.Z64Sound;
+import waffleoRai_Sound.nintendo.Z64Sound.Z64Tuning;
 import waffleoRai_Sound.nintendo.Z64WaveInfo;
+import waffleoRai_Utils.BinFieldSize;
+import waffleoRai_Utils.BufferReference;
 import waffleoRai_Utils.FileBuffer;
 import waffleoRai_Utils.FileUtils;
 import waffleoRai_soundbank.nintendo.z64.Z64Drum;
 import waffleoRai_soundbank.nintendo.z64.Z64Envelope;
 import waffleoRai_zeqer64.ZeqerPreset;
+import waffleoRai_zeqer64.filefmt.ZeqerPresetTable;
 
 public class ZeqerPercPreset extends ZeqerPreset{
 
 	private String name;
 	private Z64Drum[] slots;
-	private int[] wave_ids;
+	private ZeqerPercRegion[] regions; //Z64Drum instances stored here and linked in slots
+	private int[] wave_ids; //By slots
 	
 	private boolean hashmode = false;
 	
@@ -29,6 +35,89 @@ public class ZeqerPercPreset extends ZeqerPreset{
 	
 	public String getName() {return name;}
 	public int getType() {return ZeqerPreset.PRESET_TYPE_PERC;}
+	
+	public long readIn(BufferReference src, Z64Envelope[] envs, int version){
+		if(src == null) return 0;
+		if(version < 1) return 0;
+		if(version > ZeqerPresetTable.TBL_CURRENT_VERSION) return 0;
+		
+		long stpos = src.getBufferPosition();
+		int entrycount = Byte.toUnsignedInt(src.nextByte());
+		src.add(3);
+		
+		for(int i = 0; i < 64; i++) {
+			slots[i] = null;
+			wave_ids[i] = 0;
+		}
+		
+		int val = 0;
+		if(version >= 4){
+			regions = new ZeqerPercRegion[entrycount];
+			for(int i = 0; i < entrycount; i++){
+				int minnote = -1;
+				int maxnote = -1;
+				Z64Drum drum = new Z64Drum();
+				drum.setDecay(src.nextByte());
+				drum.setPan(src.nextByte());
+				val = src.nextShort();
+				if(val >= 0){
+					drum.setEnvelope(envs[val]);
+				}
+				val = src.nextInt();
+				Z64Tuning tune = new Z64Tuning();
+				tune.root_key = src.nextByte();
+				tune.fine_tune = src.nextByte();
+				minnote = src.nextByte();
+				maxnote = src.nextByte();
+				
+				//Wrap in region.
+				ZeqerPercRegion reg = new ZeqerPercRegion();
+				regions[i] = reg;
+				reg.setDrumData(drum);
+				reg.setMinNote(minnote);
+				reg.setMaxNote(maxnote);
+				
+				//Link in drum and wave id slots.
+				for(int j = minnote; j <= maxnote; j++){
+					slots[j] = drum;
+					wave_ids[j] = val;
+				}
+			}
+			
+			//String table
+			src.add(4); //Skip the table length
+			for(int i = 0; i < entrycount; i++){
+				regions[i].setEnumStem(src.nextVariableLengthString(BinFieldSize.WORD, 2));
+				regions[i].setNameStem(src.nextVariableLengthString(BinFieldSize.WORD, 2));
+			}
+		}
+		else {
+			for(int i = 0; i < entrycount; i++){
+				Z64Drum drum = new Z64Drum();
+				drum.setDecay(src.nextByte());
+				drum.setPan(src.nextByte());
+				val = src.nextShort();
+				if(val >= 0){
+					drum.setEnvelope(envs[val]);
+				}
+				val = src.nextInt();
+				if(val != 0 && val != -1){
+					wave_ids[i] = val;
+					float tune = Float.intBitsToFloat(src.nextInt());
+					drum.setTuning(Z64Drum.localToCommonTuning(i, tune));
+				}
+				else{
+					drum.setSample(null);
+					wave_ids[i] = 0;
+					src.add(4);
+				}
+				slots[i] = drum;
+			}
+			consolidateRegions();
+		}
+		
+		return src.getBufferPosition() - stpos;
+	}
 	
 	public Z64Drum getDrumInSlot(int idx){
 		if(idx < 0 || idx >= 64) return null;
@@ -43,6 +132,18 @@ public class ZeqerPercPreset extends ZeqerPreset{
 			if(slots[i] != null) c = i;
 		}
 		return c;
+	}
+	
+	public ZeqerPercRegion getRegion(int index){
+		if(regions == null) return null;
+		if(index < 0) return null;
+		if(index >= regions.length) return null;
+		return regions[index];
+	}
+	
+	public int getRegionCount(){
+		if(regions == null) return 0;
+		return regions.length;
 	}
 	
 	public List<Z64Envelope> getEnvelopes(){
@@ -98,6 +199,39 @@ public class ZeqerPercPreset extends ZeqerPreset{
 		slots[idx] = drum;
 	}
 	
+	public void clearAndReallocRegions(int regcount){
+		//Clears EVERYTHING
+		for(int i = 0; i < 64; i++){
+			slots[i] = null;
+			wave_ids[i] = 0;
+		}
+		regions = new ZeqerPercRegion[regcount];
+	}
+	
+	public int setRegion(int index, ZeqerPercRegion region){
+		if(regions == null) return -1;
+		if(index < 0 || index >= regions.length) return -1;
+		regions[index] = region;
+		
+		if(region != null){
+			int minnote = region.getMinNote();
+			int maxnote = region.getMaxNote();
+			for(int i = minnote; i <= maxnote; i++){
+				slots[i] = region.getDrumData();
+				if(slots[i] != null){
+					Z64WaveInfo winfo = slots[i].getSample();
+					if(winfo != null){
+						wave_ids[i] = winfo.getUID();
+					}
+					else wave_ids[i] = 0;
+				}
+				else wave_ids[i] = 0;
+			}
+		}
+		
+		return index;
+	}
+	
 	public int hashToUID(){
 		FileBuffer buff = new FileBuffer(4+(32*64), true);
 		hashmode = true;
@@ -113,6 +247,56 @@ public class ZeqerPercPreset extends ZeqerPreset{
 		return val;
 	}
 
+	public void consolidateRegions(){
+		//If only slots are recorded, then combine these into regions
+		//	for more streamlined serialization and user editing.
+		List<ZeqerPercRegion> templist = new LinkedList<ZeqerPercRegion>();
+		ZeqerPercRegion lastreg = null;
+		regions = null;
+		if(slots == null) return;
+		char nchar = 'A';
+		int lastwave = -1;
+		for(int i = 0; i < slots.length; i++){
+			if(slots[i] != null){
+				if(lastreg != null){
+					//See if eq. If not, new region.
+					if((lastwave == wave_ids[i]) && slots[i].drumEquals(lastreg.getDrumData())){
+						lastreg.setMaxNote(i + Z64Sound.STDRANGE_BOTTOM);
+						continue;
+					}
+				}
+				//new reg
+				lastreg = new ZeqerPercRegion();
+				templist.add(lastreg);
+				lastreg.setMinNote(i + Z64Sound.STDRANGE_BOTTOM);
+				lastreg.setMaxNote(i + Z64Sound.STDRANGE_BOTTOM);
+				lastreg.setDrumData(slots[i]);
+				lastreg.setRandomStringStems();
+				lastwave = wave_ids[i];
+				
+				if(nchar <= 'Z'){
+					lastreg.setEnumStem("PERCREG_" + nchar);
+					lastreg.setNameStem("Percussion Instrument " + nchar);
+					nchar++;
+				}
+				else{
+					lastreg.setEnumStem("PERCREG_" + i);
+					lastreg.setNameStem("Percussion Instrument " + i);
+				}
+			}
+			else{
+				lastreg = null;
+				lastwave = -1;
+			}
+		}
+		
+		int rcount = templist.size();
+		regions = new ZeqerPercRegion[rcount];
+		int i = 0;
+		for(ZeqerPercRegion r : templist) regions[i++] = r;
+		templist.clear();
+	}
+	
 	protected int serializeMe(FileBuffer buffer) {
 		long init_size = buffer.getFileSize();
 		int flags = 0x80000000;
@@ -121,6 +305,107 @@ public class ZeqerPercPreset extends ZeqerPreset{
 		if(!hashmode) buffer.addToFile(uid);
 		else buffer.addToFile(0);
 		buffer.addToFile(flags); //Flags
+		
+		//Version 4+
+		consolidateRegions();
+		int rcount = regions.length;
+		buffer.addToFile((byte)rcount);
+		buffer.add24ToFile(0);
+		for(int i = 0; i < rcount; i++){
+			ZeqerPercRegion reg = regions[i];
+			if(reg != null){
+				Z64Drum drum = reg.getDrumData();
+				if(drum != null){
+					buffer.addToFile(drum.getDecay());
+					buffer.addToFile(drum.getPan());
+					Z64Envelope env = drum.getEnvelope();
+					
+					if(!hashmode){
+						if(env == null) buffer.addToFile((short)-1);
+						else buffer.addToFile((short)env.getID());
+					}
+					else{
+						//Copy envelope.
+						if(env != null){
+							List<short[]> events = env.getEvents();
+							for(short[] event : events){
+								buffer.addToFile(event[0]);
+								buffer.addToFile(event[1]);
+							}
+						}
+					}
+					
+					Z64WaveInfo winfo = drum.getSample();
+					if(winfo == null) buffer.addToFile(wave_ids[i]);
+					else buffer.addToFile(winfo.getUID());
+					
+					Z64Tuning tuning = drum.getTuning();
+					buffer.addToFile(tuning.root_key);
+					buffer.addToFile(tuning.fine_tune);
+					buffer.addToFile(reg.getMinNote());
+					buffer.addToFile(reg.getMaxNote());
+				}
+				else{
+					//Empty slot
+					buffer.addToFile((short)0);
+					buffer.addToFile((short)-1);
+					buffer.addToFile(-1);
+					buffer.addToFile((byte)60);
+					buffer.addToFile((byte)0);
+					
+					buffer.addToFile(reg.getMinNote());
+					buffer.addToFile(reg.getMaxNote());
+				}
+			}
+			else{
+				//Empty slot
+				buffer.addToFile((short)0);
+				buffer.addToFile((short)-1);
+				buffer.addToFile(-1);
+				buffer.addToFile((byte)60);
+				buffer.addToFile((byte)0);
+				
+				buffer.addToFile((byte)0);
+				buffer.addToFile((byte)127);
+			}
+		}
+		
+		//String table (V4+)
+		//First, need to calculate size.....
+		int stsize = 0;
+		for(int i = 0; i < rcount; i++){
+			ZeqerPercRegion reg = regions[i];
+			stsize += 4;
+			if(reg != null){
+				String s = reg.getEnumStem();
+				if(s != null){
+					stsize += s.length();
+					if((stsize & 0x1) != 0) stsize++;
+				}
+				s = reg.getNameStem();
+				if(s != null){
+					stsize += s.length();
+					if((stsize & 0x1) != 0) stsize++;
+				}
+			}
+		}
+		buffer.addToFile(stsize);
+		
+		//THEN write the actual strings...
+		for(int i = 0; i < rcount; i++){
+			ZeqerPercRegion reg = regions[i];
+			if(reg != null){
+				buffer.addVariableLengthString(reg.getEnumStem(), BinFieldSize.WORD, 2);
+				buffer.addVariableLengthString(reg.getNameStem(), BinFieldSize.WORD, 2);
+			}
+			else{
+				//Empty
+				buffer.addToFile(0);
+			}
+		}
+		
+		//VERSIONS 3-
+		/*
 		
 		int scount = getMaxUsedSlotCount();
 		buffer.addToFile((byte)scount);
@@ -163,6 +448,7 @@ public class ZeqerPercPreset extends ZeqerPreset{
 				buffer.addToFile(0);
 			}
 		}
+		*/
 		
 		return (int)(buffer.getFileSize() - init_size);
 	}

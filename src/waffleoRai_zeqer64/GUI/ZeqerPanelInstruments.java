@@ -4,6 +4,11 @@ import javax.swing.JFrame;
 import javax.swing.JPanel;
 
 import waffleoRai_zeqer64.ZeqerCoreInterface;
+import waffleoRai_zeqer64.ZeqerPreset;
+import waffleoRai_zeqer64.GUI.filters.TagFilterPanel;
+import waffleoRai_zeqer64.GUI.filters.TextFilterPanel;
+import waffleoRai_zeqer64.GUI.filters.ZeqerFilter;
+
 import java.awt.GridBagLayout;
 import java.awt.GridBagConstraints;
 import java.awt.Insets;
@@ -18,11 +23,34 @@ public class ZeqerPanelInstruments extends JPanel{
 	//	Playback will probably have to involve sending a short command to native code for synthesis
 
 	private static final long serialVersionUID = -6390624749239280331L;
+	
+	public static final String SAMPLEPNL_LAST_IMPORT_PATH = "ZINSTPNL_LASTIMPORT";
+	public static final String SAMPLEPNL_LAST_EXPORT_PATH = "ZINSTPNL_LASTEXPORT";
+	
+	public static final int FLAGIDX_MUSIC = 0;
+	public static final int FLAGIDX_SFX = 1;
+	public static final int FLAGIDX_VOICE = 2;
+	public static final int FLAGIDX_ENV = 3;
+	public static final int FLAGIDX_ACTOR = 4;
+	public static final int FLAGIDX_UNUSED = 5;
+	
+	public static final int FLAGIDX_INST = 0;
+	public static final int FLAGIDX_DRUM = 1;
+	public static final int FLAGIDX_FX = 2;
+	public static final int FLAGIDX_OOTv0 = 3;
+	public static final int FLAGIDX_OOT = 4;
+	public static final int FLAGIDX_MM = 5;
+	public static final int FLAGIDX_OOTv0_MAINWARC = 6;
+	public static final int FLAGIDX_OOT_MAINWARC  = 7;
+	public static final int FLAGIDX_MM_MAINWARC  = 8;
+	public static final int FLAGIDX_USER = 9;
 
 	/*----- Inner Classes -----*/
 	
 	private static class InstNode implements Comparable<InstNode>{
 
+		public ZeqerPreset preset;
+		
 		@Override
 		public int compareTo(InstNode o) {
 			// TODO Auto-generated method stub
@@ -37,9 +65,18 @@ public class ZeqerPanelInstruments extends JPanel{
 	
 	private JFrame parent;
 	
+	private FilterListPanel<InstNode> pnlFilt;
+	private TagFilterPanel<InstNode> pnlTags; //For refreshing/adding tags
+	
 	/*----- Init -----*/
 	
 	public ZeqerPanelInstruments(JFrame parent_frame, ZeqerCoreInterface core_iface){
+		parent = parent_frame;
+		core = core_iface;
+		initGUI();
+	}
+	
+	private void initGUI(){
 		GridBagLayout gridBagLayout = new GridBagLayout();
 		gridBagLayout.columnWidths = new int[]{0, 0, 0};
 		gridBagLayout.rowHeights = new int[]{0, 0, 0};
@@ -47,7 +84,7 @@ public class ZeqerPanelInstruments extends JPanel{
 		gridBagLayout.rowWeights = new double[]{1.0, 1.0, Double.MIN_VALUE};
 		setLayout(gridBagLayout);
 		
-		JPanel pnlFilt = new JPanel();
+		pnlFilt = new FilterListPanel<InstNode>();
 		GridBagConstraints gbc_pnlFilt = new GridBagConstraints();
 		gbc_pnlFilt.insets = new Insets(0, 0, 5, 5);
 		gbc_pnlFilt.fill = GridBagConstraints.BOTH;
@@ -78,7 +115,7 @@ public class ZeqerPanelInstruments extends JPanel{
 		gbc_spList.gridy = 0;
 		pnlList.add(spList, gbc_spList);
 		
-		JList list = new JList();
+		JList<InstNode> list = new JList<InstNode>();
 		spList.setViewportView(list);
 		
 		JPanel pnlInfo = new JPanel();
@@ -129,12 +166,37 @@ public class ZeqerPanelInstruments extends JPanel{
 		gbc_pnlPlay.gridx = 0;
 		gbc_pnlPlay.gridy = 1;
 		add(pnlPlay, gbc_pnlPlay);
-		parent = parent_frame;
-		core = core_iface;
+		
+		addFilterPanels();
 	}
 	
-	private void initGUI(){
+	private void addFilterPanels(){
+		//TODO
+		//Text search
+		TextFilterPanel<InstNode> fpnl1 = new TextFilterPanel<InstNode>(0);
+		fpnl1.setSearchFilter(new ZeqerFilter<InstNode>(){
+			public boolean itemPasses(InstNode item, String txt, long flags){
+				if(item == null) return false;
+				if(txt == null || txt.isEmpty()) return true;
+				String name = item.preset.getName();
+				if(name == null) return false;
+				return name.toLowerCase().contains(txt.toLowerCase());
+			}
+		});
+		pnlFilt.addPanel(fpnl1);
 		
 	}
+	
+	/*----- Getters -----*/
+	
+	/*----- Setters -----*/
+	
+	/*----- GUI Management -----*/
+	
+	private void updateList(){
+		//TODO
+	}
+	
+	/*----- Callbacks -----*/
 	
 }

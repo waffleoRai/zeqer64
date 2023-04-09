@@ -27,6 +27,7 @@ import javax.swing.event.ListSelectionListener;
 import waffleoRai_GUITools.ComponentGroup;
 import waffleoRai_Sound.nintendo.Z64Sound;
 import waffleoRai_soundbank.nintendo.z64.Z64Envelope;
+import waffleoRai_zeqer64.ZeqerCoreInterface;
 
 import javax.swing.JList;
 import javax.swing.JOptionPane;
@@ -101,13 +102,17 @@ public class ZeqerEnvEditDialog extends JDialog{
 	
 	private Z64Envelope out_env = null; //Rendered on okay/exit
 	
+	private ZeqerCoreInterface core;
+	
 	/*----- Init -----*/
 	
-	public ZeqerEnvEditDialog(JFrame parent_frame){
+	public ZeqerEnvEditDialog(JFrame parent_frame, ZeqerCoreInterface corelink){
 		super(parent_frame, true);
+		core = corelink;
 		parent = parent_frame;
 		globalEnable = new ComponentGroup();
 		initGUI();
+		loadPresetsFromCore();
 	}
 	
 	private void initGUI(){
@@ -284,6 +289,12 @@ public class ZeqerEnvEditDialog extends JDialog{
 		btnCancel.addActionListener(new ActionListener(){
 			public void actionPerformed(ActionEvent e) {btnCancelCallback();}});
 		globalEnable.addComponent("btnCancel", btnCancel);
+	}
+	
+	private void loadPresetsFromCore(){
+		if(core != null){
+			addPresets(core.getAllEnvelopePresets());
+		}
 	}
 	
 	/*----- Getters -----*/
@@ -622,6 +633,9 @@ public class ZeqerEnvEditDialog extends JDialog{
 					this.renderEnvelope();
 					PresetNode newnode = new PresetNode();
 					newnode.data = out_env;
+					if(core != null){
+						core.addEnvelopePreset(pname, out_env);
+					}
 					out_env = null;
 					newnode.name = pname;
 					storedPresets.add(newnode);

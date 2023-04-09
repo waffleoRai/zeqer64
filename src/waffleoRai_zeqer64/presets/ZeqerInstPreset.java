@@ -23,11 +23,17 @@ public class ZeqerInstPreset extends ZeqerPreset{
 	
 	private boolean hashmode = false;
 	
-	public ZeqerInstPreset(){inst = new Z64Instrument();}
+	public ZeqerInstPreset(){
+		inst = new Z64Instrument();
+		inst.setIDRandom();
+	}
 	
 	public ZeqerInstPreset(Z64Instrument i){
 		inst = i;
-		if(inst == null) inst = new Z64Instrument();
+		if(inst == null){
+			inst = new Z64Instrument();
+			inst.setIDRandom();
+		}
 	}
 	
 	public String getName(){return inst.getName();}
