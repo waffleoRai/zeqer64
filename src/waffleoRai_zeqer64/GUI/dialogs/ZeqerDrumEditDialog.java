@@ -52,7 +52,8 @@ import javax.swing.ListSelectionModel;
 public class ZeqerDrumEditDialog extends JDialog{
 	
 	//TODO Oh crap, do we want a play/preview panel/interface of some kind?
-
+	//TODO You forgot edit tags :)
+	
 	private static final long serialVersionUID = 6232066596448455202L;
 	
 	public static final int DEFO_WIDTH = 625;
@@ -214,7 +215,7 @@ public class ZeqerDrumEditDialog extends JDialog{
 		GridBagLayout gridBagLayout_2 = new GridBagLayout();
 		gridBagLayout_2.columnWidths = new int[]{0, 0, 0, 0, 0, 0};
 		gridBagLayout_2.rowHeights = new int[]{0, 0};
-		gridBagLayout_2.columnWeights = new double[]{0.0, 1.0, 1.0, 0.0, 1.0, Double.MIN_VALUE};
+		gridBagLayout_2.columnWeights = new double[]{0.0, 1.0, 1.0, 0.0, 0.0, Double.MIN_VALUE};
 		gridBagLayout_2.rowWeights = new double[]{0.0, Double.MIN_VALUE};
 		pnlMeta.setLayout(gridBagLayout_2);
 		
@@ -235,6 +236,17 @@ public class ZeqerDrumEditDialog extends JDialog{
 		pnlMeta.add(txtName, gbc_txtName);
 		txtName.setColumns(10);
 		globalEnable.addComponent("txtName", txtName);
+		
+		JButton btnEditTags = new JButton("Edit Tags...");
+		GridBagConstraints gbc_btnEditTags = new GridBagConstraints();
+		gbc_btnEditTags.insets = new Insets(0, 0, 0, 5);
+		gbc_btnEditTags.gridx = 4;
+		gbc_btnEditTags.gridy = 0;
+		pnlMeta.add(btnEditTags, gbc_btnEditTags);
+		globalEnable.addComponent("btnEditTags", btnEditTags);
+		btnEditTags.addActionListener(new ActionListener(){
+			public void actionPerformed(ActionEvent e) {btnEditTagsCallback();}
+		});
 		
 		JScrollPane spRegions = new JScrollPane();
 		spRegions.setViewportBorder(new BevelBorder(BevelBorder.LOWERED, null, null, null, null));
@@ -1103,6 +1115,22 @@ public class ZeqerDrumEditDialog extends JDialog{
 			else setSelectedSample(null);
 		}
 
+		unsetWait();
+	}
+	
+	private void btnEditTagsCallback(){
+		if(loadedDrum == null) return;
+		setWait();
+		ZeqerTagEditDialog dialog = new ZeqerTagEditDialog(parent);
+		dialog.loadTags(loadedDrum.getAllTags());
+		
+		dialog.setVisible(true);
+		if(dialog.getExitSelection()){
+			List<String> newtags = dialog.getTags();
+			loadedDrum.clearTags();
+			for(String s : newtags) loadedDrum.addTag(s);
+		}
+		
 		unsetWait();
 	}
 	

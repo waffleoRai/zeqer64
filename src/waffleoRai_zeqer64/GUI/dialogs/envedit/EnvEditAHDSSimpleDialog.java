@@ -23,6 +23,7 @@ import javax.swing.border.EtchedBorder;
 
 import waffleoRai_GUITools.ComponentGroup;
 import waffleoRai_GUITools.RadioButtonGroup;
+import waffleoRai_Sound.nintendo.Z64Sound;
 import waffleoRai_soundbank.nintendo.z64.Z64Envelope;
 
 public class EnvEditAHDSSimpleDialog extends JDialog{
@@ -640,27 +641,38 @@ public class EnvEditAHDSSimpleDialog extends JDialog{
 	
 	/*----- Envelope Generation -----*/
 	
+	private double decibelsToEnvRatio(int db){
+		double val = (double)db/20.0;
+		return Math.pow(10.0, val);
+	}
+	
+	private int readTextBoxValue(JTextField txt){
+		if(txt == null) return -1;
+		try{return Integer.parseInt(txt.getText());}
+		catch(NumberFormatException ex){return -1;}
+	}
+	
 	private int checkParameterValidity(){
 		//Returns an error code
 		int i = 0;
 		try{
 			i = Integer.parseInt(txtATime.getText());
-			if(i < 0) return PARAM_ERR_ATIME;
-			if(i > 10000) return PARAM_ERR_ATIME;
+			if(i < 5) return PARAM_ERR_ATIME;
+			if(i > Z64Sound.ENV_MAX_DELTA_MS) return PARAM_ERR_ATIME;
 		}
 		catch(NumberFormatException ex){return PARAM_ERR_ATIME;}
 		
 		try{
 			i = Integer.parseInt(txtHTime.getText());
 			if(i < 0) return PARAM_ERR_HTIME;
-			if(i > 10000) return PARAM_ERR_HTIME;
+			if(i > Z64Sound.ENV_MAX_DELTA_MS) return PARAM_ERR_HTIME;
 		}
 		catch(NumberFormatException ex){return PARAM_ERR_HTIME;}
 		
 		try{
 			i = Integer.parseInt(txtDTime.getText());
 			if(i < 0) return PARAM_ERR_DTIME;
-			if(i > 10000) return PARAM_ERR_DTIME;
+			if(i > Z64Sound.ENV_MAX_DELTA_MS) return PARAM_ERR_DTIME;
 		}
 		catch(NumberFormatException ex){return PARAM_ERR_DTIME;}
 		
@@ -675,7 +687,7 @@ public class EnvEditAHDSSimpleDialog extends JDialog{
 			try{
 				i = Integer.parseInt(txtSTime.getText());
 				if(i < 0) return PARAM_ERR_STIME;
-				if(i > 10000) return PARAM_ERR_STIME;
+				if(i > Z64Sound.ENV_MAX_DELTA_MS) return PARAM_ERR_STIME;
 			}
 			catch(NumberFormatException ex){return PARAM_ERR_STIME;}	
 		}
@@ -683,8 +695,251 @@ public class EnvEditAHDSSimpleDialog extends JDialog{
 		return PARAM_ERR_OKAY;
 	}
 	
+	private int addLinearChangeToEnv(Z64Envelope env, int start_lvl, int targ_lvl, int delta, int stop_lvl){
+		//Returns actual delta
+		if(stop_lvl != start_lvl){
+			//Add only part of the line
+			if(targ_lvl >= start_lvl){
+				if(stop_lvl > targ_lvl || stop_lvl <= start_lvl){
+					//Don't need to trim.
+					env.addEvent((short)delta, (short)targ_lvl);
+					return delta;
+				}
+				else{
+					int fulldiff = targ_lvl - start_lvl;
+					int usediff = stop_lvl - start_lvl;
+					double usedamt = (double)usediff / (double)fulldiff;
+					int scaled_delta = (int)Math.round(usedamt * (double)delta);
+					if(scaled_delta < 1) scaled_delta = 1;
+					env.addEvent((short)scaled_delta, (short)stop_lvl);
+					return scaled_delta;
+				}
+			}
+			else{
+				if(stop_lvl < targ_lvl || stop_lvl >= start_lvl){
+					//Don't need to trim.
+					env.addEvent((short)delta, (short)targ_lvl);
+					return delta;
+				}
+				else{
+					int fulldiff = start_lvl - targ_lvl;
+					int usediff = start_lvl - stop_lvl;
+					double usedamt = (double)usediff / (double)fulldiff;
+					int scaled_delta = (int)Math.round(usedamt * (double)delta);
+					if(scaled_delta < 1) scaled_delta = 1;
+					env.addEvent((short)scaled_delta, (short)stop_lvl);
+					return scaled_delta;
+				}
+			}
+		}
+		else{
+			env.addEvent((short)delta, (short)targ_lvl);
+			return delta;
+		}
+	}
+	
+	private void addLinearDBChangeToEnv(Z64Envelope env, int start_lvl, int targ_lvl, int delta, int stop_lvl){
+		//Delta is time in refresh units
+		double r = 0.0;
+		int lvl_delta = 0;
+		int act_delta = 0;
+		int lvl = 0;
+		int last_lvl = 0;
+		double lvldiff = (double)(targ_lvl - start_lvl);
+		if(delta >= 2){
+			if(delta >= 3){
+				if(delta >= 4){
+					//4 lines
+					double u_per_db = (double)delta/50.0;
+					int delta_l = (int)Math.round(u_per_db * 15.0);
+					r = decibelsToEnvRatio(-35);
+					lvl_delta = (int)Math.round(r * lvldiff);
+					lvl = start_lvl + lvl_delta;
+					act_delta = addLinearChangeToEnv(env, start_lvl, lvl, delta_l, stop_lvl);
+					if(act_delta < delta_l) return;
+
+					r = decibelsToEnvRatio(-20);
+					lvl_delta = (int)Math.round(r * lvldiff);
+					last_lvl = lvl;
+					lvl = start_lvl + lvl_delta;
+					act_delta = addLinearChangeToEnv(env, last_lvl, lvl, delta_l, stop_lvl);
+					if(act_delta < delta_l) return;
+					
+					delta_l = (int)Math.round(u_per_db * 10.0);
+					r = decibelsToEnvRatio(-10);
+					lvl_delta = (int)Math.round(r * lvldiff);
+					last_lvl = lvl;
+					lvl = start_lvl + lvl_delta;
+					act_delta = addLinearChangeToEnv(env, last_lvl, lvl, delta_l, stop_lvl);
+					if(act_delta < delta_l) return;
+					
+					act_delta = addLinearChangeToEnv(env, lvl, targ_lvl, delta_l, stop_lvl);
+				}
+				else{
+					//3 lines
+					r = decibelsToEnvRatio(-35);
+					lvl_delta = (int)Math.round(r * lvldiff);
+					lvl = start_lvl + lvl_delta;
+					if(lvldiff >= 0.0){
+						if(stop_lvl >= lvl){
+							env.addEvent((short)1, (short)stop_lvl);
+							return;
+						}
+						env.addEvent((short)1, (short)lvl);
+					}
+					else{
+						if(stop_lvl <= lvl){
+							env.addEvent((short)1, (short)stop_lvl);
+							return;
+						}
+						env.addEvent((short)1, (short)lvl);
+					}
+					
+					r = decibelsToEnvRatio(-10);
+					lvl_delta = (int)Math.round(r * lvldiff);
+					lvl = start_lvl + lvl_delta;
+					if(lvldiff >= 0.0){
+						if(stop_lvl >= lvl){
+							env.addEvent((short)1, (short)stop_lvl);
+							return;
+						}
+						env.addEvent((short)1, (short)lvl);
+					}
+					else{
+						if(stop_lvl <= lvl){
+							env.addEvent((short)1, (short)stop_lvl);
+							return;
+						}
+						env.addEvent((short)1, (short)lvl);
+					}
+					
+					env.addEvent((short)1, (short)stop_lvl);
+				}
+			}
+			else{
+				//2 lines
+				r = decibelsToEnvRatio(-20);
+				lvl_delta = (int)Math.round(r * lvldiff);
+				lvl = start_lvl + lvl_delta;
+				if(lvldiff >= 0.0){
+					if(stop_lvl >= lvl){
+						env.addEvent((short)1, (short)stop_lvl);
+						return;
+					}
+					env.addEvent((short)1, (short)lvl);
+				}
+				else{
+					if(stop_lvl <= lvl){
+						env.addEvent((short)1, (short)stop_lvl);
+						return;
+					}
+					env.addEvent((short)1, (short)lvl);
+				}
+				
+				env.addEvent((short)1, (short)stop_lvl);
+			}
+		}
+		else{
+			//Can only fit in one.
+			if(stop_lvl != targ_lvl){
+				env.addEvent((short)1, (short)stop_lvl);
+			}
+			else{
+				env.addEvent((short)1, (short)targ_lvl);
+			}
+		}
+	}
+	
 	private void generateEnvelope(){
-		//TODO
+		Z64Envelope nenv = new Z64Envelope();
+		
+		//I'll split into four commands for each linear dB choice.
+		//...I don't recommend linear dB lol
+		
+		//Attack
+		int time = readTextBoxValue(txtATime);
+		int t_units = Z64Sound.envelopeMillisToDelta(time);
+		switch(rbgACurve.getSelectedIndex()){
+		case RB_CURVE_IDX_LINENV:
+			nenv.addEvent((short)t_units, (short)32700);
+			break;
+		case RB_CURVE_IDX_LINDB:
+			addLinearDBChangeToEnv(nenv, 0, 32700, t_units, 32700);
+			break;
+		}
+		
+		//Hold
+		time = readTextBoxValue(txtHTime);
+		if(time > 0){
+			t_units = Z64Sound.envelopeMillisToDelta(time);
+			nenv.addEvent((short)t_units, (short)32700);
+		}
+		
+		//Decay
+		double slvl = Double.parseDouble(txtSLevel.getText());
+		int slvlabs = (int)Math.round(slvl * 32700.0);
+		if(slvl < 1.0){
+			int targlvl = slvlabs;
+			
+			int rbidx = rbgDTime.getSelectedIndex();
+			time = readTextBoxValue(txtDTime);
+			t_units = Z64Sound.envelopeMillisToDelta(time);
+			if(rbidx == RB_TIMETYPE_IDX_TOZERO){
+				rbidx = rbgDCurve.getSelectedIndex();
+				if(rbidx == RB_CURVE_IDX_LINENV){
+					//Rescale the time
+					double rescale = 1.0 - slvl;
+					t_units = (int)Math.round(rescale * (double)t_units);
+					nenv.addEvent((short)t_units, (short)targlvl);
+				}
+				else if(rbidx == RB_CURVE_IDX_LINDB){
+					//Why do I do this to myself.
+					addLinearDBChangeToEnv(nenv, 32700, 0, t_units, targlvl);
+				}
+			}
+			else if(rbidx == RB_TIMETYPE_IDX_TOSUS){
+				rbidx = rbgDCurve.getSelectedIndex();
+				if(rbidx == RB_CURVE_IDX_LINENV){
+					nenv.addEvent((short)t_units, (short)targlvl);
+				}
+				else if(rbidx == RB_CURVE_IDX_LINDB){
+					addLinearDBChangeToEnv(nenv, 32700, targlvl, t_units, targlvl);
+				}
+			}
+		}
+
+		//Sustain
+		int rbidx = rbgSDir.getSelectedIndex();
+		switch(rbidx){
+		case RB_DIR_IDX_FLAT:
+			nenv.addEvent((short)32700, (short)slvlabs);
+			break;
+		case RB_DIR_IDX_UP:
+			time = readTextBoxValue(txtSTime);
+			t_units = Z64Sound.envelopeMillisToDelta(time);
+			rbidx = rbgSCurve.getSelectedIndex();
+			if(rbidx == RB_CURVE_IDX_LINENV){
+				nenv.addEvent((short)t_units, (short)32700);
+			}
+			else if(rbidx == RB_CURVE_IDX_LINDB){
+				addLinearDBChangeToEnv(nenv, slvlabs, 32700, t_units, 32700);
+			}
+			break;
+		case RB_DIR_IDX_DOWN:
+			time = readTextBoxValue(txtSTime);
+			t_units = Z64Sound.envelopeMillisToDelta(time);
+			rbidx = rbgSCurve.getSelectedIndex();
+			if(rbidx == RB_CURVE_IDX_LINENV){
+				nenv.addEvent((short)t_units, (short)0);
+			}
+			else if(rbidx == RB_CURVE_IDX_LINDB){
+				addLinearDBChangeToEnv(nenv, slvlabs, 0, t_units, 0);
+			}
+			break;
+		}
+		
+		//Add an ADSR_HANG command at the end
+		nenv.addEvent((short)Z64Sound.ENVCMD__ADSR_HANG, (short)0);
 	}
 	
 	public Z64Envelope getEnvelope(){return env;}

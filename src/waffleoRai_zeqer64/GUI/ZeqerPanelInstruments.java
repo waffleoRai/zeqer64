@@ -5,9 +5,11 @@ import javax.swing.JPanel;
 
 import waffleoRai_zeqer64.ZeqerCoreInterface;
 import waffleoRai_zeqer64.ZeqerPreset;
+import waffleoRai_zeqer64.GUI.filters.FlagFilterPanel;
 import waffleoRai_zeqer64.GUI.filters.TagFilterPanel;
 import waffleoRai_zeqer64.GUI.filters.TextFilterPanel;
 import waffleoRai_zeqer64.GUI.filters.ZeqerFilter;
+import waffleoRai_zeqer64.filefmt.ZeqerWaveTable;
 
 import java.awt.GridBagLayout;
 import java.awt.GridBagConstraints;
@@ -171,7 +173,6 @@ public class ZeqerPanelInstruments extends JPanel{
 	}
 	
 	private void addFilterPanels(){
-		//TODO
 		//Text search
 		TextFilterPanel<InstNode> fpnl1 = new TextFilterPanel<InstNode>(0);
 		fpnl1.setSearchFilter(new ZeqerFilter<InstNode>(){
@@ -185,6 +186,10 @@ public class ZeqerPanelInstruments extends JPanel{
 		});
 		pnlFilt.addPanel(fpnl1);
 		
+		pnlTags = new TagFilterPanel<InstNode>(parent);
+		pnlFilt.addPanel(pnlTags);
+		
+		//Might add flag panels too?
 	}
 	
 	/*----- Getters -----*/
