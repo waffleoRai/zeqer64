@@ -15,6 +15,7 @@ import waffleoRai_Utils.BufferReference;
 import waffleoRai_Utils.FileBuffer;
 import waffleoRai_Utils.FileBuffer.UnsupportedFileTypeException;
 import waffleoRai_Utils.SerializedString;
+import waffleoRai_zeqer64.ZeqerErrorCode;
 import waffleoRai_zeqer64.ZeqerSeq;
 import waffleoRai_zeqer64.ZeqerSeq.IOAlias;
 import waffleoRai_zeqer64.ZeqerSeq.Label;
@@ -22,6 +23,9 @@ import waffleoRai_zeqer64.ZeqerSeq.Module;
 import waffleoRai_zeqer64.filefmt.ZeqerSeqTable.SeqTableEntry;
 
 public class UltraSeqFile {
+	//TODO Bugs---
+	//	Writer is not writing overall file size in header correctly
+	//	Reader is interpreting chunk size as end offset I think. Don't do that.
 	
 	//TODO Make sure cmds are labeled in NUSALSeq (Could also put in ZeqerSeq)
 	
@@ -32,6 +36,8 @@ public class UltraSeqFile {
 	public static final byte MINOR_VERSION = 1;
 	
 	private static final int HEADER_SIZE = 16;
+	
+	private static final int PARSE_TIMEOUT = 10000;
 
 	/*----- Instance Variables -----*/
 	
@@ -70,10 +76,10 @@ public class UltraSeqFile {
 		int[] loc = chunks.get(key);
 		if(loc != null){
 			if(raw_file != null){
-				chunk_data = raw_file.createReadOnlyCopy(loc[0], loc[1]);
+				chunk_data = raw_file.createReadOnlyCopy(loc[0], loc[0] + loc[1]);
 			}
 			else{
-				chunk_data = FileBuffer.createBuffer(path, loc[0], loc[1], true);
+				chunk_data = FileBuffer.createBuffer(path, loc[0], loc[0] + loc[1], true);
 			}
 		}
 		return chunk_data;
@@ -105,13 +111,34 @@ public class UltraSeqFile {
 		chunk_data.setCurrentPosition(0L);
 		int raw_size = chunk_data.nextInt();
 		FileBuffer rawdat = chunk_data.createCopy(4L, 4L + raw_size);
-		try{
-			NUSALSeq seq = NUSALSeq.readNUSALSeq(rawdat);
+
+		ZeqerErrorCode err = new ZeqerErrorCode();
+		NUSALSeq seq = ZeqerSeq.parseSeqWithTimeout(rawdat, PARSE_TIMEOUT, err);
+		if(seq != null){
 			dest.setSequence(seq);
 			rawdat.dispose();
 		}
-		catch(Exception ex){
+		else{
+			dest.setSequence(null);
 			dest.setRawData(rawdat);
+			
+			System.err.print("UltraSeqFile.readDATA || Seq parse failed. Likely reason: ");
+			switch(err.getValue()){
+			case ZeqerSeq.PARSE_ERR_CRASH:
+				System.err.print("Parser could not read data");
+				break;
+			case ZeqerSeq.PARSE_ERR_TIMEOUT:
+				System.err.print("Time out (parser probably hung on infinite while)");
+				break;
+			case ZeqerSeq.PARSE_ERR_OTHER_IRQ:
+				System.err.print("Misc. interrupt request");
+				break;
+			case ZeqerSeq.PARSE_ERR_NONE:
+			default:
+				System.err.print("Unknown");
+				break;
+			}
+			System.err.println();
 		}
 	}
 	
@@ -406,7 +433,9 @@ public class UltraSeqFile {
 	
 	public static boolean writeUSEQ(ZeqerSeq seq, String path) throws IOException{
 		NUSALSeq nseq = seq.getSequence();
-		if(nseq == null) return false;
+		if(nseq == null){
+			return writeUSEQ(seq, path, seq.getRawData());
+		}
 		return writeUSEQ(seq, path, nseq.getSerializedData());
 	}
 	
@@ -473,7 +502,7 @@ public class UltraSeqFile {
 		//META
 		FileBuffer META = serializeMETA(seq, LABL != null, IOAL != null);
 		ccount++;
-		total_size = META.getFileSize();
+		total_size += META.getFileSize();
 		
 		//Header
 		FileBuffer header = new FileBuffer(HEADER_SIZE, true);
@@ -481,7 +510,7 @@ public class UltraSeqFile {
 		header.addToFile((short)0xFEFF);
 		header.addToFile(MAJOR_VERSION);
 		header.addToFile(MINOR_VERSION);
-		header.addToFile((int)total_size + HEADER_SIZE);
+		header.addToFile((int)total_size + HEADER_SIZE); //TODO
 		header.addToFile((short)HEADER_SIZE);
 		header.addToFile((short)ccount);
 		

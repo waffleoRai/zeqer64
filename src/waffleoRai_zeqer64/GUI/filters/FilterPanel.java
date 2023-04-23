@@ -35,6 +35,8 @@ public abstract class FilterPanel<T> extends JPanel {
 	public abstract void disableAll();
 	public abstract void enableAll();
 	
+	public abstract void clearFilterSelections();
+	
 	public void setWait(){
 		disableAll();
 		setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));

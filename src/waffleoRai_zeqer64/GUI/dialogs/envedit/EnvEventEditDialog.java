@@ -4,6 +4,7 @@ import javax.swing.JDialog;
 import java.awt.GridBagLayout;
 import javax.swing.JPanel;
 
+import java.awt.Component;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Frame;
@@ -21,6 +22,7 @@ import javax.swing.JComboBox;
 import javax.swing.border.EtchedBorder;
 
 import waffleoRai_GUITools.ComponentGroup;
+import waffleoRai_GUITools.GUITools;
 import waffleoRai_Sound.nintendo.Z64Sound;
 
 public class EnvEventEditDialog extends JDialog{
@@ -54,7 +56,7 @@ public class EnvEventEditDialog extends JDialog{
 	
 	/*----- Instance Variables -----*/
 	
-	//private Frame parent;
+	private Frame parent;
 	
 	private short[] event = null;
 	private int txtParseError = NUMPARSE_ERR_NONE;
@@ -68,6 +70,7 @@ public class EnvEventEditDialog extends JDialog{
 	
 	public EnvEventEditDialog(Frame parent_frame){
 		super(parent_frame, true);
+		parent = parent_frame;
 		globalEnable = new ComponentGroup();
 		initGUI();
 		populateCombobox();
@@ -281,6 +284,19 @@ public class EnvEventEditDialog extends JDialog{
 	public void closeMe(){
 		this.setVisible(false);
 		this.dispose();
+	}
+	
+	public void showMe(Component c){
+		if(c != null) setLocationRelativeTo(c);
+		else{
+			if(parent != null) setLocationRelativeTo(parent);
+			else{
+				setLocation(GUITools.getScreenCenteringCoordinates(this));
+			}
+		}
+		
+		pack();
+		setVisible(true);
 	}
 	
 	/*----- Callbacks -----*/

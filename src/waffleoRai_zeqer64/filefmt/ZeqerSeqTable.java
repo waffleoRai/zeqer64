@@ -210,6 +210,13 @@ public class ZeqerSeqTable {
 			tags.clear();
 		}
 		
+		public void updateMD5(byte[] newmd5){
+			if(newmd5 == null) return;
+			if(newmd5.length != 16) return;
+			md5 = newmd5;
+			time_modified = ZonedDateTime.now();
+		}
+		
 		/*----- Serialization -----*/
 		
 		public int getSerializedSize(){
@@ -328,6 +335,24 @@ public class ZeqerSeqTable {
 	
 	/*----- Setters -----*/
 	
+	public SeqTableEntry newEntry(int uid){
+		if(uid == 0) return null;
+		if(uid == -1) return null;
+		
+		SeqTableEntry entry = new SeqTableEntry();
+		entry.uid = uid;
+		entry.md5 = new byte[16];
+		
+		entries.put(uid, entry);
+		
+		entry.time_created = ZonedDateTime.now();
+		entry.time_modified = ZonedDateTime.now();
+		
+		entry.name = "seq_" + Integer.toHexString(uid);
+		
+		return entry;
+	}
+	
 	public SeqTableEntry newEntry(byte[] md5){
 		if(md5 == null) return null;
 		
@@ -365,6 +390,15 @@ public class ZeqerSeqTable {
 			String md5str = FileUtils.bytes2str(e.md5).toLowerCase();
 			md5_map.put(md5str, e);
 		}
+	}
+	
+	public SeqTableEntry deleteEntry(int uid){
+		SeqTableEntry e = entries.remove(uid);
+		if(e == null) return null;
+		if(md5_map != null){
+			entries.remove(FileUtils.bytes2str(e.md5));
+		}
+		return e;
 	}
 	
 	/*----- Reading -----*/

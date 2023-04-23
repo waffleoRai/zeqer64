@@ -14,6 +14,7 @@ import waffleoRai_zeqer64.ZeqerCore;
 import waffleoRai_zeqer64.ZeqerRom;
 import waffleoRai_zeqer64.engine.EngineBankInfo;
 import waffleoRai_zeqer64.engine.EngineWaveArcInfo;
+import waffleoRai_zeqer64.extract.RomExtractionSummary;
 import waffleoRai_zeqer64.extract.SoundExtractor;
 import waffleoRai_zeqer64.filefmt.AbldFile;
 import waffleoRai_zeqer64.filefmt.ZeqerWaveTable;
@@ -91,18 +92,19 @@ public class Test_RegenSysdata {
 				}
 				
 				Z64SoundEffect[] effects = loaded_bnk.getSFXSet();
-				for(int e = 0; e < effects.length; e++){
-					if(effects[e] == null) continue;
-					winfo = effects[e].getSample();
-					if(winfo != null){
-						WaveTableEntry entry = wtbl.getEntryWithUID(winfo.getUID());
-						if(entry != null){
-							entry.clearFlags(ZeqerWaveTable.FLAG_ISUNUSED);
-							entry.setFlags(ZeqerWaveTable.FLAG_ISIN_SFX);
+				if(effects != null){
+					for(int e = 0; e < effects.length; e++){
+						if(effects[e] == null) continue;
+						winfo = effects[e].getSample();
+						if(winfo != null){
+							WaveTableEntry entry = wtbl.getEntryWithUID(winfo.getUID());
+							if(entry != null){
+								entry.clearFlags(ZeqerWaveTable.FLAG_ISUNUSED);
+								entry.setFlags(ZeqerWaveTable.FLAG_ISIN_SFX);
+							}
 						}
 					}
 				}
-				
 			}
 		}
 	}
@@ -133,15 +135,18 @@ public class Test_RegenSysdata {
 			
 			//Extract
 			for(int i = 0; i < inrom_count; i++){
-				SoundExtractor.main(new String[]{inpaths[i], outpath});
+				//SoundExtractor.main(new String[]{inpaths[i], outpath});
+				ZeqerRom z_rom = core.loadNUSROM(inpaths[i]);
+				System.err.println("Now processing ROM: " + z_rom.getRomInfo().getZeqerID());
+				RomExtractionSummary errinfo = core.extractSoundDataFromRom(z_rom);
+				//TODO outpath?
 				
 				//Figure out ID of ROM just added. If version hasn't been
 				//	scanned yet, do wave flagging.
-				ZeqerRom last = core.lastRomUsed();
-				if(last != null){
+				if(z_rom != null){
 					ZeqerWaveTable wtbl = core.getZeqerWaveTable();
-					abld = core.loadSysBuild(last.getRomInfo().getZeqerID());
-					int ver = last.getRomInfo().getGameVersionEnum();
+					abld = core.loadSysBuild(z_rom.getRomInfo().getZeqerID());
+					int ver = z_rom.getRomInfo().getGameVersionEnum();
 					switch(ver){
 					case ZeqerRom.GAME_OCARINA_V1_0:
 					case ZeqerRom.GAME_OCARINA_V0_9:

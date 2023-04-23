@@ -28,9 +28,12 @@ import waffleoRai_Utils.FileUtils;
 import waffleoRai_soundbank.nintendo.z64.Z64Bank;
 import waffleoRai_soundbank.nintendo.z64.Z64Instrument;
 import waffleoRai_zeqer64.engine.ZeqerPlaybackEngine;
+import waffleoRai_zeqer64.extract.RomExtractionSummary;
+import waffleoRai_zeqer64.extract.WaveLocIDMap;
 import waffleoRai_zeqer64.filefmt.AbldFile;
 import waffleoRai_zeqer64.filefmt.NusRomInfo;
 import waffleoRai_zeqer64.filefmt.RomInfoNode;
+import waffleoRai_zeqer64.filefmt.VersionWaveTable;
 import waffleoRai_zeqer64.filefmt.ZeqerBankTable;
 import waffleoRai_zeqer64.filefmt.ZeqerBankTable.BankTableEntry;
 import waffleoRai_zeqer64.filefmt.ZeqerPresetTable;
@@ -93,6 +96,13 @@ public class ZeqerCore {
 	public static ZeqerCore instantiateActiveCore(String base_dir, boolean admin_mode){
 		active_core = new ZeqerCore(admin_mode);
 		active_core.root_dir = base_dir;
+		try{
+			if(!active_core.loadCore()) active_core = null;
+		}
+		catch(IOException ex){
+			ex.printStackTrace();
+			active_core = null;
+		}
 		return active_core;
 	}
 	
@@ -155,6 +165,9 @@ public class ZeqerCore {
 		
 		//Load settings
 		loadSettingsFile(pdir + File.separator + SETTINGS_FILE_NAME);
+		
+		//Create directories.
+		makeDirectories();
 		
 		//Load ROM Info
 		if(!loadRomInfoMap()) return false;
@@ -226,6 +239,10 @@ public class ZeqerCore {
 	}
 	
 	/*----- Paths -----*/
+	
+	public String getBuildDirectoryPath(){
+		return getProgramDirectory() + SEP + DIRNAME_ABLD;
+	}
 	
 	public String getWaveDirectoryPath(){
 		return getProgramDirectory() + SEP + DIRNAME_WAVE;
@@ -518,6 +535,15 @@ public class ZeqerCore {
 		return true;
 	}
 	
+	public boolean makeDirectories() throws IOException{
+		//Right now just need to make abld since the managers handle theirs
+		String zbld_dir = getBuildDirectoryPath() + SEP + ZeqerCore.DIRNAME_ZBLD;
+		if(!FileBuffer.directoryExists(zbld_dir)){
+			Files.createDirectories(Paths.get(zbld_dir));
+		}
+		return true;
+	}
+	
 	/*----- ShutDown -----*/
 	
 	public void shutdownCore() throws IOException{
@@ -745,12 +771,12 @@ public class ZeqerCore {
 		return seqManager.loadSeqData(seq_uid);
 	}
 	
-	public int[][][] loadWaveVersionTable(String rom_id) throws IOException{
+	public VersionWaveTable loadWaveVersionTable(String rom_id) throws IOException{
 		if(wavManager == null) return null;
 		return wavManager.loadWaveVersionTable(rom_id);
 	}
 	
-	public List<Map<Integer, Integer>> loadVersionWaveOffsetIDMap(String rom_id) throws IOException{
+	public WaveLocIDMap loadVersionWaveOffsetIDMap(String rom_id) throws IOException{
 		if(wavManager == null) return null;
 		return wavManager.loadVersionWaveOffsetIDMap(rom_id);
 	}
@@ -758,6 +784,62 @@ public class ZeqerCore {
 	/*----- Data Saving -----*/
 	
 	private boolean admin_write = false;
+	
+	public RomExtractionSummary extractSoundDataFromRom(ZeqerRom z_rom) throws IOException{
+		//----- Check ROM
+		RomExtractionSummary errinfo = new RomExtractionSummary();
+		if(z_rom == null){
+			errinfo.genError = RomExtractionSummary.GENERR_INVALID_ROM;
+			return errinfo;
+		}
+		NusRomInfo rominfo = z_rom.getRomInfo();
+		if(rominfo == null){
+			errinfo.genError = RomExtractionSummary.GENERR_INVALID_ROM;
+			return errinfo;
+		}
+		String zid = rominfo.getZeqerID();
+		errinfo.romid = zid;
+		
+		//----- Waves
+		if(!wavManager.importROMWaves(z_rom, errinfo)){
+			errinfo.genError = RomExtractionSummary.GENERR_WAV_DUMP_FAILED;
+			return errinfo;
+		}
+		
+		//----- Banks
+		//Load wave loc map
+		WaveLocIDMap wavelocs = wavManager.loadVersionWaveOffsetIDMap(zid);
+		if(!bnkManager.importROMBanks(z_rom, wavelocs, errinfo)){
+			errinfo.genError = RomExtractionSummary.GENERR_BNK_DUMP_FAILED;
+			return errinfo;
+		}
+		
+		//----- Seqs
+		if(!seqManager.importROMSeqs(z_rom, errinfo)){
+			errinfo.genError = RomExtractionSummary.GENERR_SEQ_DUMP_FAILED;
+			return errinfo;
+		}
+		
+		//Seq/Bank mapping
+		int[] bankUids = bnkManager.loadVersionTable(zid);
+		if(!seqManager.mapSeqBanks(z_rom, bankUids)){
+			errinfo.genError = RomExtractionSummary.GENERR_SEQBNKMAP_FAILED;
+			return errinfo;
+		}
+		
+		//----- ABLDs
+		int[] seqUids = seqManager.loadVersionTable(zid);
+		VersionWaveTable vwt = wavManager.loadWaveVersionTable(zid);
+		
+		String abld_dir = getBuildDirectoryPath() + SEP + ZeqerCore.DIRNAME_ZBLD;
+		AbldFile abld = AbldFile.fromROM(z_rom, seqUids, bankUids, vwt);
+		if(!abld.serializeTo(abld_dir + SEP + zid + ".abld")){
+			errinfo.genError = RomExtractionSummary.GENERR_ABLD_SAVE_FAILED;
+			return errinfo;
+		}
+		
+		return errinfo;
+	}
 	
 	public boolean saveSeq(ZeqerSeq seq) throws IOException{
 		if(seqManager == null) return false;

@@ -3,6 +3,7 @@ package waffleoRai_zeqer64.GUI;
 import javax.swing.JPanel;
 import java.awt.GridBagLayout;
 import java.awt.Cursor;
+import java.awt.Frame;
 import java.awt.GridBagConstraints;
 import java.awt.Insets;
 import java.awt.event.ActionEvent;
@@ -23,7 +24,6 @@ import javax.swing.JOptionPane;
 import javax.swing.DefaultListModel;
 import javax.swing.JButton;
 import javax.swing.JFileChooser;
-import javax.swing.JFrame;
 import javax.swing.border.BevelBorder;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
@@ -109,7 +109,7 @@ public class ZeqerPanelSamples extends JPanel{
 	
 	private ZeqerCoreInterface core;
 	
-	private JFrame parent;
+	private Frame parent;
 	
 	private FilterListPanel<SampleNode> pnlFilt;
 	private TagFilterPanel<SampleNode> pnlTags; //For refreshing/adding tags
@@ -128,13 +128,13 @@ public class ZeqerPanelSamples extends JPanel{
 	/**
 	 * @wbp.parser.constructor
 	 */
-	public ZeqerPanelSamples(JFrame parent_frame, ZeqerCoreInterface core_iface){
+	public ZeqerPanelSamples(Frame parent_frame, ZeqerCoreInterface core_iface){
 		parent = parent_frame;
 		core = core_iface;
 		initGUI(true);
 	}
 	
-	public ZeqerPanelSamples(JFrame parent_frame, ZeqerCoreInterface core_iface, boolean editable_mode){
+	public ZeqerPanelSamples(Frame parent_frame, ZeqerCoreInterface core_iface, boolean editable_mode){
 		parent = parent_frame;
 		core = core_iface;
 		initGUI(editable_mode);
@@ -479,14 +479,14 @@ public class ZeqerPanelSamples extends JPanel{
 				writer.write("Medium: " + Z64Sound.getMediumTypeString(info.getMedium()) + "\n");
 				writer.write("Wave Size: 0x" + Integer.toHexString(info.getWaveSize()) + "\n");
 				writer.write("Frame Count: " + info.getFrameCount() + "\n");
-				writer.write("Loop: " + Z64Sound.getMediumTypeString(info.getMedium()) + "\n");
-				writer.write("Loop Count: " + Z64Sound.getMediumTypeString(info.getMedium()) + "\n");
-				writer.write("MD5: " + Z64Sound.getMediumTypeString(info.getMedium()) + "\n");
+				writer.write("Loop: " + info.getLoopStart() + "\n");
+				writer.write("Loop Count: " + info.getLoopCount() + "\n");
+				writer.write("MD5: " + "" + "\n"); //TODO
 				
 				writer.write("Tags: ");
 				boolean first = true;
 				Set<String> tags = sample.getTagSet();
-				if(tags != null && tags.isEmpty()){
+				if(tags != null && !tags.isEmpty()){
 					for(String tag : tags){
 						if(!first) writer.write(";");
 						writer.write(tag);
@@ -514,6 +514,7 @@ public class ZeqerPanelSamples extends JPanel{
 			ex.printStackTrace();
 			showError("ERROR: Could not render information for selected sample!");
 		}
+		pnlInfo.repaint();
 	}
 	
 	/*----- Actions -----*/

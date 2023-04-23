@@ -13,7 +13,6 @@ import java.util.LinkedList;
 import java.util.Set;
 import java.util.TreeSet;
 
-import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JSeparator;
 import javax.swing.SwingConstants;
@@ -21,6 +20,8 @@ import javax.swing.SwingConstants;
 import waffleoRai_Utils.VoidCallbackMethod;
 
 import java.awt.Font;
+import java.awt.Frame;
+
 import javax.swing.JButton;
 
 public class TagFilterPanel<T> extends FilterPanel<T>{
@@ -42,7 +43,7 @@ public class TagFilterPanel<T> extends FilterPanel<T>{
 	
 	/*----- Instance Variables -----*/
 	
-	private JFrame parent;
+	private Frame parent;
 	private ZeqerFilter<T> pool_filter;
 	private Set<String> pool;
 	
@@ -67,7 +68,7 @@ public class TagFilterPanel<T> extends FilterPanel<T>{
 	
 	/*----- Init -----*/
 	
-	public TagFilterPanel(JFrame parent_frame){
+	public TagFilterPanel(Frame parent_frame){
 		parent = parent_frame;
 		action_callbacks = new LinkedList<VoidCallbackMethod>();
 		initGUI();
@@ -285,6 +286,10 @@ public class TagFilterPanel<T> extends FilterPanel<T>{
 		pool_filter = condition;
 		if(!tags.isEmpty()) btnAdd.setEnabled(true);
 		else btnAdd.setEnabled(false);
+		clearTags();
+	}
+	
+	public void clearFilterSelections(){
 		clearTags();
 	}
 	

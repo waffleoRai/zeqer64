@@ -1,13 +1,14 @@
 package waffleoRai_zeqer64.GUI.dialogs;
 
 import javax.swing.JDialog;
-import javax.swing.JFrame;
 
 import java.awt.GridBagLayout;
 import javax.swing.JPanel;
 
+import java.awt.Component;
 import java.awt.Cursor;
 import java.awt.Dimension;
+import java.awt.Frame;
 import java.awt.GridBagConstraints;
 import java.awt.Insets;
 import java.awt.event.ActionEvent;
@@ -33,6 +34,7 @@ import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 
 import waffleoRai_GUITools.ComponentGroup;
+import waffleoRai_GUITools.GUITools;
 import waffleoRai_Sound.nintendo.Z64Sound;
 import waffleoRai_Sound.nintendo.Z64Sound.Z64Tuning;
 import waffleoRai_Sound.nintendo.Z64WaveInfo;
@@ -52,7 +54,6 @@ import javax.swing.ListSelectionModel;
 public class ZeqerDrumEditDialog extends JDialog{
 	
 	//TODO Oh crap, do we want a play/preview panel/interface of some kind?
-	//TODO You forgot edit tags :)
 	
 	private static final long serialVersionUID = 6232066596448455202L;
 	
@@ -140,7 +141,7 @@ public class ZeqerDrumEditDialog extends JDialog{
 	
 	/*----- Instance Variables -----*/
 	
-	private JFrame parent;
+	private Frame parent;
 	private ZeqerCoreInterface core;
 	
 	private ComponentGroup globalEnable;
@@ -174,10 +175,11 @@ public class ZeqerDrumEditDialog extends JDialog{
 	//These are held here so only put in region instance when user clicks "apply"
 	private Z64WaveInfo selectedSample;
 	private Z64Envelope tempEnvelope;
+	private List<String> tempTags;
 	
 	/*----- Init -----*/
 	
-	public ZeqerDrumEditDialog(JFrame parent_frame, ZeqerCoreInterface core_link){
+	public ZeqerDrumEditDialog(Frame parent_frame, ZeqerCoreInterface core_link){
 		super(parent_frame, true);
 		core = core_link;
 		parent = parent_frame;
@@ -711,7 +713,7 @@ public class ZeqerDrumEditDialog extends JDialog{
 				
 				Z64Drum drumdata = oreg.getDrumData();
 				if(drumdata != null){
-					treg.env = drumdata.getEnvelope();
+					treg.env = drumdata.getEnvelope().copy();
 					treg.pan = drumdata.getPan();
 					treg.release = drumdata.getDecay();
 					treg.sample = drumdata.getSample();
@@ -721,6 +723,8 @@ public class ZeqerDrumEditDialog extends JDialog{
 				}
 			}
 		}
+		
+		tempTags = loadedDrum.getAllTags();
 
 		updateRegionList();
 	}
@@ -869,6 +873,19 @@ public class ZeqerDrumEditDialog extends JDialog{
 	public void closeMe(){
 		this.setVisible(false);
 		this.dispose();
+	}
+	
+	public void showMe(Component c){
+		if(c != null) setLocationRelativeTo(c);
+		else{
+			if(parent != null) setLocationRelativeTo(parent);
+			else{
+				setLocation(GUITools.getScreenCenteringCoordinates(this));
+			}
+		}
+		
+		pack();
+		setVisible(true);
 	}
 	
 	/*----- Updates -----*/
@@ -1027,6 +1044,15 @@ public class ZeqerDrumEditDialog extends JDialog{
 		//Does NOT save unapplied info in region editor.
 		setWait();
 		loadRegionsBackToPreset();
+		
+		//Tags
+		if(loadedDrum != null){
+			loadedDrum.clearTags();
+			if(tempTags != null){
+				for(String tag : tempTags) loadedDrum.addTag(tag);
+			}
+		}
+		
 		unsetWait();
 		closeMe();
 	}
@@ -1088,10 +1114,10 @@ public class ZeqerDrumEditDialog extends JDialog{
 	private void btnEnvCallback(){
 		setWait();
 		ZeqerEnvEditDialog dialog = new ZeqerEnvEditDialog(parent, core);
-		
+		dialog.loadEnvelope(tempEnvelope);
+
 		//Show
-		dialog.pack();
-		dialog.setVisible(true);
+		dialog.showMe(this);
 		
 		//Check result and save env, if needed
 		Z64Envelope env = dialog.getOutputEnvelope();
@@ -1105,7 +1131,7 @@ public class ZeqerDrumEditDialog extends JDialog{
 	private void btnSampleCallback(){
 		setWait();
 		SamplePickDialog dialog = new SamplePickDialog(parent, core);
-		dialog.setVisible(true);
+		dialog.showMe(this);
 		
 		if(dialog.getExitSelection()){
 			WaveTableEntry sel = dialog.getSelectedSample();
@@ -1122,13 +1148,11 @@ public class ZeqerDrumEditDialog extends JDialog{
 		if(loadedDrum == null) return;
 		setWait();
 		ZeqerTagEditDialog dialog = new ZeqerTagEditDialog(parent);
-		dialog.loadTags(loadedDrum.getAllTags());
+		dialog.loadTags(tempTags);
 		
-		dialog.setVisible(true);
+		dialog.showMe(this);
 		if(dialog.getExitSelection()){
-			List<String> newtags = dialog.getTags();
-			loadedDrum.clearTags();
-			for(String s : newtags) loadedDrum.addTag(s);
+			tempTags = dialog.getTags();
 		}
 		
 		unsetWait();

@@ -5,18 +5,45 @@ import javax.swing.JPanel;
 
 import waffleoRai_zeqer64.ZeqerCoreInterface;
 import waffleoRai_zeqer64.ZeqerPreset;
+import waffleoRai_zeqer64.GUI.dialogs.InstTypeMiniDialog;
+import waffleoRai_zeqer64.GUI.dialogs.ZeqerDrumEditDialog;
+import waffleoRai_zeqer64.GUI.dialogs.ZeqerInstEditDialog;
 import waffleoRai_zeqer64.GUI.filters.FlagFilterPanel;
 import waffleoRai_zeqer64.GUI.filters.TagFilterPanel;
 import waffleoRai_zeqer64.GUI.filters.TextFilterPanel;
 import waffleoRai_zeqer64.GUI.filters.ZeqerFilter;
-import waffleoRai_zeqer64.filefmt.ZeqerWaveTable;
+import waffleoRai_zeqer64.presets.ZeqerInstPreset;
+import waffleoRai_zeqer64.presets.ZeqerPercPreset;
+import waffleoRai_zeqer64.presets.ZeqerSFXPreset;
 
 import java.awt.GridBagLayout;
+import java.awt.Cursor;
 import java.awt.GridBagConstraints;
 import java.awt.Insets;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.io.Writer;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
 import javax.swing.JScrollPane;
 import javax.swing.JList;
+import javax.swing.JOptionPane;
 import javax.swing.border.BevelBorder;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
+
+import waffleoRai_GUITools.ComponentGroup;
+import waffleoRai_GUITools.WriterPanel;
+import waffleoRai_Sound.nintendo.Z64Sound;
+import waffleoRai_Sound.nintendo.Z64WaveInfo;
+import waffleoRai_Utils.VoidCallbackMethod;
+import waffleoRai_soundbank.nintendo.z64.Z64Instrument;
+
+import javax.swing.DefaultListModel;
 import javax.swing.JButton;
 
 public class ZeqerPanelInstruments extends JPanel{
@@ -29,34 +56,41 @@ public class ZeqerPanelInstruments extends JPanel{
 	public static final String SAMPLEPNL_LAST_IMPORT_PATH = "ZINSTPNL_LASTIMPORT";
 	public static final String SAMPLEPNL_LAST_EXPORT_PATH = "ZINSTPNL_LASTEXPORT";
 	
-	public static final int FLAGIDX_MUSIC = 0;
-	public static final int FLAGIDX_SFX = 1;
-	public static final int FLAGIDX_VOICE = 2;
-	public static final int FLAGIDX_ENV = 3;
-	public static final int FLAGIDX_ACTOR = 4;
-	public static final int FLAGIDX_UNUSED = 5;
-	
 	public static final int FLAGIDX_INST = 0;
-	public static final int FLAGIDX_DRUM = 1;
-	public static final int FLAGIDX_FX = 2;
-	public static final int FLAGIDX_OOTv0 = 3;
-	public static final int FLAGIDX_OOT = 4;
-	public static final int FLAGIDX_MM = 5;
-	public static final int FLAGIDX_OOTv0_MAINWARC = 6;
-	public static final int FLAGIDX_OOT_MAINWARC  = 7;
-	public static final int FLAGIDX_MM_MAINWARC  = 8;
-	public static final int FLAGIDX_USER = 9;
-
+	public static final int FLAGIDX_PERC = 1;
+	public static final int FLAGIDX_SFX = 2;
+	
 	/*----- Inner Classes -----*/
 	
 	private static class InstNode implements Comparable<InstNode>{
 
 		public ZeqerPreset preset;
 		
-		@Override
+		public InstNode(ZeqerPreset p){preset = p;}
+		
+		public boolean equals(Object o){
+			return this == o;
+		}
+		
 		public int compareTo(InstNode o) {
-			// TODO Auto-generated method stub
-			return 0;
+			if(o == null) return 1;
+			if(this.preset == null){
+				if(o.preset == null) return 0;
+			}
+			if(o.preset == null) return 1;
+			
+			String name = preset.getName();
+			if(name == null){
+				if(o.preset.getName() == null) return 0;
+				return -1;
+			}
+			
+			return name.compareTo(o.preset.getName());
+		}
+		
+		public String toString(){
+			if(preset == null) return "<null>";
+			return preset.getName();
 		}
 		
 	}
@@ -64,18 +98,30 @@ public class ZeqerPanelInstruments extends JPanel{
 	/*----- Instance Variables -----*/
 	
 	private ZeqerCoreInterface core;
+	private boolean presetsEditable = false;
 	
 	private JFrame parent;
+	private ComponentGroup globalEnable;
+	private ComponentGroup lstSelectedEnable;
+	
+	private List<InstNode> allPresets; //Source list
 	
 	private FilterListPanel<InstNode> pnlFilt;
 	private TagFilterPanel<InstNode> pnlTags; //For refreshing/adding tags
+	private WriterPanel pnlInfo;
+	private JList<InstNode> lstPresets;
 	
 	/*----- Init -----*/
 	
-	public ZeqerPanelInstruments(JFrame parent_frame, ZeqerCoreInterface core_iface){
+	public ZeqerPanelInstruments(JFrame parent_frame, ZeqerCoreInterface core_iface, boolean editable_mode){
 		parent = parent_frame;
 		core = core_iface;
+		presetsEditable = editable_mode;
+		globalEnable = new ComponentGroup();
+		lstSelectedEnable = new ComponentGroup();
 		initGUI();
+		loadPresetsFromCore();
+		clearAllFilters();
 	}
 	
 	private void initGUI(){
@@ -116,17 +162,25 @@ public class ZeqerPanelInstruments extends JPanel{
 		gbc_spList.gridx = 0;
 		gbc_spList.gridy = 0;
 		pnlList.add(spList, gbc_spList);
+		globalEnable.addComponent("spList", spList);
 		
-		JList<InstNode> list = new JList<InstNode>();
-		spList.setViewportView(list);
+		lstPresets = new JList<InstNode>();
+		spList.setViewportView(lstPresets);
+		globalEnable.addComponent("lstPresets", lstPresets);
+		lstPresets.addListSelectionListener(new ListSelectionListener(){
+			public void valueChanged(ListSelectionEvent e) {
+				lstPresetsSelectCallback();
+			}
+		});
 		
-		JPanel pnlInfo = new JPanel();
+		pnlInfo = new WriterPanel();
 		GridBagConstraints gbc_pnlInfo = new GridBagConstraints();
 		gbc_pnlInfo.insets = new Insets(0, 0, 5, 0);
 		gbc_pnlInfo.fill = GridBagConstraints.BOTH;
 		gbc_pnlInfo.gridx = 0;
 		gbc_pnlInfo.gridy = 1;
 		pnlList.add(pnlInfo, gbc_pnlInfo);
+		globalEnable.addComponent("pnlInfo", pnlInfo);
 		
 		JPanel pnlCtrl = new JPanel();
 		GridBagConstraints gbc_pnlCtrl = new GridBagConstraints();
@@ -147,6 +201,17 @@ public class ZeqerPanelInstruments extends JPanel{
 		gbc_btnNew.gridx = 0;
 		gbc_btnNew.gridy = 0;
 		pnlCtrl.add(btnNew, gbc_btnNew);
+		if(presetsEditable){
+			globalEnable.addComponent("btnNew", btnNew);
+		}
+		else{
+			btnNew.setEnabled(false);
+			btnNew.setVisible(false);
+		}
+		btnNew.addActionListener(new ActionListener(){
+			public void actionPerformed(ActionEvent e) {
+				btnNewCallback();
+			}});
 		
 		JButton btnEdit = new JButton("Edit...");
 		GridBagConstraints gbc_btnEdit = new GridBagConstraints();
@@ -154,13 +219,38 @@ public class ZeqerPanelInstruments extends JPanel{
 		gbc_btnEdit.gridx = 1;
 		gbc_btnEdit.gridy = 0;
 		pnlCtrl.add(btnEdit, gbc_btnEdit);
+		if(presetsEditable){
+			globalEnable.addComponent("btnEdit", btnEdit);
+			lstSelectedEnable.addComponent("btnEdit", btnEdit);
+		}
+		else{
+			btnEdit.setEnabled(false);
+			btnEdit.setVisible(false);
+		}
+		btnEdit.addActionListener(new ActionListener(){
+			public void actionPerformed(ActionEvent e) {
+				btnEditCallback();
+			}});
 		
 		JButton btnDelete = new JButton("Delete");
 		GridBagConstraints gbc_btnDelete = new GridBagConstraints();
 		gbc_btnDelete.gridx = 3;
 		gbc_btnDelete.gridy = 0;
 		pnlCtrl.add(btnDelete, gbc_btnDelete);
+		if(presetsEditable){
+			globalEnable.addComponent("btnDelete", btnDelete);
+			lstSelectedEnable.addComponent("btnDelete", btnDelete);
+		}
+		else{
+			btnDelete.setEnabled(false);
+			btnDelete.setVisible(false);
+		}
+		btnDelete.addActionListener(new ActionListener(){
+			public void actionPerformed(ActionEvent e) {
+				btnDeleteCallback();
+			}});
 		
+		//TODO
 		JPanel pnlPlay = new JPanel();
 		GridBagConstraints gbc_pnlPlay = new GridBagConstraints();
 		gbc_pnlPlay.gridwidth = 2;
@@ -173,6 +263,25 @@ public class ZeqerPanelInstruments extends JPanel{
 	}
 	
 	private void addFilterPanels(){
+		
+		//Preset type
+		FlagFilterPanel<InstNode> fpnl2 = new FlagFilterPanel<InstNode>("Flags");
+		fpnl2.addSwitch(new ZeqerFilter<InstNode>(){
+			public boolean itemPasses(InstNode item){
+				if(item == null) return false;
+				if(item.preset == null) return false;
+				return (item.preset instanceof ZeqerInstPreset);
+			}
+		}, "Standard Instrument", true);
+		fpnl2.addSwitch(new ZeqerFilter<InstNode>(){
+			public boolean itemPasses(InstNode item){
+				if(item == null) return false;
+				if(item.preset == null) return false;
+				return (item.preset instanceof ZeqerPercPreset);
+			}
+		}, "Percussion", true);
+		pnlFilt.addPanel(fpnl2);
+		
 		//Text search
 		TextFilterPanel<InstNode> fpnl1 = new TextFilterPanel<InstNode>(0);
 		fpnl1.setSearchFilter(new ZeqerFilter<InstNode>(){
@@ -190,18 +299,323 @@ public class ZeqerPanelInstruments extends JPanel{
 		pnlFilt.addPanel(pnlTags);
 		
 		//Might add flag panels too?
+		
+		pnlFilt.addRefilterCallback(new VoidCallbackMethod(){
+			public void doMethod() {refilter();}
+		});
 	}
 	
 	/*----- Getters -----*/
 	
+	public ZeqerPreset getSelectedPreset(){
+		if(lstPresets.isSelectionEmpty()) return null;
+		InstNode node = lstPresets.getSelectedValue();
+		if(node == null) return null;
+		return node.preset;
+	}
+	
 	/*----- Setters -----*/
+	
+	/*----- Misc. -----*/
+	
+	private void loadPresetsFromCore(){
+		if(core != null){
+			List<ZeqerPreset> corePresets = core.getAllInstPresets();
+			allPresets = new ArrayList<InstNode>(corePresets.size()+1);
+			for(ZeqerPreset p : corePresets){
+				allPresets.add(new InstNode(p));
+			}
+			Collections.sort(allPresets);
+		}
+		
+		updateTagPool();
+	}
+	
+	private void updateTagPool(){
+		Set<String> tagpool = new HashSet<String>();
+		if(allPresets != null){
+			for(InstNode node : allPresets){
+				List<String> tags = node.preset.getAllTags();
+				if(tags != null){
+					tagpool.addAll(tags);
+				}
+			}
+		}
+		pnlTags.addTagPool(tagpool, new ZeqerFilter<InstNode>(){
+			public boolean itemPasses(InstNode item, String txt){
+				if(item == null || item.preset == null) return false;
+				List<String> tags = item.preset.getAllTags();
+				if(tags == null) return false;
+				return tags.contains(txt);
+			}
+		});
+		refilter();
+	}
 	
 	/*----- GUI Management -----*/
 	
-	private void updateList(){
-		//TODO
+	private void clearAllFilters(){
+		pnlFilt.clearFilterSelections();
+		refilter();
+	}
+	
+	public void refilter(){
+		DefaultListModel<InstNode> mdl = new DefaultListModel<InstNode>();
+		if(allPresets != null){
+			for(InstNode node : allPresets){
+				if(pnlFilt.itemPassesFilters(node)){
+					mdl.addElement(node);
+				}
+			}
+		}
+		lstPresets.setModel(mdl);
+		lstPresets.setSelectedIndex(-1);
+		lstPresets.repaint();
+		updateInfoPanel(null);
+	}
+	
+	private void updateInfoPanel(InstNode selection){
+		try{
+			Writer writer = pnlInfo.getWriter();
+			if(selection == null || selection.preset == null){
+				writer.write("<No preset selected>\n");
+			}
+			else{
+				writer.write(selection.preset.getName() + "\n");
+				writer.write("UID: " + String.format("%08x\n", selection.preset.getUID()));
+				writer.write("Type: ");
+				if(selection.preset instanceof ZeqerInstPreset){
+					writer.write("Standard Instrument\n");
+					//Type specific...
+					ZeqerInstPreset ipreset = (ZeqerInstPreset)selection.preset;
+					writer.write("Enum Stem: " + ipreset.getEnumStringBase() + "\n");
+					
+					Z64Instrument inst = ipreset.getInstrument();
+					if(inst != null){
+						int relraw = inst.getDecay();
+						writer.write("Release Time: " + Z64Sound.releaseValueToMillis(relraw) + " milliseconds\n");
+						writer.write("Regions -- \n");
+						Z64WaveInfo smpl = inst.getSampleLow();
+						if(smpl != null){
+							writer.write("0 - " + inst.getLowRangeTop() + ":\t");
+							writer.write(smpl.getName() + "\n");
+							writer.write((inst.getLowRangeTop() + 1) + " - ");
+						}
+						else writer.write("0 - ");
+						
+						if(inst.getSampleHigh() != null){
+							writer.write((inst.getHighRangeBottom() - 1) + ":\t");
+						}
+						else writer.write("127:\t");
+						smpl = inst.getSampleMiddle();
+						writer.write(smpl.getName() + "\n");
+						
+						smpl = inst.getSampleHigh();
+						if(smpl != null){
+							writer.write(inst.getHighRangeBottom() + " - 127:\t");
+							writer.write(smpl.getName() + "\n");
+						}
+					}
+				}
+				else if(selection.preset instanceof ZeqerPercPreset){
+					writer.write("Percussion Set\n");
+					ZeqerPercPreset perc = (ZeqerPercPreset)selection.preset;
+					writer.write("Regions: " + perc.getRegionCount() + "\n");
+					writer.write("Max Slots Used: " + perc.getMaxUsedSlotCount() + "\n");
+				}
+				else if(selection.preset instanceof ZeqerSFXPreset){
+					writer.write("SFX Set\n");
+				}
+				else{
+					writer.write("Unknown\n");
+				}
+				
+				writer.write("Tags: ");
+				boolean first = true;
+				List<String> tags = selection.preset.getAllTags();
+				if(tags != null && !tags.isEmpty()){
+					for(String tag : tags){
+						if(!first) writer.write(";");
+						writer.write(tag);
+						first = false;	
+					}
+				}
+				else writer.write("<None>");
+				writer.write("\n");
+			}
+			writer.close();
+		}
+		catch(Exception ex){
+			ex.printStackTrace();
+			JOptionPane.showMessageDialog(this, "ERROR: Could not render information for selected sample!",
+						"Preset Info", JOptionPane.ERROR_MESSAGE);
+		}
+		pnlInfo.repaint();
+	}
+	
+	public void setWait(){
+		globalEnable.setEnabling(false);
+		pnlFilt.disableAll();
+		globalEnable.repaint();
+		pnlFilt.repaint();
+		setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+	}
+	
+	public void unsetWait(){
+		globalEnable.setEnabling(true);
+		pnlFilt.enableAll();
+		lstSelectedEnable.setEnabling(!lstPresets.isSelectionEmpty());
+		
+		globalEnable.repaint();
+		pnlFilt.repaint();
+		setCursor(null);
 	}
 	
 	/*----- Callbacks -----*/
+	
+	private void lstPresetsSelectCallback(){
+		setWait();
+		if(!lstPresets.isSelectionEmpty()){
+			updateInfoPanel(lstPresets.getSelectedValue());
+		}
+		else updateInfoPanel(null);
+		unsetWait();
+	}
+	
+	private void btnNewCallback(){
+		if(!presetsEditable) return;
+		
+		//Need a dialog that asks if want to create
+		//	a std inst or a perc preset.
+		setWait();
+		int ret = InstTypeMiniDialog.showDialog(parent);
+		if(ret == InstTypeMiniDialog.SELECTION_INST){
+			ZeqerInstEditDialog dialog = new ZeqerInstEditDialog(parent, core);
+			dialog.showMe(this);
+			//Disposes itself in closeMe()
+			
+			if(dialog.getExitSelection()){
+				ZeqerInstPreset instp = dialog.getInstrument();
+				if(core != null){
+					core.addUserPreset(instp);
+				}
+				InstNode inode = new InstNode(instp);
+				allPresets.add(inode);
+				Collections.sort(allPresets);
+				clearAllFilters();
+				lstPresets.setSelectedValue(inode, true);
+				updateInfoPanel(inode);
+			}
+		}
+		else if(ret == InstTypeMiniDialog.SELECTION_PERC){
+			ZeqerDrumEditDialog dialog = new ZeqerDrumEditDialog(parent, core);
+			dialog.showMe(this);
+			//Disposes itself in closeMe()
+			
+			ZeqerPercPreset percp = dialog.getDrum();
+			if(percp != null){
+				if(core != null){
+					core.addUserPreset(percp);
+				}
+				InstNode inode = new InstNode(percp);
+				allPresets.add(inode);
+				Collections.sort(allPresets);
+				clearAllFilters();
+				lstPresets.setSelectedValue(inode, true);
+				updateInfoPanel(inode);
+			}
+		}
+		unsetWait();
+	}
+	
+	private void btnEditCallback(){
+		if(!presetsEditable) return;
+		if(lstPresets.isSelectionEmpty()){
+			JOptionPane.showMessageDialog(this, "No presets are selected!", 
+					"Edit Preset", JOptionPane.WARNING_MESSAGE);
+			return;
+		}
+		
+		setWait();
+		InstNode sel = lstPresets.getSelectedValue();
+		if(sel != null && sel.preset != null){
+			if(sel.preset instanceof ZeqerInstPreset){
+				ZeqerInstPreset instp = (ZeqerInstPreset)sel.preset;
+				ZeqerInstEditDialog dialog = new ZeqerInstEditDialog(parent, core, instp);
+				dialog.showMe(this);
+				//Disposes itself in closeMe()
+				
+				//The save option in this dialog updates the inst preset by reference.
+				//So shouldn't need to do anything else there.
+				
+				updateInfoPanel(sel);
+			}
+			else if(sel.preset instanceof ZeqerPercPreset){
+				ZeqerPercPreset percp = (ZeqerPercPreset)sel.preset;
+				ZeqerDrumEditDialog dialog = new ZeqerDrumEditDialog(parent, core);
+				dialog.setDrum(percp);
+				dialog.showMe(this);
+				//Disposes itself in closeMe()
+				
+				//Like inst, the drum dialog writes back to ref on save.
+				
+				updateInfoPanel(sel);
+			}
+		}
+		
+		unsetWait();
+	}
+	
+	private void btnDeleteCallback(){
+		if(!presetsEditable) return;
+		if(lstPresets.isSelectionEmpty()){
+			JOptionPane.showMessageDialog(this, "No presets are selected!", 
+					"Delete Presets", JOptionPane.WARNING_MESSAGE);
+			return;
+		}
+		setWait();
+		//Can delete multiple at a time. Otherwise, while the list allows
+		//	multiple selection, it ignores all but one item.
+		
+		//Have a message dialog for confirmation
+		//"Delete n presets?"
+		//Core should refuse to delete system presets.
+		List<InstNode> allsel = lstPresets.getSelectedValuesList();
+		int dcount = allsel.size();
+		int ret = JOptionPane.showConfirmDialog(this, "Are you sure you want to detele " + dcount + " presets?", 
+				"Delete Presets", 
+				JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+		
+		if(ret != JOptionPane.YES_OPTION){
+			unsetWait();
+			return;
+		}
+		
+		int successCount = 0;
+		boolean[] successVec = new boolean[dcount];
+		int i = 0;
+		for(InstNode node : allsel){
+			if(node.preset == null){i++; continue;}
+			if(core.deletePreset(node.preset.getUID())){
+				successVec[i++] = true;
+				successCount++;
+			}
+		}
+		
+		allPresets.clear();
+		loadPresetsFromCore();
+		refilter();
+		
+		if(successCount < dcount){
+			//Show message
+			int nondel = dcount - successCount;
+			JOptionPane.showMessageDialog(this, nondel + " of " + dcount + " presets"
+					+ " could not be deleted.\n"
+					+ "This is likely due to lack of permissions.", 
+					"Delete Presets", JOptionPane.WARNING_MESSAGE);
+		}
+		
+		unsetWait();
+	}
 	
 }

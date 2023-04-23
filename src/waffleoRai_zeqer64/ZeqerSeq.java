@@ -6,6 +6,7 @@ import java.util.List;
 
 import waffleoRai_SeqSound.n64al.NUSALSeq;
 import waffleoRai_Utils.FileBuffer;
+import waffleoRai_Utils.FileUtils;
 import waffleoRai_zeqer64.filefmt.ZeqerSeqTable.SeqTableEntry;
 
 public class ZeqerSeq {
@@ -39,6 +40,11 @@ public class ZeqerSeq {
 	
 	public static final int IOALIAS_CH_SEQ = -1;
 	public static final int IOALIAS_CH_ANY = -2;
+	
+	public static final int PARSE_ERR_NONE = 0;
+	public static final int PARSE_ERR_CRASH = 1;
+	public static final int PARSE_ERR_TIMEOUT = 2;
+	public static final int PARSE_ERR_OTHER_IRQ = 3;
 	
 	/*----- Inner Classes -----*/
 	
@@ -219,12 +225,139 @@ public class ZeqerSeq {
 	public void setRawData(FileBuffer val){raw_data = val;}
 	
 	public void allocModuleList(int size){modules = new ArrayList<Module>(size+1);}
-	public void addModule(Module mod){mod.setIndex(modules.size()); modules.add(mod);}
-	public void addCommonLabel(Label lbl){common_labels.add(lbl);}
-	public void addCommonAlias(IOAlias ioalias){common_aliases.add(ioalias);}
+	
+	public void addModule(Module mod){
+		if(modules == null){
+			modules = new ArrayList<Module>();
+		}
+		mod.setIndex(modules.size()); 
+		modules.add(mod);
+	}
+	
+	public void addCommonLabel(Label lbl){
+		common_labels.add(lbl);
+	}
+	
+	public void addCommonAlias(IOAlias ioalias){
+		common_aliases.add(ioalias);
+	}
 	
 	/*----- Reading -----*/
 	
+	public static NUSALSeq parseSeqWithTimeout(FileBuffer rawdata, int timeout_millis, ZeqerErrorCode error){
+		TimeoutParser runner = new TimeoutParser(rawdata);
+		Thread th = new Thread(runner);
+		int wait_count = 0;
+		final int SLEEP_TIME = 50;
+		
+		if(error != null) error.setValue(PARSE_ERR_NONE);
+		
+		th.setDaemon(true);
+		th.start();
+		while((th.isAlive()) && (wait_count < timeout_millis)){
+			try {Thread.sleep(SLEEP_TIME);} 
+			catch (InterruptedException e) {
+				if(th.isAlive()){
+					synchronized(th){th.interrupt();}
+					if(error != null){
+						error.setValue(PARSE_ERR_OTHER_IRQ);
+					}
+					return null;
+				}
+				break;
+			}
+			wait_count += SLEEP_TIME;
+		}
+		
+		if(th.isAlive()){
+			//Time out and kill
+			synchronized(th){th.interrupt();}
+			if(error != null){
+				error.setValue(PARSE_ERR_TIMEOUT);
+			}
+			return null;
+		}
+		
+		//Wait for it to finish.
+		while(th.isAlive()){
+			try {Thread.sleep(10);} 
+			catch (InterruptedException e) {
+				error.setValue(PARSE_ERR_OTHER_IRQ);
+				return null;
+			}
+		}
+		
+		NUSALSeq seq = runner.getResult();
+		Exception ex = runner.getError();
+		if(seq != null && ex == null) return seq;
+		
+		if(error != null){
+			error.setValue(PARSE_ERR_CRASH);
+		}
+		return null;
+	}
+	
 	/*----- Writing -----*/
+	
+	public boolean updateTableEntry(){
+		//Updates md5 and timestamp
+		if(table_entry == null) return false;
+		if(raw_data != null){
+			byte[] dat = raw_data.getBytes(0, raw_data.getFileSize());
+			byte[] md5 = FileUtils.getMD5Sum(dat);
+			dat = null;
+			table_entry.updateMD5(md5);
+			return true;
+		}
+		else{
+			//Try to serialize it.
+			if(sequence != null){
+				FileBuffer buff = sequence.getSerializedData();
+				byte[] dat = buff.getBytes(0, buff.getFileSize());
+				byte[] md5 = FileUtils.getMD5Sum(dat);
+				dat = null;
+				table_entry.updateMD5(md5);
+				return true;
+			}
+		}
+		return false;
+	}
+	
+	/*----- Misc. -----*/
+	
+	private static class TimeoutParser implements Runnable{
+
+		private FileBuffer rawdat = null;
+		private volatile NUSALSeq result = null;
+		private volatile Exception error = null;
+		
+		public TimeoutParser(FileBuffer input){
+			rawdat = input;
+		}
+		
+		public void run() {
+			try{
+				synchronized(this){result = NUSALSeq.readNUSALSeq(rawdat);}
+			}
+			catch(InterruptedException ex){
+				System.err.println("ZeqerSeq.TimeoutParser.run || Parser timed out and was interrupted.");
+				synchronized(this){
+					result = null;
+					error = null;
+				}
+			}
+			catch(Exception ex){
+				synchronized(this){
+					error = ex;
+					result = null;
+				}
+			}
+		}
+		
+		public synchronized NUSALSeq getResult(){return result;}
+		public synchronized Exception getError(){return error;}
+		
+	}
+	
 
 }

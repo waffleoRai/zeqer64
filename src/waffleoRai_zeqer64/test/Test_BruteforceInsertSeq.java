@@ -22,6 +22,7 @@ import waffleoRai_zeqer64.ZeqerRom;
 import waffleoRai_zeqer64.filefmt.NusRomInfo;
 import waffleoRai_zeqer64.filefmt.RomInfoNode;
 import waffleoRai_zeqer64.filefmt.SoundfontXML;
+import waffleoRai_zeqer64.filefmt.VersionWaveTable;
 
 public class Test_BruteforceInsertSeq {
 	//This just adds seq, font, and any samples to end of ROM
@@ -53,8 +54,15 @@ public class Test_BruteforceInsertSeq {
 		if(argmap.containsKey(KEY_BIN)){
 			String val = argmap.get(KEY_BIN);
 			System.err.println("readSeq - Using provided binary file: " + val);
-			NUSALSeq seq = NUSALSeq.readNUSALSeq(FileBuffer.createBuffer(val, true));
-			return seq;
+			NUSALSeq seq;
+			try {
+				seq = NUSALSeq.readNUSALSeq(FileBuffer.createBuffer(val, true));
+				return seq;
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			return null;
 		}
 		else if(argmap.containsKey(KEY_MML)){
 			String val = argmap.get(KEY_MML);
@@ -186,12 +194,12 @@ public class Test_BruteforceInsertSeq {
 			List<Z64WaveInfo> add_samples = new LinkedList<Z64WaveInfo>();
 			int font_bin_alloc = 0;
 			if(custom_font != null){
-				int[][][] vwav_tbl = ZeqerCore.getActiveCore().loadWaveVersionTable(rom.getRomInfo().getZeqerID());
+				VersionWaveTable vwav_tbl = ZeqerCore.getActiveCore().loadWaveVersionTable(rom.getRomInfo().getZeqerID());
 				Map<Integer, Integer> wid_map_b1 = new HashMap<Integer, Integer>(); //Map offsets in bank 1 to UIDs
-				int b1_scount = vwav_tbl[0].length;
+				/*int b1_scount = vwav_tbl[0].length;
 				for(int i = 0; i < b1_scount; i++){
 					wid_map_b1.put(vwav_tbl[0][i][0], vwav_tbl[0][i][1]);
-				}
+				}*/
 				int audiotable_off = rom.getFileVirtualOffset(rom.getRomInfo().getDMADataIndex_audiotable());
 				List<Z64WaveInfo> fnt_samples = custom_font.getAllWaveInfoBlocks();
 				font_bin_alloc = fnt_samples.size() * (16+48+144);

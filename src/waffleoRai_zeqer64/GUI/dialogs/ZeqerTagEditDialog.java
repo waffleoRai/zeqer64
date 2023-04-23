@@ -1,5 +1,6 @@
 package waffleoRai_zeqer64.GUI.dialogs;
 
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Frame;
 import java.util.ArrayList;
@@ -20,6 +21,7 @@ import java.awt.event.ActionListener;
 import javax.swing.border.BevelBorder;
 
 import waffleoRai_GUITools.ComponentGroup;
+import waffleoRai_GUITools.GUITools;
 
 import javax.swing.DefaultListModel;
 import javax.swing.JButton;
@@ -36,6 +38,7 @@ public class ZeqerTagEditDialog extends JDialog{
 	
 	/*----- Instance Variables -----*/
 	
+	private Frame parent;
 	private ComponentGroup globalEnable;
 	
 	private boolean exitSelection = false;
@@ -43,8 +46,9 @@ public class ZeqerTagEditDialog extends JDialog{
 	
 	/*----- Init -----*/
 	
-	public ZeqerTagEditDialog(Frame parent){
-		super(parent, true);
+	public ZeqerTagEditDialog(Frame parent_frame){
+		super(parent_frame, true);
+		parent = parent_frame;
 		globalEnable = new ComponentGroup();
 		initGUI();
 	}
@@ -175,6 +179,19 @@ public class ZeqerTagEditDialog extends JDialog{
 	
 	/*----- GUI Management -----*/
 
+	public void showMe(Component c){
+		if(c != null) setLocationRelativeTo(c);
+		else{
+			if(parent != null) setLocationRelativeTo(parent);
+			else{
+				setLocation(GUITools.getScreenCenteringCoordinates(this));
+			}
+		}
+		
+		pack();
+		setVisible(true);
+	}
+	
 	public void closeMe(){
 		setVisible(false);
 		dispose();

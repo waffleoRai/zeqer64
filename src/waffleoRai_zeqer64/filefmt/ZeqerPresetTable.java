@@ -122,7 +122,6 @@ public class ZeqerPresetTable {
 					preset = ipreset;
 					break;
 				case ZeqerPreset.PRESET_TYPE_PERC:
-					data.skipBytes(3);//Reserved
 					ZeqerPercPreset ppreset = new ZeqerPercPreset(uid);
 					long amtread = ppreset.readIn(data.getReferenceAt(data.getCurrentPosition()), envs, version);
 					data.skipBytes(amtread);
@@ -132,6 +131,7 @@ public class ZeqerPresetTable {
 					ZeqerSFXPreset spreset = new ZeqerSFXPreset(uid);
 					scount = Byte.toUnsignedInt(data.nextByte());
 					spreset.setGroupIndex(Byte.toUnsignedInt(data.nextByte()));
+					if(version >= 4) data.skipBytes(2); //Reserved
 					for(int j = 0; j < scount; j++){
 						int wid = data.nextInt();
 						spreset.setWaveID(j, wid);
@@ -143,6 +143,7 @@ public class ZeqerPresetTable {
 					
 					//Read string table, if present
 					if(version >= 4){
+						data.skipBytes(4);
 						for(int j = 0; j < scount; j++){
 							SerializedString ss = data.readVariableLengthString("UTF8", data.getCurrentPosition(), BinFieldSize.WORD, 2);
 							spreset.setSlotEnumString(j, ss.getString());
@@ -404,6 +405,16 @@ public class ZeqerPresetTable {
 	public void addPreset(ZeqerPreset preset){
 		if(preset == null) return;
 		presets.put(preset.getUID(), preset);
+	}
+	
+	public ZeqerPreset removePreset(int uid){
+		ZeqerPreset prs = presets.remove(uid);
+		if(prs != null){
+			if(name_map != null){
+				name_map.remove(prs.getName());
+			}
+		}
+		return prs;
 	}
 	
 	/*----- Misc -----*/

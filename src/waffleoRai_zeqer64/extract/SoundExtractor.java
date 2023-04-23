@@ -11,6 +11,7 @@ import waffleoRai_Utils.FileBuffer;
 import waffleoRai_zeqer64.ZeqerCore;
 import waffleoRai_zeqer64.ZeqerRom;
 import waffleoRai_zeqer64.filefmt.AbldFile;
+import waffleoRai_zeqer64.filefmt.VersionWaveTable;
 import waffleoRai_zeqer64.filefmt.ZeqerBankTable;
 import waffleoRai_zeqer64.filefmt.ZeqerPresetTable;
 import waffleoRai_zeqer64.filefmt.ZeqerSeqTable;
@@ -47,6 +48,8 @@ public class SoundExtractor {
 	/*----- Dump -----*/
 	
 	public boolean dumpSoundData(boolean verbose) throws IOException{
+		//TODO Use core managers instead
+		
 		String wavdir = dir_base + SEP + ZeqerCore.DIRNAME_WAVE + SEP + ZeqerCore.DIRNAME_ZWAVE;
 		String bnkdir = dir_base + SEP + ZeqerCore.DIRNAME_BANK + SEP + ZeqerCore.DIRNAME_ZBANK;
 		String seqdir = dir_base + SEP + ZeqerCore.DIRNAME_SEQ + SEP + ZeqerCore.DIRNAME_ZSEQ;
@@ -73,10 +76,10 @@ public class SoundExtractor {
 		if(verbose) System.err.println("Mapping wave offsets to UIDs...");
 		if(write_perm) bnkex.setSysPermission(true);
 		//Reload wav id map for banks
-		List<Map<Integer, Integer>> wavmap = ZeqerWaveTable.loadVersionWaveOffsetIDMap(wavdir, zid);
+		WaveLocIDMap wavmap = ZeqerWaveTable.loadVersionWaveOffsetIDMap(wavdir, zid);
 		
 		if(verbose) System.err.println("Extracting soundbanks...");
-		if(!bnkex.extractBanks(wavmap)) return false;
+		//if(!bnkex.extractBanks(wavmap)) return false;
 		
 		//Seqs
 		if(verbose) System.err.println("Extracting seqs...");
@@ -95,7 +98,7 @@ public class SoundExtractor {
 		//generate abld
 		//Load id tables.
 		if(!FileBuffer.directoryExists(blddir)) Files.createDirectories(Paths.get(blddir));
-		int[][][] wuids = ZeqerWaveTable.loadVersionTable(wavdir, zid);
+		VersionWaveTable wuids = ZeqerWaveTable.loadVersionTable(wavdir, zid);
 		int[] suids = ZeqerSeqTable.loadVersionTable(seqdir, zid);
 		AbldFile abld = AbldFile.fromROM(z_rom, suids, buids, wuids);
 		good = good && abld.serializeTo(blddir + SEP + zid + ".abld");

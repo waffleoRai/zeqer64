@@ -30,6 +30,9 @@ public class GUITestMain {
 		catch (IOException e) {
 			e.printStackTrace();
 			System.exit(1);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+			System.exit(1);
 		}
 	}
 	

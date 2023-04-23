@@ -200,6 +200,17 @@ public class ZeqerBankTable {
 			return size;
 		}
 		
+		public void updateModifiedTimestamp(){
+			time_modified = ZonedDateTime.now();
+		}
+		
+		public void setMD5(byte[] new_md5){
+			if(new_md5 == null) return;
+			if(new_md5.length != 16) return;
+			md5 = new_md5;
+			time_modified = ZonedDateTime.now();
+		}
+		
 		public int serializeTo(FileBuffer out){
 			if(out == null) return 0;
 			int initsize = (int)out.getFileSize();
@@ -292,6 +303,23 @@ public class ZeqerBankTable {
 	
 	/*----- Setters -----*/
 	
+	public BankTableEntry newEntry(int uid){
+		if(uid == 0 || uid == -1) return null;
+
+		BankTableEntry entry = new BankTableEntry();
+		entry.uid = uid;
+		entry.md5 = new byte[16];
+		
+		entries.put(uid, entry);
+		
+		entry.time_created = ZonedDateTime.now();
+		entry.time_modified = ZonedDateTime.now();
+		
+		entry.name = "bnk_" + Integer.toHexString(uid);
+		
+		return entry;
+	}
+	
 	public BankTableEntry newEntry(byte[] md5){
 		if(md5 == null) return null;
 		
@@ -329,6 +357,15 @@ public class ZeqerBankTable {
 			String md5str = FileUtils.bytes2str(e.md5).toLowerCase();
 			md5_map.put(md5str, e);
 		}
+	}
+	
+	public BankTableEntry removeEntry(int uid){
+		BankTableEntry e = entries.remove(uid);
+		if(e != null && md5_map != null){
+			String md5str = FileUtils.bytes2str(e.md5);
+			md5_map.remove(md5str);
+		}
+		return e;
 	}
 	
 	/*----- Reading -----*/

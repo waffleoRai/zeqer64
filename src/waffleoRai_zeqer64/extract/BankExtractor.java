@@ -130,7 +130,7 @@ public class BankExtractor {
 		BankInfoEntry[] bank_tbl = z_rom.loadBankEntries();
 		int bcount = bank_tbl.length;
 		int[] bank_ids = new int[bcount];
-		for(int i = 0; i < bcount; i++){	
+		for(int i = 0; i < bcount; i++){
 			//System.err.print("DEBUG Reading bank " + i + " --");
 			//Read the bank
 			int stpos = bank_tbl[i].getOffset();

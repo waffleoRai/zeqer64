@@ -97,6 +97,7 @@ public class ZeqerSFXPreset extends ZeqerPreset{
 		buffer.addToFile((byte)scount);
 		if(!hashmode) buffer.addToFile((byte)group_idx);
 		else buffer.addToFile((byte)0);
+		buffer.addToFile((short)0); //V4+ I guess
 		
 		for(int i = 0; i < scount; i++){
 			buffer.addToFile(wave_ids[i]);

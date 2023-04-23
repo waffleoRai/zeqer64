@@ -2,9 +2,22 @@ package waffleoRai_zeqer64;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.LinkedList;
+import java.util.Random;
+import java.util.Set;
+import java.util.TreeSet;
 
+import waffleoRai_SeqSound.SeqVoiceCounter;
+import waffleoRai_SeqSound.n64al.NUSALSeq;
 import waffleoRai_Utils.FileBuffer;
+import waffleoRai_Utils.FileUtils;
 import waffleoRai_Utils.FileBuffer.UnsupportedFileTypeException;
+import waffleoRai_zeqer64.SoundTables.SeqInfoEntry;
+import waffleoRai_zeqer64.extract.RomExtractionSummary;
+import waffleoRai_zeqer64.extract.RomExtractionSummary.ExtractionError;
+import waffleoRai_zeqer64.filefmt.NusRomInfo;
 import waffleoRai_zeqer64.filefmt.TSVTables;
 import waffleoRai_zeqer64.filefmt.UltraSeqFile;
 import waffleoRai_zeqer64.filefmt.ZeqerSeqTable;
@@ -13,6 +26,8 @@ import waffleoRai_zeqer64.filefmt.ZeqerSeqTable.SeqTableEntry;
 class CoreSeqManager {
 	
 	private static final char SEP = File.separatorChar;
+	
+	public static final int PARSE_TIMEOUT = 10000; //10s
 	
 	/*----- Instance Variables -----*/
 	
@@ -28,6 +43,11 @@ class CoreSeqManager {
 		//Loads tables too, or creates if not there.
 		root_dir = base_seq_dir;
 		sys_write_enabled = sysMode;
+		
+		String zdir = root_dir + SEP + ZeqerCore.DIRNAME_ZSEQ;
+		if(!FileBuffer.directoryExists(zdir)){
+			Files.createDirectories(Paths.get(zdir));
+		}
 		
 		String tblpath = getSysTablePath();
 		if(FileBuffer.fileExists(tblpath)){
@@ -48,6 +68,16 @@ class CoreSeqManager {
 		}
 	}
 	
+	public int genNewRandomGUID(){
+		//TODO Also add this as a safety for other managers
+		Random r = new Random();
+		int uid = r.nextInt();
+		while((uid == 0) || (uid == -1) || hasSeqWithUID(uid)){
+			uid = r.nextInt();
+		}
+		return uid;
+	}
+	
 	/*----- Getters -----*/
 	
 	public String getSysTablePath(){
@@ -60,16 +90,26 @@ class CoreSeqManager {
 	
 	public String getSeqDataFilePath(int uid){
 		if(isSysSeq(uid)){
-			return getSysTablePath() + SEP + String.format("%08x.buseq", uid);
+			return root_dir + SEP + ZeqerCore.DIRNAME_ZSEQ + SEP + String.format("%08x.buseq", uid);
 		}
 		else{
-			return getUserTablePath() + SEP + String.format("%08x.buseq", uid);	
+			return root_dir + SEP + String.format("%08x.buseq", uid);	
 		}
 	}
 	
 	public boolean isSysSeq(int uid){
 		if(seq_table_sys != null){
 			return seq_table_sys.getSequence(uid) != null;
+		}
+		return false;
+	}
+	
+	public boolean hasSeqWithUID(int uid){
+		if(seq_table_sys != null){
+			if(seq_table_sys.getSequence(uid) != null) return true;
+		}
+		if(seq_table_user != null){
+			if(seq_table_user.getSequence(uid) != null) return true;
 		}
 		return false;
 	}
@@ -107,7 +147,9 @@ class CoreSeqManager {
 		String spath = basedir + SEP + entry.getDataFileName();
 		if(!FileBuffer.fileExists(spath)) return null;
 		try{
-			ZeqerSeq zseq = UltraSeqFile.readUSEQ(spath);
+			UltraSeqFile useq =  UltraSeqFile.openUSEQ(spath);
+			ZeqerSeq zseq = UltraSeqFile.readUSEQ(useq, entry);
+			useq.dispose();
 			return zseq;
 		}
 		catch(Exception ex){
@@ -144,7 +186,287 @@ class CoreSeqManager {
 		}
 	}
 	
+	public int[] loadVersionTable(String zeqer_id) throws IOException{
+		String idtblpath = root_dir + SEP + ZeqerCore.DIRNAME_ZSEQ + SEP + "seq_" + zeqer_id + ".bin";
+		if(!FileBuffer.fileExists(idtblpath)) return null;
+		FileBuffer buff = FileBuffer.createBuffer(idtblpath, true);
+		buff.setCurrentPosition(0L);
+		int scount = (int)(buff.getFileSize() >>> 2);
+		int[] uids = new int[scount];
+		for(int i = 0; i < scount; i++){
+			uids[i] = buff.nextInt();
+		}
+		return uids;
+	}
+	
 	/*----- Setters -----*/
+	
+	public SeqTableEntry newUserSeq(NUSALSeq data) throws IOException{
+		int id = genNewRandomGUID();
+		SeqTableEntry e = seq_table_user.newEntry(id);
+		if(e == null) return null;
+		
+		ZeqerSeq zseq = new ZeqerSeq(e);
+		zseq.setSequence(data);
+		zseq.updateTableEntry();
+		String writepath = root_dir + SEP + String.format("%08x.buseq", id);
+		UltraSeqFile.writeUSEQ(zseq, writepath);
+		saveUserTable();
+		return e;
+	}
+	
+	public boolean deleteSeq(int uid){
+		if(seq_table_user != null){
+			if(seq_table_user.deleteEntry(uid) != null) return true;
+		}
+		if(!sys_write_enabled) return false;
+		return seq_table_sys.deleteEntry(uid) != null;
+	}
+	
+	/*----- ROM Extract -----*/
+	
+	private static void addZeqerSeqData(FileBuffer myseq, ZeqerSeq zseq){
+		ZeqerErrorCode err = new ZeqerErrorCode();
+		NUSALSeq nseq = ZeqerSeq.parseSeqWithTimeout(myseq, PARSE_TIMEOUT, err);
+		if(nseq != null){
+			zseq.setSequence(nseq);
+			SeqVoiceCounter vctr = new SeqVoiceCounter();
+			nseq.playTo(vctr, false);
+			zseq.setMaxVoiceLoad(vctr.getMaxTotalVoiceCount());
+			int lyrch = nseq.getMaxLayersPerChannel();
+			zseq.setMoreThanFourLayers(lyrch > 4);
+		}
+		else{
+			zseq.setRawData(myseq);
+			System.err.print("CoreSeqManager.addZeqerSeqData | Seq " + String.format("%08x", zseq.getTableEntry().getUID()) + " | Seq parse failed. Likely reason: ");
+			switch(err.getValue()){
+			case ZeqerSeq.PARSE_ERR_CRASH:
+				System.err.print("Parser could not read data");
+				break;
+			case ZeqerSeq.PARSE_ERR_TIMEOUT:
+				System.err.print("Time out (parser probably hung on infinite while)");
+				break;
+			case ZeqerSeq.PARSE_ERR_OTHER_IRQ:
+				System.err.print("Misc. interrupt request");
+				break;
+			case ZeqerSeq.PARSE_ERR_NONE:
+			default:
+				System.err.print("Unknown");
+				break;
+			}
+			System.err.println();
+		}
+	}
+	
+	public boolean importROMSeqs(ZeqerRom z_rom, RomExtractionSummary errorInfo) throws IOException{
+		if(z_rom == null) return false;
+		NusRomInfo rominfo = z_rom.getRomInfo();
+		if(rominfo == null) return false;
+		
+		if(errorInfo != null){
+			errorInfo.seqsAddedAsCustom = 0;
+			errorInfo.seqsFound = 0;
+			errorInfo.seqsNew = 0;
+			errorInfo.seqsOkay = 0;
+		}
+		
+		final String ZSEQ_DIR = root_dir + SEP + ZeqerCore.DIRNAME_ZSEQ;
+		boolean good = true;
+		String zid = rominfo.getZeqerID();
+		String version_tbl_path = ZSEQ_DIR + SEP + "seq_" + zid + ".bin";
+		FileBuffer audioseq = z_rom.loadAudioseq(); audioseq.setEndian(true);
+		SeqInfoEntry[] cseq_tbl = z_rom.loadSeqEntries();
+		Set<Integer> ref_idxs = new TreeSet<Integer>();
+		
+		int scount = cseq_tbl.length;
+		int[] uid_tbl = new int[scount];
+		for(int i = 0; i < scount; i++){
+			long stoff = cseq_tbl[i].getOffset();
+			long size = cseq_tbl[i].getSize();
+			if(size <= 0L){
+				ref_idxs.add(i);
+				continue;
+			}
+			if(errorInfo != null) errorInfo.seqsFound++; //Don't want to count refs
+			
+			//Nab seq file
+			FileBuffer myseq = audioseq.createReadOnlyCopy(stoff, stoff+size);
+			byte[] md5 = FileUtils.getMD5Sum(myseq.getBytes());
+			String md5str = FileUtils.bytes2str(md5).toLowerCase();
+			
+			SeqTableEntry entry = seq_table_sys.matchSequenceMD5(md5str);
+			if(entry == null){
+				//Create if write enabled.
+				if(sys_write_enabled){
+					entry = seq_table_sys.newEntry(md5);
+					entry.setEnumString("AUDIOSEQ_" + zid.toUpperCase() + String.format("_%03d", i));
+					entry.setMedium((byte)cseq_tbl[i].getMedium());
+					entry.setCache((byte)cseq_tbl[i].getCachePolicy());
+					
+					//Copy data
+					String datapath = ZSEQ_DIR + SEP + entry.getDataFileName();
+					if(!FileBuffer.fileExists(datapath)){
+						ZeqerSeq zseq = new ZeqerSeq(entry);
+						if(z_rom.getRomInfo().isZ5()) zseq.setOoTCompatible(true);
+						
+						//Add data.
+						addZeqerSeqData(myseq, zseq);
+						UltraSeqFile.writeUSEQ(zseq, datapath, myseq);
+					}
+					
+					//Mark uid
+					uid_tbl[i] = entry.getUID();
+					if(errorInfo != null){
+						errorInfo.seqsNew++;
+						errorInfo.seqsOkay++;
+					}
+				}
+				else{
+					//Try to add as user.
+					if(seq_table_user != null){
+						entry = seq_table_user.newEntry(md5);
+						entry.setEnumString("AUDIOSEQ_" + zid.toUpperCase() + String.format("_%03d", i));
+						entry.setMedium((byte)cseq_tbl[i].getMedium());
+						entry.setCache((byte)cseq_tbl[i].getCachePolicy());
+						
+						//Copy data
+						String datapath = root_dir + SEP + entry.getDataFileName();
+						if(!FileBuffer.fileExists(datapath)){
+							ZeqerSeq zseq = new ZeqerSeq(entry);
+							if(z_rom.getRomInfo().isZ5()) zseq.setOoTCompatible(true);
+							
+							//Add data.
+							addZeqerSeqData(myseq, zseq);
+							UltraSeqFile.writeUSEQ(zseq, datapath, myseq);
+						}
+						
+						//Mark uid
+						uid_tbl[i] = entry.getUID();
+						if(errorInfo != null) errorInfo.seqsAddedAsCustom++;
+					}
+					else{
+						//User mode disabled. Note error.
+						uid_tbl[i] = 0;
+						if(errorInfo != null){
+							if(errorInfo.seqErrors == null){
+								errorInfo.seqErrors = new LinkedList<ExtractionError>();
+							}
+							ExtractionError err = new ExtractionError();
+							err.index0 = i;
+							err.itemType = RomExtractionSummary.ITEM_TYPE_SEQ;
+							err.reason = RomExtractionSummary.ERROR_NOT_IN_TABLE;
+							err.itemUID = ZeqerUtils.md52UID(md5);
+							errorInfo.seqErrors.add(err);
+						}
+						good = false;
+					}
+				}
+			}
+			else{
+				//Existing match. Check if there's a data file.
+				String datapath = ZSEQ_DIR + SEP + entry.getDataFileName();
+				if(!FileBuffer.fileExists(datapath)){
+					ZeqerSeq zseq = new ZeqerSeq(entry);
+					if(z_rom.getRomInfo().isZ5()) zseq.setOoTCompatible(true);
+					
+					//Add data.
+					addZeqerSeqData(myseq, zseq);
+					UltraSeqFile.writeUSEQ(zseq, datapath, myseq);
+				}
+				
+				uid_tbl[i] = entry.getUID();
+				if(errorInfo != null) errorInfo.seqsOkay++;
+			}
+			myseq.dispose();
+		}
+		
+		//Resolve references
+		for(Integer ridx : ref_idxs){
+			int tidx = cseq_tbl[ridx].getOffset();
+			uid_tbl[ridx] = uid_tbl[tidx];
+		}
+		
+		//Save tables
+		FileBuffer outbuff = new FileBuffer(scount << 2, true);
+		for(int i = 0; i < scount; i++){
+			outbuff.addToFile(uid_tbl[i]);
+		}
+		outbuff.writeFile(version_tbl_path);
+		
+		saveTables();
+		return good;
+	}
+
+	public boolean mapSeqBanks(ZeqerRom z_rom, int[] bank_uids) throws IOException{
+		//Okay, so the seq/bank map table is weird.
+		//Appears to be positioned after bank table, right before seq table.
+		
+		//Will need to load rom version uid table too, so know which uids are 
+		//	connected to which seqs
+		
+		if(!sys_write_enabled) return false;
+		if(z_rom == null) return false;
+		if(bank_uids == null) return false;
+		
+		NusRomInfo rominfo = z_rom.getRomInfo();
+		if(rominfo == null) return false;
+		
+		final String ZSEQ_DIR = root_dir + SEP + ZeqerCore.DIRNAME_ZSEQ;
+		boolean good = true;
+		
+		String idtblpath = ZSEQ_DIR + SEP + "seq_" + rominfo.getZeqerID() + ".bin";
+		if(!FileBuffer.fileExists(idtblpath)) return false;
+		FileBuffer inbuff = FileBuffer.createBuffer(idtblpath, true);
+		int scount = (int)(inbuff.getFileSize() >>> 2);
+		if(scount < 1) return false;
+		int[] seqids = new int[scount];
+		inbuff.setCurrentPosition(0L);
+		for(int i = 0; i < scount; i++) seqids[i] = inbuff.nextInt();
+		
+		FileBuffer code = z_rom.loadCode(); code.setEndian(true);
+		
+		int bcount = bank_uids.length;
+		long tst = rominfo.getCodeOffset_bnktable() + ((bcount+1) << 4);
+		for(int i = 0; i < scount; i++){
+			//Pull seq from table. If not found, warn and continue.
+			ZeqerSeq zs = loadSeq(seqids[i]);
+			if(zs == null){
+				System.err.println("WARNING: Sequence at index " + i + " could not be found in zeqer table!");
+				continue;
+			}
+			SeqTableEntry entry = zs.getTableEntry();
+			
+			//Get bnk/seq table record location
+			long roff = Short.toUnsignedLong(code.shortFromFile(tst + (i<<1)));
+			roff += tst;
+			
+			//Read record/save to entry
+			int sbcount = Byte.toUnsignedInt(code.getByte(roff));
+			if(sbcount > 1){
+				for(int j = 0; j < sbcount; j++){
+					int bidx = Byte.toUnsignedInt(code.getByte(roff+1+j));
+					if(bidx < 0 || bidx >= bank_uids.length){
+						System.err.println("WARNING: Bank index " + bidx + " out of range. Skipping seq " + i + "...");
+						continue;
+					}
+					entry.addBank(bank_uids[bidx]);
+				}	
+			}
+			else{
+				int bidx = Byte.toUnsignedInt(code.getByte(roff+1));
+				if(bidx < 0 || bidx >= bank_uids.length){
+					System.err.println("WARNING: Bank index " + bidx + " out of range. Skipping seq " + i + "...");
+					continue;
+				}
+				entry.setSingleBank(bank_uids[bidx]);
+			}
+			
+			//Save zs
+			UltraSeqFile.writeUSEQ(zs, ZSEQ_DIR + SEP + entry.getDataFileName());
+		}
+		saveSysTable();
+		return good;
+	}
 	
 	/*----- I/O -----*/
 	
@@ -370,11 +692,14 @@ class CoreSeqManager {
 	public boolean saveSeq(ZeqerSeq seq) throws IOException{
 		if(seq == null) return false;
 		if(seq.getTableEntry() == null) return false;
+		
+		seq.updateTableEntry();
 		int uid = seq.getTableEntry().getUID();
 		if(!sys_write_enabled && isSysSeq(uid)) return false;
 		String writepath = getSeqDataFilePath(uid);
 		if(writepath == null) return false;
 		UltraSeqFile.writeUSEQ(seq, writepath);
+		saveTables();
 		return true;
 	}
 	

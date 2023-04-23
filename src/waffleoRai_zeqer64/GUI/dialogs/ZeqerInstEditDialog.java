@@ -10,6 +10,7 @@ import waffleoRai_zeqer64.presets.ZeqerInstPreset;
 import java.awt.GridBagLayout;
 import javax.swing.JPanel;
 
+import java.awt.Component;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.GridBagConstraints;
@@ -22,7 +23,9 @@ import javax.swing.JButton;
 import javax.swing.JTextField;
 
 import waffleoRai_GUITools.ComponentGroup;
+import waffleoRai_GUITools.GUITools;
 import waffleoRai_Sound.nintendo.Z64Sound;
+import waffleoRai_Sound.nintendo.Z64WaveInfo;
 import waffleoRai_Utils.VoidCallbackMethod;
 import waffleoRai_soundbank.nintendo.z64.Z64Envelope;
 import waffleoRai_soundbank.nintendo.z64.Z64Instrument;
@@ -68,6 +71,8 @@ public class ZeqerInstEditDialog extends JDialog{
 	
 	private boolean exitSelection = false; //True if save, false if cancel
 	private ZeqerInstPreset myInst;
+	private Z64Envelope tempEnv = null;
+	private List<String> tempTags = null;
 	
 	/*----- Init -----*/
 	
@@ -87,7 +92,7 @@ public class ZeqerInstEditDialog extends JDialog{
 		super(parent_frame, true);
 		parent = parent_frame;
 		core = core_iface;
-		myInst = null;
+		myInst = inst;
 		initGUI();
 		loadInstrument(myInst);
 	}
@@ -416,6 +421,7 @@ public class ZeqerInstEditDialog extends JDialog{
 			clearInstrument();
 			return;
 		}
+		myInst = ipreset;
 		
 		setWait();
 		txtName.setText(ipreset.getName());
@@ -424,6 +430,9 @@ public class ZeqerInstEditDialog extends JDialog{
 		int rel = ipreset.getInstrument().getDecay();
 		sldRelease.setValue(rel);
 		updateReleaseLabel(rel);
+		
+		tempEnv = ipreset.getEnvelope().copy();
+		tempTags = ipreset.getAllTags();
 		
 		//Low region
 		int sid = ipreset.getWaveIDLo();
@@ -528,24 +537,27 @@ public class ZeqerInstEditDialog extends JDialog{
 				float tune = Z64Sound.calculateTuning((byte)60, rootNote, fineTune);
 				
 				//Check wave ID
-				int sampleUID = pnlRegions[i].getSelectedSampleUID();
-				if(sampleUID == 0 || sampleUID == -1){
+				Z64WaveInfo sample = pnlRegions[i].getSelectedSample();
+				if(sample == null){
 					//Invalid
 					return INSTLOAD_INVALID_SAMPLE;
 				}
 				
 				switch(i){
 				case 0:
-					myInst.setWaveIDLo(sampleUID);
+					myInst.getInstrument().setSampleLow(sample);
+					myInst.setWaveIDLo(sample.getUID());
 					instdat.setTuningLow(tune);
 					instdat.setLowRangeTop((byte)pnlRegions[i].getLimitNote());
 					break;
 				case 1:
-					myInst.setWaveIDMid(sampleUID);
+					myInst.getInstrument().setSampleMiddle(sample);
+					myInst.setWaveIDMid(sample.getUID());
 					instdat.setTuningMiddle(tune);
 					break;
 				case 2:
-					myInst.setWaveIDHi(sampleUID);
+					myInst.getInstrument().setSampleHigh(sample);
+					myInst.setWaveIDHi(sample.getUID());
 					instdat.setTuningHigh(tune);
 					instdat.setHighRangeBottom((byte)pnlRegions[i].getLimitNote());
 					break;
@@ -571,6 +583,16 @@ public class ZeqerInstEditDialog extends JDialog{
 		txtEnum.setText(txt);
 		txtEnum.repaint();
 		myInst.setEnumStringBase(txt);
+		
+		myInst.setEnvelope(tempEnv);
+		
+		//Tags
+		myInst.clearTags();
+		if(tempTags != null){
+			for(String tag : tempTags){
+				myInst.addTag(tag);
+			}
+		}
 		
 		return INSTLOAD_ERR_NONE;
 	}
@@ -600,6 +622,19 @@ public class ZeqerInstEditDialog extends JDialog{
 	public void closeMe(){
 		this.setVisible(false);
 		this.dispose();
+	}
+	
+	public void showMe(Component c){
+		if(c != null) setLocationRelativeTo(c);
+		else{
+			if(parent != null) setLocationRelativeTo(parent);
+			else{
+				setLocation(GUITools.getScreenCenteringCoordinates(this));
+			}
+		}
+		
+		pack();
+		setVisible(true);
 	}
 	
 	/*----- Callbacks -----*/
@@ -687,14 +722,12 @@ public class ZeqerInstEditDialog extends JDialog{
 	private void btnEditTagsCallback(){
 		setWait();
 		ZeqerTagEditDialog dialog = new ZeqerTagEditDialog(parent);
-		if(myInst != null) dialog.loadTags(myInst.getAllTags());
+		if(myInst != null) dialog.loadTags(tempTags);
 		else myInst = new ZeqerInstPreset();
 		
-		dialog.setVisible(true);
+		dialog.showMe(this);
 		if(dialog.getExitSelection()){
-			List<String> newtags = dialog.getTags();
-			myInst.clearTags();
-			for(String s : newtags) myInst.addTag(s);
+			tempTags = dialog.getTags();
 		}
 		
 		unsetWait();
@@ -703,13 +736,13 @@ public class ZeqerInstEditDialog extends JDialog{
 	private void btnEditEnvCallback(){
 		setWait();
 		ZeqerEnvEditDialog dialog = new ZeqerEnvEditDialog(parent, core);
-		if(myInst != null) dialog.loadEnvelope(myInst.getEnvelope());
-		else myInst = new ZeqerInstPreset();
+		if(tempEnv != null) dialog.loadEnvelope(tempEnv);
+		else tempEnv = Z64Envelope.newDefaultEnvelope();
 		
-		dialog.setVisible(true);
+		dialog.showMe(this);
 		Z64Envelope result = dialog.getOutputEnvelope();
 		if(result != null){
-			myInst.setEnvelope(result);
+			tempEnv = result;
 		}
 		
 		unsetWait();

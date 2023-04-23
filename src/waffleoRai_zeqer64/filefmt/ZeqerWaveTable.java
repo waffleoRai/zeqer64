@@ -29,6 +29,7 @@ import waffleoRai_Utils.FileBuffer.UnsupportedFileTypeException;
 import waffleoRai_Utils.FileUtils;
 import waffleoRai_Utils.MultiFileBuffer;
 import waffleoRai_Utils.SerializedString;
+import waffleoRai_zeqer64.extract.WaveLocIDMap;
 
 public class ZeqerWaveTable {
 	
@@ -132,6 +133,7 @@ public class ZeqerWaveTable {
 			in.skipBytes(ss.getSizeOnDisk());
 			
 			if(version >= 3){
+				pos = in.getCurrentPosition();
 				ss = in.readVariableLengthString("UTF8", pos, BinFieldSize.WORD, 2);
 				String rawtags = ss.getString();
 				if(rawtags != null && !rawtags.isEmpty()){
@@ -174,6 +176,11 @@ public class ZeqerWaveTable {
 		}
 		
 		public void setName(String s){wave_info.setName(s);}
+		
+		public void setMD5(byte[] new_md5){
+			if(new_md5 == null || new_md5.length != 16) return;
+			md5 = new_md5;
+		}
 		
 		public void setSampleRate(int sampleRate){
 			float sr = (float)sampleRate;
@@ -324,6 +331,17 @@ public class ZeqerWaveTable {
 		entries.put(uid, entry);
 		md5_map.put(FileUtils.bytes2str(md5sum), entry);
 		
+		return entry;
+	}
+	
+	public WaveTableEntry removeEntryWithUID(int uid){
+		//If failed, returns null.
+		WaveTableEntry entry = entries.remove(uid);
+		if(entry == null) return null;
+		if(name_map != null) name_map.remove(entry.getName());
+		if(md5_map != null){
+			md5_map.remove(FileUtils.bytes2str(entry.md5));
+		}
 		return entry;
 	}
 	
@@ -482,13 +500,17 @@ public class ZeqerWaveTable {
 			}
 			key = "TAGS";
 			if(cidx_map.containsKey(key)){
-				raw = fields[cidx_map.get(key)];
-				if(raw != null && !raw.isEmpty()){
-					String[] tagsplit = raw.split(";");
-					if(entry.tags == null){
-						entry.tags = new HashSet<String>();
+				int fidx = cidx_map.get(key);
+				//Tag field may be blank and get trimmed.
+				if(fidx < fields.length){
+					raw = fields[fidx];
+					if(raw != null && !raw.isEmpty()){
+						String[] tagsplit = raw.split(";");
+						if(entry.tags == null){
+							entry.tags = new HashSet<String>();
+						}
+						for(String tag:tagsplit) entry.tags.add(tag);
 					}
-					for(String tag:tagsplit) entry.tags.add(tag);
 				}
 			}
 		
@@ -500,52 +522,19 @@ public class ZeqerWaveTable {
 		return update_count;
 	}
 	
-	public static int[][][] loadVersionTable(String dirpath, String verID) throws IOException{
+	public static VersionWaveTable loadVersionTable(String dirpath, String verID) throws IOException{
 		String path = dirpath + File.separator + "wav_" + verID + ".bin";
-		FileBuffer buff = FileBuffer.createBuffer(path, true);
-		buff.setCurrentPosition(0L);
-		
-		int arc_count = Short.toUnsignedInt(buff.nextShort());
-		int[][][] tbl = new int[arc_count][][];
-		for(int i = 0; i < arc_count; i++){
-			int flags = Short.toUnsignedInt(buff.nextShort());
-			if((flags & 0x1) != 0){
-				//Reference. Skip
-				buff.nextShort();
-				continue;
-			}
-			
-			int wcount = Short.toUnsignedInt(buff.nextShort());
-			tbl[i] = new int[wcount][];
-			
-			for(int j = 0; j < wcount; j++){
-				tbl[i][j] = new int[2];
-				tbl[i][j][0] = buff.nextInt();
-				tbl[i][j][1] = buff.nextInt();
-			}
-		}
-		
-		return tbl;
+		return loadVersionTable(path);
 	}
 	
-	public static List<Map<Integer, Integer>> loadVersionWaveOffsetIDMap(String dirpath, String verID) throws IOException{
-		int[][][] tbl = loadVersionTable(dirpath, verID);
-		int warc_count = tbl.length;
-		List<Map<Integer, Integer>> output = new ArrayList<Map<Integer, Integer>>(warc_count+1);
-		
-		for(int i = 0; i < warc_count; i++){
-			Map<Integer, Integer> map = new HashMap<Integer, Integer>();
-			output.add(map);
-			
-			int[][] warc = tbl[i];
-			if(warc == null) continue;
-			int wcount = warc.length;
-			for(int j = 0; j < wcount; j++){
-				map.put(warc[j][1], warc[j][0]);
-			}
-		}
-		
-		return output;
+	public static VersionWaveTable loadVersionTable(String filepath) throws IOException{
+		VersionWaveTable vwt = VersionWaveTable.readIn(filepath);
+		return vwt;
+	}
+	
+	public static WaveLocIDMap loadVersionWaveOffsetIDMap(String dirpath, String verID) throws IOException{
+		String path = dirpath + File.separator + "wav_" + verID + ".bin";
+		return WaveLocIDMap.readVersionMap(path);
 	}
 	
 	/*----- Writing -----*/

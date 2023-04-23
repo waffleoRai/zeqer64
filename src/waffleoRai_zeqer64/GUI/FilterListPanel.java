@@ -95,6 +95,9 @@ public class FilterListPanel<T> extends FilterPanel<T>{
 		updateGrid();
 	}
 
+	public void clearFilterSelections(){
+		for(FilterPanel<T> pnl : filters) pnl.clearFilterSelections();
+	}
 	
 	/*----- Drawing -----*/
 	

@@ -1,10 +1,12 @@
 package waffleoRai_zeqer64.GUI.dialogs;
 
 import javax.swing.JDialog;
-import javax.swing.JFrame;
 
 import java.awt.GridBagLayout;
 import javax.swing.JPanel;
+
+import java.awt.Component;
+import java.awt.Frame;
 import java.awt.GridBagConstraints;
 import java.awt.Insets;
 import java.awt.event.ActionEvent;
@@ -13,6 +15,7 @@ import java.awt.event.ActionListener;
 import javax.swing.JButton;
 import javax.swing.border.EtchedBorder;
 
+import waffleoRai_GUITools.GUITools;
 import waffleoRai_zeqer64.ZeqerCoreInterface;
 import waffleoRai_zeqer64.GUI.ZeqerPanelSamples;
 import waffleoRai_zeqer64.filefmt.ZeqerWaveTable.WaveTableEntry;
@@ -21,7 +24,7 @@ public class SamplePickDialog extends JDialog{
 
 	private static final long serialVersionUID = -7904299455161598831L;
 	
-	private JFrame parent;
+	private Frame parent;
 	private ZeqerCoreInterface core;
 	
 	private ZeqerPanelSamples pnlSamples;
@@ -29,7 +32,7 @@ public class SamplePickDialog extends JDialog{
 	private WaveTableEntry selection = null;
 	private boolean exitOkay = false;
 	
-	public SamplePickDialog(JFrame parent_frame, ZeqerCoreInterface core_iface){
+	public SamplePickDialog(Frame parent_frame, ZeqerCoreInterface core_iface){
 		super(parent_frame, true);
 		parent = parent_frame;
 		core = core_iface;
@@ -94,6 +97,19 @@ public class SamplePickDialog extends JDialog{
 	
 	public boolean getExitSelection(){return exitOkay;}
 	public WaveTableEntry getSelectedSample(){return selection;}
+	
+	public void showMe(Component c){
+		if(c != null) setLocationRelativeTo(c);
+		else{
+			if(parent != null) setLocationRelativeTo(parent);
+			else{
+				setLocation(GUITools.getScreenCenteringCoordinates(this));
+			}
+		}
+		
+		pack();
+		setVisible(true);
+	}
 	
 	private void btnOkayCallback(){
 		exitOkay = true;

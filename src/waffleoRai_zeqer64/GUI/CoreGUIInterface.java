@@ -1,11 +1,13 @@
 package waffleoRai_zeqer64.GUI;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 
 import waffleoRai_Sound.nintendo.Z64WaveInfo;
 import waffleoRai_soundbank.nintendo.z64.Z64Envelope;
 import waffleoRai_zeqer64.ZeqerCoreInterface;
+import waffleoRai_zeqer64.ZeqerPreset;
 import waffleoRai_zeqer64.ZeqerRom;
 import waffleoRai_zeqer64.GUI.dialogs.progress.IndefProgressDialog;
 import waffleoRai_zeqer64.filefmt.ZeqerWaveTable.WaveTableEntry;
@@ -87,6 +89,23 @@ public class CoreGUIInterface implements ZeqerCoreInterface{
 	}
 	
 	public boolean addEnvelopePreset(String name, Z64Envelope env){
+		//TODO
+		return false;
+	}
+	
+	/*----- Preset Management -----*/
+	
+	public List<ZeqerPreset> getAllInstPresets(){
+		//TODO
+		return null;
+	}
+	
+	public boolean addUserPreset(ZeqerPreset preset){
+		//TODO
+		return false;
+	}
+	
+	public boolean deletePreset(int uid){
 		//TODO
 		return false;
 	}

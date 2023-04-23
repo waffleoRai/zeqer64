@@ -65,7 +65,7 @@ public class AbldFile {
 		return abld;
 	}
 	
-	public static AbldFile fromROM(ZeqerRom rom, int[] vseq, int[] vbnk, int[][][] vwav) throws IOException{
+	public static AbldFile fromROM(ZeqerRom rom, int[] vseq, int[] vbnk, VersionWaveTable vwav) throws IOException{
 		//Will need to load the code tables as well as the zeqer version tables.
 		//Zeqer version tables SHOULD be generated when ROM is first imported.
 		
@@ -112,21 +112,23 @@ public class AbldFile {
 		
 		//WArcs
 		WaveArcInfoEntry[] code_warcs = rom.loadWaveArcEntries();
-		abld.warcs = new ArrayList<EngineWaveArcInfo>(vwav.length);
-		for(int i = 0; i < vwav.length; i++){
-			int[][] wavtbl = vwav[i];
+		int warc_count = vwav.getWArcCount();
+		abld.warcs = new ArrayList<EngineWaveArcInfo>(warc_count);
+		for(int i = 0; i < warc_count; i++){
 			EngineWaveArcInfo info = null;
-			if(wavtbl == null){
+			if(vwav.isWArcReference(i)){
 				int refid = code_warcs[i].getOffset();
 				info = new EngineWaveArcInfo(1);
-				if(refid >= 0 && refid < vwav.length){
+				if(refid >= 0 && refid < warc_count){
 					info.setRefIndex(code_warcs[i].getOffset());
 				}
 			}
 			else{
-				info = new EngineWaveArcInfo(wavtbl.length);
-				for(int j = 0; j < wavtbl.length; j++){
-					info.addSample(wavtbl[j][0]);
+				int scount = vwav.getWArcSampleCount(i);
+				info = new EngineWaveArcInfo(scount);
+				for(int j = 0; j < scount; j++){
+					int[] res = vwav.getSampleInfo(i, j);
+					info.addSample(res[0]);
 				}
 			}
 			info.setName("uwar" + String.format("%02d", i));

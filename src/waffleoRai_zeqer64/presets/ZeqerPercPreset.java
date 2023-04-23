@@ -78,7 +78,9 @@ public class ZeqerPercPreset extends ZeqerPreset{
 				reg.setMaxNote(maxnote);
 				
 				//Link in drum and wave id slots.
-				for(int j = minnote; j <= maxnote; j++){
+				int minslot = minnote - Z64Sound.STDRANGE_BOTTOM;
+				int maxslot = maxnote - Z64Sound.STDRANGE_BOTTOM;
+				for(int j = minslot; j <= maxslot; j++){
 					slots[j] = drum;
 					wave_ids[j] = val;
 				}

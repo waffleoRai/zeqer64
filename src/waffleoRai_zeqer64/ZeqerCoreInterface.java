@@ -1,6 +1,7 @@
 package waffleoRai_zeqer64;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 
 import waffleoRai_Sound.nintendo.Z64WaveInfo;
@@ -30,5 +31,11 @@ public interface ZeqerCoreInterface {
 	
 	public Map<String, Z64Envelope> getAllEnvelopePresets();
 	public boolean addEnvelopePreset(String name, Z64Envelope env);
+	
+	/*----- Preset Management -----*/
+	
+	public List<ZeqerPreset> getAllInstPresets();
+	public boolean addUserPreset(ZeqerPreset preset);
+	public boolean deletePreset(int uid);
 	
 }

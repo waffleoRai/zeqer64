@@ -14,6 +14,7 @@ import waffleoRai_Utils.FileBuffer.UnsupportedFileTypeException;
 import waffleoRai_Utils.FileUtils;
 import waffleoRai_zeqer64.SoundTables.SeqInfoEntry;
 import waffleoRai_zeqer64.ZeqerCore;
+import waffleoRai_zeqer64.ZeqerErrorCode;
 import waffleoRai_zeqer64.ZeqerRom;
 import waffleoRai_zeqer64.ZeqerSeq;
 import waffleoRai_zeqer64.filefmt.NusRomInfo;
@@ -31,6 +32,8 @@ public class SeqExtractor {
 	public static final int MODE_SYS = 3;
 	
 	private static final char SEP = File.separatorChar;
+	
+	public static final int PARSE_TIMEOUT = 10000; //10s
 	
 	/*----- Instance Variables -----*/
 	
@@ -212,22 +215,35 @@ public class SeqExtractor {
 						if(z_rom.getRomInfo().isZ5()) zseq.setOoTCompatible(true);
 						
 						//Add data.
-						try{
-							//Also try to parse flags and voice count??
-							NUSALSeq nseq = NUSALSeq.readNUSALSeq(myseq);
-							if(nseq != null){
-								SeqVoiceCounter vctr = new SeqVoiceCounter();
-								nseq.playTo(vctr, false);
-								zseq.setMaxVoiceLoad(vctr.getMaxTotalVoiceCount());
-								int lyrch = nseq.getMaxLayersPerChannel();
-								zseq.setMoreThanFourLayers(lyrch > 4);
+						ZeqerErrorCode err = new ZeqerErrorCode();
+						NUSALSeq nseq = ZeqerSeq.parseSeqWithTimeout(myseq, PARSE_TIMEOUT, err);
+						if(nseq != null){
+							zseq.setSequence(nseq);
+							SeqVoiceCounter vctr = new SeqVoiceCounter();
+							nseq.playTo(vctr, false);
+							zseq.setMaxVoiceLoad(vctr.getMaxTotalVoiceCount());
+							int lyrch = nseq.getMaxLayersPerChannel();
+							zseq.setMoreThanFourLayers(lyrch > 4);
+						}
+						else{
+							zseq.setRawData(myseq);
+							System.err.print("SeqExtractor.extractSeqs | Seq " + String.format("%08x", entry.getUID()) + " | Seq parse failed. Likely reason: ");
+							switch(err.getValue()){
+							case ZeqerSeq.PARSE_ERR_CRASH:
+								System.err.print("Parser could not read data");
+								break;
+							case ZeqerSeq.PARSE_ERR_TIMEOUT:
+								System.err.print("Time out (parser probably hung on infinite while)");
+								break;
+							case ZeqerSeq.PARSE_ERR_OTHER_IRQ:
+								System.err.print("Misc. interrupt request");
+								break;
+							case ZeqerSeq.PARSE_ERR_NONE:
+							default:
+								System.err.print("Unknown");
+								break;
 							}
-							else{
-								System.err.println("Could not parse seq data for sequence 0x" + String.format("%08x", entry.getUID()));
-							}
-						} catch(Exception ex){
-							System.err.println("Could not parse seq data for sequence 0x" + String.format("%08x", entry.getUID()));
-							ex.printStackTrace();
+							System.err.println();
 						}
 						UltraSeqFile.writeUSEQ(zseq, datapath, myseq);
 						//myseq.writeFile(datapath);
@@ -244,22 +260,35 @@ public class SeqExtractor {
 					if(z_rom.getRomInfo().isZ5()) zseq.setOoTCompatible(true);
 					
 					//Add data.
-					try{
-						//Also try to parse flags and voice count??
-						NUSALSeq nseq = NUSALSeq.readNUSALSeq(myseq);
-						if(nseq != null){
-							SeqVoiceCounter vctr = new SeqVoiceCounter();
-							nseq.playTo(vctr, false);
-							zseq.setMaxVoiceLoad(vctr.getMaxTotalVoiceCount());
-							int lyrch = nseq.getMaxLayersPerChannel();
-							zseq.setMoreThanFourLayers(lyrch > 4);
+					ZeqerErrorCode err = new ZeqerErrorCode();
+					NUSALSeq nseq = ZeqerSeq.parseSeqWithTimeout(myseq, PARSE_TIMEOUT, err);
+					if(nseq != null){
+						zseq.setSequence(nseq);
+						SeqVoiceCounter vctr = new SeqVoiceCounter();
+						nseq.playTo(vctr, false);
+						zseq.setMaxVoiceLoad(vctr.getMaxTotalVoiceCount());
+						int lyrch = nseq.getMaxLayersPerChannel();
+						zseq.setMoreThanFourLayers(lyrch > 4);
+					}
+					else{
+						zseq.setRawData(myseq);
+						System.err.print("SeqExtractor.extractSeqs | Seq " + String.format("%08x", entry.getUID()) + " | Seq parse failed. Likely reason: ");
+						switch(err.getValue()){
+						case ZeqerSeq.PARSE_ERR_CRASH:
+							System.err.print("Parser could not read data");
+							break;
+						case ZeqerSeq.PARSE_ERR_TIMEOUT:
+							System.err.print("Time out (parser probably hung on infinite while)");
+							break;
+						case ZeqerSeq.PARSE_ERR_OTHER_IRQ:
+							System.err.print("Misc. interrupt request");
+							break;
+						case ZeqerSeq.PARSE_ERR_NONE:
+						default:
+							System.err.print("Unknown");
+							break;
 						}
-						else{
-							System.err.println("Could not parse seq data for sequence 0x" + String.format("%08x", entry.getUID()));
-						}
-					} catch(Exception ex){
-						System.err.println("Could not parse seq data for sequence 0x" + String.format("%08x", entry.getUID()));
-						ex.printStackTrace();
+						System.err.println();
 					}
 					UltraSeqFile.writeUSEQ(zseq, datapath, myseq);
 				}

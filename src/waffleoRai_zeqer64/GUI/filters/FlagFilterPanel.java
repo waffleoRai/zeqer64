@@ -351,6 +351,12 @@ public class FlagFilterPanel<T> extends FilterPanel<T>{
 		for(FlagNode<T> node : flags) node.label.setEnabled(true);
 	}
 	
+	public void clearFilterSelections(){
+		for(FlagNode<T> node : flags){
+			node.label.setSwitchState(LabelSwitch.SWITCHSTATE_OFF);
+		}
+	}
+	
 	/*----- Actions -----*/
 	
 	private void onClickAND(){

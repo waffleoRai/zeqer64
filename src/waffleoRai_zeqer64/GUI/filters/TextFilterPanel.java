@@ -185,6 +185,11 @@ public class TextFilterPanel<T> extends FilterPanel<T> {
 		search_filter = filter;
 	}
 	
+	public void clearFilterSelections(){
+		txtSearch.setText("");
+		txtSearch.repaint();
+	}
+	
 	/*----- Draw -----*/
 	
 	private void updateFlagPanelLayout(){

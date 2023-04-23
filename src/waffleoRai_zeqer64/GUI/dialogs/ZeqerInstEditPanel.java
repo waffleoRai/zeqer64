@@ -63,7 +63,7 @@ public class ZeqerInstEditPanel extends JPanel{
 	private VoidCallbackMethod setSampleStartCallback;
 	private VoidCallbackMethod setSampleDoneCallback;
 	
-	private int sampleUID = -1; //Selected sample
+	private Z64WaveInfo selectedSample = null;
 	
 	/*----- Init -----*/
 	
@@ -288,7 +288,7 @@ public class ZeqerInstEditPanel extends JPanel{
 	/*----- Getters -----*/
 	
 	public boolean regionIncluded(){return cbInclude.isSelected();}
-	public int getSelectedSampleUID(){return sampleUID;}
+	public Z64WaveInfo getSelectedSample(){return selectedSample;}
 	public int getLimitNote(){return (Integer)spnLimitNote.getValue();}
 	public int getUnityKey(){return (Integer)spnUnityKey.getValue();}
 	
@@ -304,19 +304,19 @@ public class ZeqerInstEditPanel extends JPanel{
 	}
 	
 	public void clearSample(){
-		txtSample.setText("");
-		sampleUID = -1;
+		txtSample.setText("<No Selection>");
+		selectedSample = null;
 		txtSample.repaint();
 	}
 	
 	public void setSample(WaveTableEntry smpl){
 		if(smpl != null){
 			txtSample.setText(smpl.getName());
-			sampleUID = smpl.getUID();
+			selectedSample = smpl.getWaveInfo();
 		}
 		else{
-			txtSample.setText("");
-			sampleUID = -1;
+			txtSample.setText("<No Selection>");
+			selectedSample = null;
 		}
 		txtSample.repaint();
 	}
@@ -324,11 +324,11 @@ public class ZeqerInstEditPanel extends JPanel{
 	public void setSample(Z64WaveInfo smpl){
 		if(smpl != null){
 			txtSample.setText(smpl.getName());
-			sampleUID = smpl.getUID();
+			selectedSample = smpl;
 		}
 		else{
-			txtSample.setText("");
-			sampleUID = -1;
+			txtSample.setText("<No Selection>");
+			selectedSample = null;
 		}
 		txtSample.repaint();
 	}
@@ -408,7 +408,7 @@ public class ZeqerInstEditPanel extends JPanel{
 		if(setSampleStartCallback != null) setSampleStartCallback.doMethod();
 		setDisabled();
 		SamplePickDialog dialog = new SamplePickDialog(parent, core);
-		dialog.setVisible(true);
+		dialog.showMe(parent);
 		
 		if(dialog.getExitSelection()){
 			WaveTableEntry sel = dialog.getSelectedSample();

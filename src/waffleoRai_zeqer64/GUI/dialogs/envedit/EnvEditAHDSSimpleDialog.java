@@ -1,7 +1,6 @@
 package waffleoRai_zeqer64.GUI.dialogs.envedit;
 
 import javax.swing.JDialog;
-import javax.swing.JFrame;
 import java.awt.GridBagLayout;
 import javax.swing.JPanel;
 import java.awt.GridBagConstraints;
@@ -15,13 +14,17 @@ import javax.swing.JOptionPane;
 import javax.swing.JTextField;
 import javax.swing.JRadioButton;
 
+import java.awt.Component;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.Frame;
+
 import javax.swing.SwingConstants;
 import javax.swing.border.EtchedBorder;
 
 import waffleoRai_GUITools.ComponentGroup;
+import waffleoRai_GUITools.GUITools;
 import waffleoRai_GUITools.RadioButtonGroup;
 import waffleoRai_Sound.nintendo.Z64Sound;
 import waffleoRai_soundbank.nintendo.z64.Z64Envelope;
@@ -58,6 +61,8 @@ public class EnvEditAHDSSimpleDialog extends JDialog{
 
 	/*----- Instance Variables -----*/
 	
+	private Frame parent;
+	
 	private JTextField txtATime;
 	private JTextField txtHTime;
 	private JTextField txtDTime;
@@ -76,8 +81,9 @@ public class EnvEditAHDSSimpleDialog extends JDialog{
 	
 	/*----- Init -----*/
 	
-	public EnvEditAHDSSimpleDialog(JFrame parent){
-		super(parent, true);
+	public EnvEditAHDSSimpleDialog(Frame parent_frame){
+		super(parent_frame, true);
+		parent = parent_frame;
 		globalEnable = new ComponentGroup();
 		rbgACurve = new RadioButtonGroup(RB_COUNT_CURVE);
 		rbgDCurve = new RadioButtonGroup(RB_COUNT_CURVE);
@@ -961,6 +967,19 @@ public class EnvEditAHDSSimpleDialog extends JDialog{
 	public void closeMe(){
 		this.setVisible(false);
 		this.dispose();
+	}
+	
+	public void showMe(Component c){
+		if(c != null) setLocationRelativeTo(c);
+		else{
+			if(parent != null) setLocationRelativeTo(parent);
+			else{
+				setLocation(GUITools.getScreenCenteringCoordinates(this));
+			}
+		}
+		
+		pack();
+		setVisible(true);
 	}
 	
 	/*----- Callbacks -----*/

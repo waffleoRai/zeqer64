@@ -1,13 +1,14 @@
 package waffleoRai_zeqer64.GUI.dialogs.envedit;
 
 import javax.swing.JDialog;
-import javax.swing.JFrame;
 
 import java.awt.GridBagLayout;
 import javax.swing.JPanel;
 
+import java.awt.Component;
 import java.awt.Cursor;
 import java.awt.Dimension;
+import java.awt.Frame;
 import java.awt.GridBagConstraints;
 import java.awt.Insets;
 import java.awt.event.ActionEvent;
@@ -25,6 +26,7 @@ import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 
 import waffleoRai_GUITools.ComponentGroup;
+import waffleoRai_GUITools.GUITools;
 import waffleoRai_Sound.nintendo.Z64Sound;
 import waffleoRai_soundbank.nintendo.z64.Z64Envelope;
 import waffleoRai_zeqer64.ZeqerCoreInterface;
@@ -85,7 +87,7 @@ public class ZeqerEnvEditDialog extends JDialog{
 	
 	/*----- Instance Variables -----*/
 	
-	private JFrame parent;
+	private Frame parent;
 	
 	//For enabling
 	private ComponentGroup globalEnable;
@@ -106,7 +108,7 @@ public class ZeqerEnvEditDialog extends JDialog{
 	
 	/*----- Init -----*/
 	
-	public ZeqerEnvEditDialog(JFrame parent_frame, ZeqerCoreInterface corelink){
+	public ZeqerEnvEditDialog(Frame parent_frame, ZeqerCoreInterface corelink){
 		super(parent_frame, true);
 		core = corelink;
 		parent = parent_frame;
@@ -405,6 +407,19 @@ public class ZeqerEnvEditDialog extends JDialog{
 		this.dispose();
 	}
 	
+	public void showMe(Component c){
+		if(c != null) setLocationRelativeTo(c);
+		else{
+			if(parent != null) setLocationRelativeTo(parent);
+			else{
+				setLocation(GUITools.getScreenCenteringCoordinates(this));
+			}
+		}
+		
+		pack();
+		setVisible(true);
+	}
+	
 	/*----- Envelope -----*/
 	
 	private boolean renderEnvelope(){
@@ -519,8 +534,7 @@ public class ZeqerEnvEditDialog extends JDialog{
 		//Event dialog
 		setWait();
 		EnvEventEditDialog dialog = new EnvEventEditDialog(parent);
-		dialog.pack();
-		dialog.setVisible(true);
+		dialog.showMe(this);
 		
 		short[] e = dialog.getEvent();
 		if(e == null){
@@ -588,9 +602,7 @@ public class ZeqerEnvEditDialog extends JDialog{
 	private void btnSimpleEnvCallback(){
 		setWait();
 		EnvEditAHDSSimpleDialog dialog = new EnvEditAHDSSimpleDialog(parent);
-		dialog.pack();
-		dialog.setVisible(true);
-		dialog.dispose();
+		dialog.showMe(this);
 		
 		Z64Envelope env = dialog.getEnvelope();
 		if(env != null){
