@@ -13,14 +13,14 @@ public class ZeqerDummyPreset extends ZeqerPreset{
 	
 	public ZeqerDummyPreset(){
 		Random r = new Random();
-		name = String.format("zpreset_%08x", Integer.toHexString(r.nextInt()));
+		name = String.format("zpreset_%08x", r.nextInt());
 	}
 	
 	public ZeqerDummyPreset(String n){name = n;}
 	
 	public ZeqerDummyPreset(int uid){
 		this.uid = uid;
-		name = String.format("zpreset_%08x", Integer.toHexString(uid));
+		name = String.format("zpreset_%08x", uid);
 	}
 
 	public boolean hasData(){return false;}

@@ -33,7 +33,7 @@ public class UltraSeqFile {
 	
 	public static final String MAGIC = "USEQ";
 	public static final byte MAJOR_VERSION = 1;
-	public static final byte MINOR_VERSION = 1;
+	public static final byte MINOR_VERSION = 2;
 	
 	private static final int HEADER_SIZE = 16;
 	
@@ -107,38 +107,44 @@ public class UltraSeqFile {
 		//Skip bank stuff.
 	}
 	
-	private static void readDATA(FileBuffer chunk_data, ZeqerSeq dest) throws IOException{
+	private static void readDATA(FileBuffer chunk_data, ZeqerSeq dest, boolean trySeqParse) throws IOException{
 		chunk_data.setCurrentPosition(0L);
 		int raw_size = chunk_data.nextInt();
 		FileBuffer rawdat = chunk_data.createCopy(4L, 4L + raw_size);
 
-		ZeqerErrorCode err = new ZeqerErrorCode();
-		NUSALSeq seq = ZeqerSeq.parseSeqWithTimeout(rawdat, PARSE_TIMEOUT, err);
-		if(seq != null){
-			dest.setSequence(seq);
-			rawdat.dispose();
+		if(trySeqParse){
+			ZeqerErrorCode err = new ZeqerErrorCode();
+			NUSALSeq seq = ZeqerSeq.parseSeqWithTimeout(rawdat, PARSE_TIMEOUT, err);
+			if(seq != null){
+				dest.setSequence(seq);
+				rawdat.dispose();
+			}
+			else{
+				dest.setSequence(null);
+				dest.setRawData(rawdat);
+				
+				System.err.print("UltraSeqFile.readDATA || Seq parse failed. Likely reason: ");
+				switch(err.getValue()){
+				case ZeqerSeq.PARSE_ERR_CRASH:
+					System.err.print("Parser could not read data");
+					break;
+				case ZeqerSeq.PARSE_ERR_TIMEOUT:
+					System.err.print("Time out (parser probably hung on infinite while)");
+					break;
+				case ZeqerSeq.PARSE_ERR_OTHER_IRQ:
+					System.err.print("Misc. interrupt request");
+					break;
+				case ZeqerSeq.PARSE_ERR_NONE:
+				default:
+					System.err.print("Unknown");
+					break;
+				}
+				System.err.println();
+			}
 		}
 		else{
 			dest.setSequence(null);
 			dest.setRawData(rawdat);
-			
-			System.err.print("UltraSeqFile.readDATA || Seq parse failed. Likely reason: ");
-			switch(err.getValue()){
-			case ZeqerSeq.PARSE_ERR_CRASH:
-				System.err.print("Parser could not read data");
-				break;
-			case ZeqerSeq.PARSE_ERR_TIMEOUT:
-				System.err.print("Time out (parser probably hung on infinite while)");
-				break;
-			case ZeqerSeq.PARSE_ERR_OTHER_IRQ:
-				System.err.print("Misc. interrupt request");
-				break;
-			case ZeqerSeq.PARSE_ERR_NONE:
-			default:
-				System.err.print("Unknown");
-				break;
-			}
-			System.err.println();
 		}
 	}
 	
@@ -253,23 +259,28 @@ public class UltraSeqFile {
 	}
 	
 	public static ZeqerSeq readUSEQ(UltraSeqFile useq) throws IOException{
-		return readUSEQ(useq, null);
+		return readUSEQ(useq, null, true);
 	}
 	
-	public static ZeqerSeq readUSEQ(UltraSeqFile useq, SeqTableEntry tblEntry) throws IOException{
+	public static ZeqerSeq readUSEQ(UltraSeqFile useq, SeqTableEntry tblEntry, boolean trySeqParse) throws IOException{
 		ZeqerSeq zseq = new ZeqerSeq(tblEntry);
 		
-		//Read DATA block (since it's minimum required)
-		FileBuffer chunk_data = useq.loadChunk("DATA");
-		if(chunk_data == null) return null;
-		readDATA(chunk_data, zseq);
-		useq.data_len = chunk_data.intFromFile(0L);
-		chunk_data.dispose();
+		//as of 1.2 DATA is not required if correct flag is set. So need DATA *or* META
 		
 		//Find META block
+		FileBuffer chunk_data = null;
 		chunk_data = useq.loadChunk("META");
 		if(chunk_data != null){
 			readMETA(chunk_data.getReferenceAt(0L), zseq, useq);
+			chunk_data.dispose();
+		}
+				
+		//Read DATA block (since it's minimum required if flag not set)
+		if((useq.meta_flags & 0x8000) == 0){
+			chunk_data = useq.loadChunk("DATA");
+			if(chunk_data == null) return null;
+			readDATA(chunk_data, zseq, trySeqParse);
+			useq.data_len = chunk_data.intFromFile(0L);
 			chunk_data.dispose();
 		}
 		
@@ -399,6 +410,7 @@ public class UltraSeqFile {
 		if(use_lmod) flags |= 0x08;
 		if(use_ioal) flags |= 0x10;
 		if(seq.isSFXSeq()) flags |= 0x100;
+		if(seq.isMetaHusk()) flags |= 0x8000;
 		
 		FileBuffer META = new FileBuffer(alloc, true);
 		META.printASCIIToFile("META");
@@ -444,7 +456,7 @@ public class UltraSeqFile {
 		int alloc = 0;
 		long total_size = 0L;
 		int ccount = 0;
-		
+
 		//First detangle labels, aliases, and modules...
 		Module[] modlist = seq.getModules();
 		FileBuffer LMOD = null;
@@ -486,18 +498,23 @@ public class UltraSeqFile {
 		}
 		
 		//DATA
+		FileBuffer DATA_header = null;
+		int data_pad = 0;
 		if(seqdata == null){
 			NUSALSeq nseq = seq.getSequence();
-			if(nseq == null) return false;
-			seqdata = nseq.getSerializedData();
+			if(nseq != null){
+				seqdata = nseq.getSerializedData();
+			}
 		}
-		FileBuffer DATA_header = new FileBuffer(12, true);
-		int data_pad = (int)seqdata.getFileSize() % 4;
-		DATA_header.printASCIIToFile("DATA");
-		DATA_header.addToFile(4 + data_pad + (int)seqdata.getFileSize());
-		DATA_header.addToFile((int)seqdata.getFileSize());
-		ccount++;
-		total_size += DATA_header.getFileSize() + data_pad + seqdata.getFileSize();
+		if(seqdata != null){
+			DATA_header = new FileBuffer(12, true);
+			data_pad = (int)seqdata.getFileSize() % 4;
+			DATA_header.printASCIIToFile("DATA");
+			DATA_header.addToFile(4 + data_pad + (int)seqdata.getFileSize());
+			DATA_header.addToFile((int)seqdata.getFileSize());
+			ccount++;
+			total_size += DATA_header.getFileSize() + data_pad + seqdata.getFileSize();
+		}
 		
 		//META
 		FileBuffer META = serializeMETA(seq, LABL != null, IOAL != null);
@@ -510,7 +527,7 @@ public class UltraSeqFile {
 		header.addToFile((short)0xFEFF);
 		header.addToFile(MAJOR_VERSION);
 		header.addToFile(MINOR_VERSION);
-		header.addToFile((int)total_size + HEADER_SIZE); //TODO
+		header.addToFile((int)total_size + HEADER_SIZE);
 		header.addToFile((short)HEADER_SIZE);
 		header.addToFile((short)ccount);
 		
@@ -518,9 +535,11 @@ public class UltraSeqFile {
 		BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(path));
 		header.writeToStream(bos);
 		META.writeToStream(bos);
-		DATA_header.writeToStream(bos);
-		seqdata.writeToStream(bos);
-		for(int i = 0; i < data_pad; i++) bos.write(0);
+		if(DATA_header != null) {
+			DATA_header.writeToStream(bos);
+			seqdata.writeToStream(bos);
+			for(int i = 0; i < data_pad; i++) bos.write(0);
+		}
 		if(LMOD != null) LMOD.writeToStream(bos);
 		if(LABL != null) LABL.writeToStream(bos);
 		if(IOAL != null) IOAL.writeToStream(bos);

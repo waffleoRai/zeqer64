@@ -384,6 +384,55 @@ public class ZeqerPresetTable {
 		bos.close();
 	}
 	
+	public void writeScrubbed(String path) throws IOException{
+		int rcount = presets.size();
+		FileBuffer header = new FileBuffer(HEADER_SIZE, true);
+		header.printASCIIToFile(TBL_MAGIC);
+		header.addToFile((short)0); //Reserved flags
+		header.addToFile((short)TBL_CURRENT_VERSION);
+		header.addToFile(0);
+		header.addToFile(rcount);
+		header.addToFile(HEADER_SIZE);
+		
+		BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(path));
+		header.writeToStream(bos);
+		FileBuffer buff = null;
+		for(ZeqerPreset preset : presets.values()){
+			String tagstr = "";
+			List<String> tags = preset.getAllTags();
+			boolean first = true;
+			if(tags != null){
+				for(String t : tags){
+					if(!first) tagstr += ";";
+					tagstr += t;
+					first = false;
+				}
+			}
+			
+			String pname = preset.getName();
+			int nlen = 0;
+			if(pname != null) nlen = pname.length();
+			buff = new FileBuffer(16 + nlen + tagstr.length(), true);
+			buff.addToFile(preset.getUID());
+			int flags = 0x0;
+			switch(preset.getType()){
+			case ZeqerPreset.PRESET_TYPE_PERC:
+				flags |= 0x1;
+				break;
+			case ZeqerPreset.PRESET_TYPE_SFX:
+				flags |= 0x2;
+				break;
+			}
+			buff.addToFile(flags);
+			
+			buff.addVariableLengthString("UTF8", pname, BinFieldSize.WORD, 2);
+			buff.addVariableLengthString("UTF8", tagstr, BinFieldSize.WORD, 2);
+			
+			buff.writeToStream(bos);
+		}
+		bos.close();
+	}
+	
 	/*----- Getters -----*/
 	
 	public ZeqerPreset getPreset(int uid){

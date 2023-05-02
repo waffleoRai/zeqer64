@@ -333,6 +333,12 @@ public class ZeqerSeqTable {
 		return md5_map.get(md5str);
 	}
 	
+	public List<SeqTableEntry> getAllEntries(){
+		List<SeqTableEntry> list = new ArrayList<SeqTableEntry>(entries.size()+1);
+		list.addAll(entries.values());
+		return list;
+	}
+	
 	/*----- Setters -----*/
 	
 	public SeqTableEntry newEntry(int uid){

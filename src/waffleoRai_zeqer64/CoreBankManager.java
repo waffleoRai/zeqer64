@@ -670,6 +670,13 @@ class CoreBankManager {
 		return records;
 	}
 	
+	public void saveSysPresetsScrubbed() throws IOException{
+		if(sys_write_enabled && preset_table_sys != null){
+			String sysdir = root_dir + SEP + ZeqerCore.DIRNAME_ZBANK;
+			preset_table_sys.writeScrubbed(sysdir + SEP + "zpresets_scrubbed.bin");
+		}
+	}
+	
 	public void saveSysTables() throws IOException{
 		if(sys_write_enabled && bnk_table_sys != null){
 			bnk_table_sys.writeTo(getSysTablePath());

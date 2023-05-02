@@ -11,15 +11,19 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import waffleoRai_Files.FileBufferInputStream;
 import waffleoRai_Sound.nintendo.Z64Wave;
 import waffleoRai_Sound.nintendo.Z64WaveInfo;
 import waffleoRai_Utils.FileBuffer;
@@ -27,6 +31,7 @@ import waffleoRai_Utils.FileBuffer.UnsupportedFileTypeException;
 import waffleoRai_Utils.FileUtils;
 import waffleoRai_soundbank.nintendo.z64.Z64Bank;
 import waffleoRai_soundbank.nintendo.z64.Z64Instrument;
+import waffleoRai_zeqer64.ZeqerInstaller.ZeqerInstallListener;
 import waffleoRai_zeqer64.engine.ZeqerPlaybackEngine;
 import waffleoRai_zeqer64.extract.RomExtractionSummary;
 import waffleoRai_zeqer64.extract.WaveLocIDMap;
@@ -41,6 +46,7 @@ import waffleoRai_zeqer64.filefmt.ZeqerRomInfo;
 import waffleoRai_zeqer64.filefmt.ZeqerSeqTable;
 import waffleoRai_zeqer64.filefmt.ZeqerSeqTable.SeqTableEntry;
 import waffleoRai_zeqer64.filefmt.ZeqerWaveTable;
+import waffleoRai_zeqer64.listeners.RomImportListener;
 
 public class ZeqerCore {
 	
@@ -56,6 +62,7 @@ public class ZeqerCore {
 	public static final String DIRNAME_BANK = "bnk";
 	public static final String DIRNAME_ABLD = "abld";
 	public static final String DIRNAME_ENGINE = "engine";
+	public static final String DIRNAME_STRING = "str";
 	
 	public static final String DIRNAME_ZSEQ = "zseqs";
 	public static final String DIRNAME_ZWAVE = "zwavs";
@@ -73,11 +80,16 @@ public class ZeqerCore {
 	public static final String FN_USRWAVE = "mywaves.bin";
 	public static final String FN_USRSEQ = "myseqs.bin";
 	public static final String FN_USRPRESET = "mypresets.bin";
+	public static final String FN_USRROMS = "myroms.csv.jdfl";
 	
 	public static final String IKEY_VERSION = "VERSION";
-	public static final String CURRENT_VERSION = "1.0.0";
+	public static final String CURRENT_VERSION = "0.2.0";
 	
-	private static final String RES_JARPATH = "/waffleoRai_zeqer64/res";
+	public static final String IKEY_PREFLAN = "LANGUAGE";
+	
+	public static final String RES_JARPATH = "/waffleoRai_zeqer64/res";
+	
+	public static final String FN_KNOWNROMS = "knownroms.txt";
 	
 	private static final char SEP = File.separatorChar;
 	
@@ -172,7 +184,10 @@ public class ZeqerCore {
 		//Load ROM Info
 		if(!loadRomInfoMap()) return false;
 		
-		try{loadSoundTables();}
+		try{
+			loadUserRomList();
+			loadSoundTables();
+		}
 		catch(UnsupportedFileTypeException ex){
 			ex.printStackTrace();
 			throw new IOException();
@@ -187,6 +202,26 @@ public class ZeqerCore {
 	
 	private String ini_path;
 	private String root_dir;
+	
+	public static String getDefaultAppDataPath(){
+		String osname = System.getProperty("os.name");
+		osname = osname.toLowerCase();
+		String username = System.getProperty("user.name");
+		
+		if(osname.startsWith("win")){
+			//Assumed windows
+			String dir = "C:\\Users\\" + username;
+			dir += "\\AppData\\Local\\waffleorai\\zeqer64";
+			return dir;
+		}
+		else{
+			//Assumed Unix like
+			String dir = System.getProperty("user.home");
+			char sep = File.separatorChar;
+			dir += "appdata" + sep + "local" + sep + "waffleorai" + sep + "zeqer64";
+			return dir;
+		}
+	}
 	
 	public String getIniPath(){
 		if(ini_path != null) return ini_path;
@@ -296,7 +331,15 @@ public class ZeqerCore {
 	
 	/*----- Install/Uninstall -----*/
 	
-	private static boolean extractFromJAR(String jarpath, String targetpath) throws IOException{
+	public static boolean userHasInstallation(){
+		ZeqerCore dummy = new ZeqerCore(false);
+		String initpath = dummy.getIniPath(); 
+		if(initpath == null) return false;
+		if(!FileBuffer.fileExists(initpath)) return false;
+		return true;
+	}
+	
+	public static boolean extractFromJAR(String jarpath, String targetpath) throws IOException{
 		InputStream jarstr = ZeqerCore.class.getResourceAsStream(jarpath);
 		if(jarstr == null){
 			System.err.println("ZeqerCore.extractFromJAR || WARNING: Res " + jarpath + " could not be extracted!");
@@ -309,11 +352,15 @@ public class ZeqerCore {
 		return false;
 	}
 	
-	public boolean installTo(String dirpath) throws IOException{
+	public boolean installTo(String dirpath, ZeqerInstallListener listener) throws IOException{
+		//TODO do we need to shutdown and reboot core to install?
 		if(dirpath == null) return false;
 		if(dirpath.isEmpty()) return false;
 		
+		boolean good = true;
+		
 		//Program launch info
+		if(listener != null) listener.onWriteIniStart();
 		String inipath = getIniPath();
 		if(inipath == null) return false;
 		BufferedWriter bw = new BufferedWriter(new FileWriter(inipath));
@@ -329,67 +376,9 @@ public class ZeqerCore {
 		init_values.put(IKEY_VERSION, CURRENT_VERSION);
 		saveSettingsFile(dirpath + File.separator + SETTINGS_FILE_NAME);
 		
-		//rominfo
-		String subdir = dirpath + File.separator + DIRNAME_ROMINFO;
-		if(!FileBuffer.directoryExists(subdir)){
-			Files.createDirectory(Paths.get(subdir));
-		}
-		//Copy from JAR
-		boolean good = true;
-		for(String vname : RES_ROMINFO_VERS){
-			String respath = RES_JARPATH + "/" + vname + ".xml";
-			String targetpath = subdir + File.separator + vname + ".xml";
-			good = good && extractFromJAR(respath, targetpath);
-		}
-		
-		//seq
-		subdir = dirpath + File.separator + DIRNAME_SEQ;
-		String zsubdir = subdir + File.separatorChar + DIRNAME_ZSEQ;
-		if(!FileBuffer.directoryExists(subdir)){
-			Files.createDirectories(Paths.get(zsubdir));
-		}
-		/*String respath = RES_JARPATH + "/" + FN_SYSSEQ_OOT;
-		String targetpath = zsubdir + File.separator + FN_SYSSEQ_OOT;
-		good = good && extractFromJAR(respath, targetpath);
-		respath = RES_JARPATH + "/" + FN_SYSSEQ_MM;
-		targetpath = zsubdir + File.separator + FN_SYSSEQ_MM;
-		good = good && extractFromJAR(respath, targetpath);*/
-		String respath = RES_JARPATH + "/" + FN_SYSSEQ;
-		String targetpath = zsubdir + File.separator + FN_SYSSEQ;
-		good = good && extractFromJAR(respath, targetpath);
-		
-		//bnk
-		subdir = dirpath + File.separator + DIRNAME_BANK;
-		zsubdir = subdir + File.separatorChar + DIRNAME_ZBANK;
-		if(!FileBuffer.directoryExists(subdir)){
-			Files.createDirectories(Paths.get(zsubdir));
-		}
-		respath = RES_JARPATH + "/" + FN_SYSBANK;
-		targetpath = zsubdir + File.separator + FN_SYSBANK;
-		good = good && extractFromJAR(respath, targetpath);
-		
-		//wav
-		subdir = dirpath + File.separator + DIRNAME_WAVE;
-		zsubdir = subdir + File.separatorChar + DIRNAME_ZWAVE;
-		if(!FileBuffer.directoryExists(subdir)){
-			Files.createDirectory(Paths.get(subdir));
-		}
-		respath = RES_JARPATH + "/" + FN_SYSWAVE;
-		targetpath = zsubdir + File.separator + FN_SYSWAVE;
-		good = good && extractFromJAR(respath, targetpath);
-		
-		//abld
-		subdir = dirpath + File.separator + DIRNAME_ABLD;
-		if(!FileBuffer.directoryExists(subdir)){
-			Files.createDirectory(Paths.get(subdir));
-		}
-		
-		//engine
-		subdir = dirpath + File.separator + DIRNAME_ENGINE;
-		if(!FileBuffer.directoryExists(subdir)){
-			Files.createDirectory(Paths.get(subdir));
-		}
-		//TODO
+		ZeqerInstaller installer = new ZeqerInstaller(dirpath);
+		installer.setListener(listener);
+		good = good && installer.installToDir();
 		
 		return good;
 	}
@@ -405,6 +394,7 @@ public class ZeqerCore {
 	}
 	
 	public boolean importUserDataFrom(String dirpath) throws UnsupportedFileTypeException, IOException{
+		//TODO this needs updating!
 		//Copies user seqs and banks back into program dir
 		//	in case of re-install or import from someone else
 		String pdir = getProgramDirectory();
@@ -464,6 +454,7 @@ public class ZeqerCore {
 	}
 	
 	public boolean copyUserDataTo(String dirpath) throws IOException{
+		//TODO this needs updating!
 		//Basically copies all the user seqs and banks (and meta tables)
 		//	to another place on disk in case uninstall is wanted.
 		
@@ -554,6 +545,10 @@ public class ZeqerCore {
 		saveSettingsFile(pdir + File.separator + SETTINGS_FILE_NAME);
 		saveSoundTables();
 		
+		saveUserRomList();
+		if(userRoms != null) userRoms.clear();
+		userRoms = null;
+		
 		init_values.clear();
 		romdetector = null;
 		root_dir = null;
@@ -565,10 +560,16 @@ public class ZeqerCore {
 	
 	/*----- RomInfo -----*/
 	
-	private static final String[] RES_ROMINFO_VERS = {"czle_1-0", "nzse", "pzle","nzlp_mq_dbg"};
+	public static final int ADDROM_ERROR_NONE = 0;
+	public static final int ADDROM_ERROR_BADROM = 1;
+	public static final int ADDROM_ERROR_IMAGE_ALREADY_IMPORTED = 2;
+	public static final int ADDROM_ERROR_NULL_ROM = 3;
+	public static final int ADDROM_ERROR_INFO_NOT_FOUND = 4;
+	public static final int ADDROM_ERROR_EXTRACT_FAIL = 5;
 	
 	private RomDetector romdetector; //Mapped by md5sum string
 	private ZeqerRom last_rom;
+	private Map<String, ZeqerRom> userRoms;
 	
  	private boolean loadRomInfoMap_fs() throws IOException{
 		String rootdir = getProgramDirectory();
@@ -598,9 +599,27 @@ public class ZeqerCore {
 	
 	private boolean loadRomInfoMap_jar() throws IOException{
 		
-		//TODO This dependency on the hardcoded name list needs to be fixed
-		for(String f : RES_ROMINFO_VERS){
-			String respath = RES_JARPATH + "/" + f + ".xml";
+		//Open the lists of xmls in the rom
+		List<String> xmllist = new LinkedList<String>();
+		String respath = RES_JARPATH + "/" + FN_KNOWNROMS;
+		try{
+			InputStream jarstr = ZeqerCore.class.getResourceAsStream(respath);
+			if(jarstr == null) return false;
+			BufferedReader br = new BufferedReader(new InputStreamReader(jarstr));
+			String line = null;
+			while((line = br.readLine()) != null){
+				xmllist.add(line);
+			}
+			br.close();
+		}
+		catch(Exception ex){
+			System.err.println("Couldn't read JAR'd xml list.");
+			ex.printStackTrace();
+			return false;
+		}
+
+		for(String f : xmllist){
+			respath = RES_JARPATH + "/" + f + ".xml";
 			//System.err.println("ZeqerCore: Loading ROM xml from JAR -- " + respath);
 			String tempath = FileBuffer.generateTemporaryPath("zeqercore_loadrominfomap_jar");
 			try{
@@ -668,6 +687,148 @@ public class ZeqerCore {
 	}
 	
 	public ZeqerRom lastRomUsed(){return last_rom;}
+	
+	public boolean loadUserRomList() throws IOException{
+		if(userRoms != null) userRoms.clear();
+		else userRoms = new HashMap<String, ZeqerRom>();
+		if(romdetector == null) return false;
+		
+		String userroms_path = getProgramDirectory() + SEP + DIRNAME_ROMINFO + SEP + FN_USRROMS;
+		if(!FileBuffer.fileExists(userroms_path)) return false;
+		
+		FileBuffer buff = FileBuffer.createBuffer(userroms_path, true);
+		buff = ZeqerUtils.inflate(buff);
+		if(buff == null) return false;
+		
+		BufferedReader br = new BufferedReader(new InputStreamReader(new FileBufferInputStream(buff)));
+		String line = null;
+		while((line = br.readLine()) != null){
+			if(line.isEmpty()) continue;
+			String[] fields = line.split(",");
+			if(fields.length < 2) continue;
+			
+			RomInfoNode info = romdetector.matchRomByMD5(fields[0]);
+			if (info == null) continue;
+			if(info instanceof NusRomInfo){
+				NusRomInfo rominfo = (NusRomInfo)info;
+				ZeqerRom rom = new ZeqerRom(fields[1], rominfo);
+				userRoms.put(fields[0], rom);
+			}
+		}
+		br.close();
+		return true;
+	}
+	
+	public void saveUserRomList() throws IOException{
+		if(userRoms == null || userRoms.isEmpty()) return;
+		String userroms_path = getProgramDirectory() + SEP + DIRNAME_ROMINFO + SEP + FN_USRROMS;
+		
+		//Easier to just write to disk then I don't have to allocate :)
+		String temppath = userroms_path + ".tmp";
+		BufferedWriter bw = new BufferedWriter(new FileWriter(temppath));
+		for(Entry<String, ZeqerRom> entry : userRoms.entrySet()){
+			bw.write(entry.getValue().getRomInfo().getMD5String());
+			bw.write(",");
+			bw.write(entry.getValue().getRomPath());
+			bw.write("\n");
+		}
+		bw.close();
+		
+		//Compress
+		FileBuffer buff = FileBuffer.createBuffer(temppath, true);
+		buff = ZeqerUtils.deflate(buff);
+		buff.writeFile(userroms_path);
+		
+		Files.deleteIfExists(Paths.get(temppath));
+	}
+	
+	public ZeqerRom getUserRom(String md5){
+		if(userRoms == null) return null;
+		return userRoms.get(md5);
+	}
+	
+	public List<ZeqerRom> getAllUserRoms(){
+		List<ZeqerRom> list = new LinkedList<ZeqerRom>();
+		if(userRoms != null){
+			list.addAll(userRoms.values());
+		}
+		return list;
+	}
+	
+	public int addUserRom(String file_path, String xml_path, boolean do_extraction, RomImportListener listener) throws IOException{
+		//Result is pseudo enum.
+		//Can be no error, file not compatible, already have that image etc.
+		if(file_path == null) return ADDROM_ERROR_NULL_ROM;
+		if(!FileBuffer.fileExists(file_path)) return ADDROM_ERROR_NULL_ROM;
+		
+		if(listener != null) listener.onStartMD5Calculation();
+		String md5str = null;
+		try {
+			byte[] md5 = FileBuffer.getFileHash("MD5", file_path);
+			md5str = FileUtils.bytes2str(md5).toLowerCase();
+		} catch (NoSuchAlgorithmException e) {
+			e.printStackTrace();
+		}
+		
+		if(userRoms == null) userRoms = new HashMap<String, ZeqerRom>();
+		if(userRoms.containsKey(md5str)) return ADDROM_ERROR_IMAGE_ALREADY_IMPORTED;
+		
+		if(listener != null) listener.onStartInfoImport();
+		RomInfoNode node = null;
+		if(xml_path == null){
+			//Autodetect
+			node = romdetector.matchRomByMD5(md5str);
+		}
+		else{
+			//Load this xml
+			ZeqerRomInfo zri = ZeqerRomInfo.readXML(xml_path);
+			if(zri != null){
+				List<RomInfoNode> nlist = zri.getAllRomNodes();
+				if(nlist == null) return ADDROM_ERROR_INFO_NOT_FOUND;
+				if(!nlist.isEmpty()){
+					if(nlist.size() > 1){
+						//Have to match md5sum
+						for(RomInfoNode rin : nlist){
+							if(rin.getMD5String().equals(md5str)){
+								node = rin;
+								break;
+							}
+						}
+					}
+					else {
+						//Just accept regardless of md5
+						node = nlist.get(0);
+					}
+				}
+				else return ADDROM_ERROR_INFO_NOT_FOUND;
+			}
+			else return ADDROM_ERROR_INFO_NOT_FOUND;
+		}
+		
+		if(node == null) return ADDROM_ERROR_INFO_NOT_FOUND;
+		if(node instanceof NusRomInfo) {
+			NusRomInfo info = (NusRomInfo)node;
+			ZeqerRom rom = new ZeqerRom(file_path, info);
+			userRoms.put(md5str, rom);
+			if(listener != null) listener.onRomRecordAdded(rom);
+			if(do_extraction){
+				RomExtractionSummary exerr = extractSoundDataFromRom(rom, listener);
+				if(exerr.genError != RomExtractionSummary.ERROR_NONE) return ADDROM_ERROR_EXTRACT_FAIL;
+			}
+		}
+		else{
+			//TODO 
+		}
+		
+		return ADDROM_ERROR_NONE;
+	}
+	
+	public boolean removeUserRom(String md5){
+		//Doesn't remove the extracted sound data, just the path from user roms.
+		if(md5 == null) return false;
+		if(userRoms == null) return false;
+		return userRoms.remove(md5) != null;
+	}
 	
 	/*----- Tables -----*/
 	
@@ -780,12 +941,16 @@ public class ZeqerCore {
 		if(wavManager == null) return null;
 		return wavManager.loadVersionWaveOffsetIDMap(rom_id);
 	}
-	
+		
 	/*----- Data Saving -----*/
 	
 	private boolean admin_write = false;
 	
 	public RomExtractionSummary extractSoundDataFromRom(ZeqerRom z_rom) throws IOException{
+		return this.extractSoundDataFromRom(z_rom, null);
+	}
+	
+	public RomExtractionSummary extractSoundDataFromRom(ZeqerRom z_rom, RomImportListener listener) throws IOException{
 		//----- Check ROM
 		RomExtractionSummary errinfo = new RomExtractionSummary();
 		if(z_rom == null){
@@ -801,6 +966,7 @@ public class ZeqerCore {
 		errinfo.romid = zid;
 		
 		//----- Waves
+		if(listener != null) listener.onWaveExtractStart(errinfo);
 		if(!wavManager.importROMWaves(z_rom, errinfo)){
 			errinfo.genError = RomExtractionSummary.GENERR_WAV_DUMP_FAILED;
 			return errinfo;
@@ -808,6 +974,7 @@ public class ZeqerCore {
 		
 		//----- Banks
 		//Load wave loc map
+		if(listener != null) listener.onFontExtractStart(errinfo);
 		WaveLocIDMap wavelocs = wavManager.loadVersionWaveOffsetIDMap(zid);
 		if(!bnkManager.importROMBanks(z_rom, wavelocs, errinfo)){
 			errinfo.genError = RomExtractionSummary.GENERR_BNK_DUMP_FAILED;
@@ -815,12 +982,14 @@ public class ZeqerCore {
 		}
 		
 		//----- Seqs
+		if(listener != null) listener.onSeqExtractStart(errinfo);
 		if(!seqManager.importROMSeqs(z_rom, errinfo)){
 			errinfo.genError = RomExtractionSummary.GENERR_SEQ_DUMP_FAILED;
 			return errinfo;
 		}
 		
 		//Seq/Bank mapping
+		if(listener != null) listener.onSeqBankMapStart(errinfo);
 		int[] bankUids = bnkManager.loadVersionTable(zid);
 		if(!seqManager.mapSeqBanks(z_rom, bankUids)){
 			errinfo.genError = RomExtractionSummary.GENERR_SEQBNKMAP_FAILED;
@@ -828,6 +997,7 @@ public class ZeqerCore {
 		}
 		
 		//----- ABLDs
+		if(listener != null) listener.onAbldGenStart(errinfo);
 		int[] seqUids = seqManager.loadVersionTable(zid);
 		VersionWaveTable vwt = wavManager.loadWaveVersionTable(zid);
 		
@@ -838,6 +1008,7 @@ public class ZeqerCore {
 			return errinfo;
 		}
 		
+		if(listener != null) listener.onExtractionComplete(errinfo);
 		return errinfo;
 	}
 	
@@ -845,6 +1016,14 @@ public class ZeqerCore {
 		if(seqManager == null) return false;
 		seqManager.saveSeq(seq);
 		return true;
+	}
+	
+	/*----- Sys Table Building -----*/
+	
+	public void saveScrubbedCopies() throws IOException{
+		if(!admin_write) return;
+		bnkManager.saveSysPresetsScrubbed();
+		seqManager.saveSysHusks(true);
 	}
 	
 	/*----- Metadata -----*/

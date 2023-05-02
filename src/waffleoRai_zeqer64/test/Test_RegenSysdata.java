@@ -179,7 +179,7 @@ public class Test_RegenSysdata {
 					
 					//Scan banks to adjust inst usage flags...
 					scanBank(wtbl, abld);
-					ZeqerCore.getActiveCore().saveZeqerTables();
+					core.saveZeqerTables();
 				}
 			}
 			
@@ -194,6 +194,9 @@ public class Test_RegenSysdata {
 			if(FileBuffer.fileExists(pmeta_wav) && FileBuffer.fileExists(pmeta_seq) && FileBuffer.fileExists(pmeta_bnk)){
 				ImportMetadata.main(new String[]{outpath, pmeta_wav, pmeta_seq, pmeta_prs, pmeta_bnk, pmeta_slb, pmeta_sal});
 			}
+			
+			//Generate scrubbed copies of presets and sequences TODO
+			core.saveScrubbedCopies();
 			
 		}
 		catch(Exception ex){

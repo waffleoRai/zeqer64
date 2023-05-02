@@ -192,6 +192,10 @@ public class ZeqerSeq {
 	public NUSALSeq getSequence(){return sequence;}
 	public FileBuffer getRawData(){return raw_data;}
 	
+	public boolean isMetaHusk(){
+		return(sequence == null) && (raw_data == null);
+	}
+	
  	public Module getModule(int index){
 		if(index < 0 || modules == null) return null;
 		if(index >= modules.size()) return null;
@@ -223,6 +227,11 @@ public class ZeqerSeq {
 	public void setMaxVoiceLoad(int val){max_voice_load = val;}
 	public void setSequence(NUSALSeq seq){sequence = seq;}
 	public void setRawData(FileBuffer val){raw_data = val;}
+	
+	public void clearData(){
+		sequence = null;
+		raw_data = null;
+	}
 	
 	public void allocModuleList(int size){modules = new ArrayList<Module>(size+1);}
 	

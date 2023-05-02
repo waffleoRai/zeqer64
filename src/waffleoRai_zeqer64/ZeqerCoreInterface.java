@@ -15,6 +15,11 @@ public interface ZeqerCoreInterface {
 	public String getSetting(String key);
 	public String setSetting(String key, String value);
 	
+	/*----- String Management -----*/
+	
+	public boolean loadLanguage(String lanCode);
+	public String getString(String key);
+	
 	/*----- ROM Record Management -----*/
 	public Collection<ZeqerRom> getImportedRoms();
 	public boolean removeImportedRoms(Collection<ZeqerRom> romlist);

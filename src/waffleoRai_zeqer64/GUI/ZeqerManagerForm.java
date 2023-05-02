@@ -6,6 +6,8 @@ import javax.swing.JTabbedPane;
 import java.awt.GridBagConstraints;
 import javax.swing.JMenuBar;
 import javax.swing.JPanel;
+import javax.swing.JMenu;
+import javax.swing.JMenuItem;
 
 public class ZeqerManagerForm extends JFrame{
 
@@ -53,6 +55,18 @@ public class ZeqerManagerForm extends JFrame{
 		
 		JMenuBar menuBar = new JMenuBar();
 		setJMenuBar(menuBar);
+		
+		JMenu mnFile = new JMenu("File");
+		menuBar.add(mnFile);
+		
+		JMenuItem mntmSaveWorkspace = new JMenuItem("Save Workspace");
+		mnFile.add(mntmSaveWorkspace);
+		
+		JMenuItem mntmUninstallZeqer = new JMenuItem("Uninstall Zeqer64");
+		mnFile.add(mntmUninstallZeqer);
+		
+		JMenuItem mntmExit = new JMenuItem("Exit");
+		mnFile.add(mntmExit);
 	}
 	
 	/*----- Getters -----*/

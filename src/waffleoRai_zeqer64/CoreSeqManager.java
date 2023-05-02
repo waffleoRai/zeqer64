@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
@@ -34,6 +35,8 @@ class CoreSeqManager {
 	private String root_dir; //Base seq dir (ie. zeqerbase/seq)
 	private boolean sys_write_enabled = false;
 	
+	private boolean parse_seq_on_load = true;
+	
 	private ZeqerSeqTable seq_table_sys;
 	private ZeqerSeqTable seq_table_user;
 	
@@ -43,6 +46,7 @@ class CoreSeqManager {
 		//Loads tables too, or creates if not there.
 		root_dir = base_seq_dir;
 		sys_write_enabled = sysMode;
+		parse_seq_on_load = !sysMode;
 		
 		String zdir = root_dir + SEP + ZeqerCore.DIRNAME_ZSEQ;
 		if(!FileBuffer.directoryExists(zdir)){
@@ -148,7 +152,7 @@ class CoreSeqManager {
 		if(!FileBuffer.fileExists(spath)) return null;
 		try{
 			UltraSeqFile useq =  UltraSeqFile.openUSEQ(spath);
-			ZeqerSeq zseq = UltraSeqFile.readUSEQ(useq, entry);
+			ZeqerSeq zseq = UltraSeqFile.readUSEQ(useq, entry, parse_seq_on_load);
 			useq.dispose();
 			return zseq;
 		}
@@ -200,6 +204,10 @@ class CoreSeqManager {
 	}
 	
 	/*----- Setters -----*/
+	
+	public void setParseSeqOnLoad(boolean b){
+		this.parse_seq_on_load = b;
+	}
 	
 	public SeqTableEntry newUserSeq(NUSALSeq data) throws IOException{
 		int id = genNewRandomGUID();
@@ -372,10 +380,37 @@ class CoreSeqManager {
 					//Add data.
 					addZeqerSeqData(myseq, zseq);
 					UltraSeqFile.writeUSEQ(zseq, datapath, myseq);
+					if(errorInfo != null) errorInfo.seqsOkay++;
+				}
+				else{
+					//It may be a husk. Inject data.
+					try {
+						UltraSeqFile useq = UltraSeqFile.openUSEQ(datapath);
+						ZeqerSeq zseq = UltraSeqFile.readUSEQ(useq, entry, false);
+						useq.dispose();
+						
+						zseq.setRawData(myseq);
+						UltraSeqFile.writeUSEQ(zseq, datapath, myseq);
+						if(errorInfo != null) errorInfo.seqsOkay++;
+					}
+					catch (UnsupportedFileTypeException e) {
+						e.printStackTrace();
+						if(errorInfo != null){
+							if(errorInfo.seqErrors == null){
+								errorInfo.seqErrors = new LinkedList<ExtractionError>();
+							}
+							ExtractionError err = new ExtractionError();
+							err.index0 = i;
+							err.itemType = RomExtractionSummary.ITEM_TYPE_SEQ;
+							err.reason = RomExtractionSummary.ERROR_WRITE_FAILED;
+							err.itemUID = ZeqerUtils.md52UID(md5);
+							errorInfo.seqErrors.add(err);
+						}
+						good = false;
+					}
 				}
 				
 				uid_tbl[i] = entry.getUID();
-				if(errorInfo != null) errorInfo.seqsOkay++;
 			}
 			myseq.dispose();
 		}
@@ -687,6 +722,39 @@ class CoreSeqManager {
 		tsv.closeReader();
 		
 		return import_count;
+	}
+	
+	public void saveSysHusks(boolean outputInstallPaths) throws IOException{
+		if(!sys_write_enabled || (seq_table_sys == null)) return;
+		String zseq_dir = root_dir + SEP + ZeqerCore.DIRNAME_ZSEQ;
+		String husk_dir = zseq_dir + SEP + "scrubbed";
+		if(!FileBuffer.directoryExists(husk_dir)){
+			Files.createDirectories(Paths.get(husk_dir));
+		}
+		
+		List<SeqTableEntry> entries = seq_table_sys.getAllEntries();
+		for(SeqTableEntry entry : entries){
+			String spath = zseq_dir + SEP + entry.getDataFileName();
+			if(!FileBuffer.fileExists(spath)) continue;
+			try{
+				UltraSeqFile useq =  UltraSeqFile.openUSEQ(spath);
+				ZeqerSeq zseq = UltraSeqFile.readUSEQ(useq, entry, false);
+				useq.dispose();
+				
+				String fn = entry.getDataFileName();
+				zseq.clearData();
+				String cpypath = husk_dir + SEP + fn;
+				UltraSeqFile.writeUSEQ(zseq, cpypath, null);
+				
+				if(outputInstallPaths){
+					System.out.println("seqmeta/" + fn + ",seq/" + ZeqerCore.DIRNAME_ZSEQ + "/" + fn + ",0");
+				}
+			}
+			catch(Exception ex){
+				System.err.println("ZeqerCore.saveSysHusks || Failed to load seq " + String.format("%08x", entry.getUID()));
+				ex.printStackTrace();
+			}
+		}
 	}
 	
 	public boolean saveSeq(ZeqerSeq seq) throws IOException{
