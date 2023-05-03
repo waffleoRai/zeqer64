@@ -208,7 +208,7 @@ public class ZeqerGUIMain {
 		}
 		
 		final CoreGUIInterface core_safe = core;
-		ZeqerManagerForm mainform = new ZeqerManagerForm();
+		ZeqerManagerForm mainform = new ZeqerManagerForm(core_safe);
 		mainform.addWindowListener(new WindowAdapter(){
     		public void windowClosing(WindowEvent e){
     			try{
@@ -222,6 +222,8 @@ public class ZeqerGUIMain {
     			mainform.dispose();
     			System.exit(0);
 			}});
+		
+		mainform.render();
 	}
 	
 	public static Map<String, String> parseCommandLineArgs(String[] args){

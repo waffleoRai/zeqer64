@@ -28,6 +28,8 @@ import waffleoRai_zeqer64.ZeqerCoreInterface;
 import waffleoRai_zeqer64.ZeqerRom;
 import waffleoRai_zeqer64.GUI.dialogs.progress.IndefProgressDialog;
 import waffleoRai_zeqer64.filefmt.NusRomInfo;
+import waffleoRai_zeqer64.strings.CommonStrings;
+import waffleoRai_zeqer64.strings.ZeqerRomStrings;
 
 import javax.swing.border.BevelBorder;
 import javax.swing.event.ListSelectionEvent;
@@ -47,6 +49,30 @@ public class ZeqerPanelRoms extends JPanel{
 	
 	public static final String ROMPNL_LAST_IMPORT_PATH = "ZROMPNL_LASTIMPORT";
 	public static final String ROMPNL_LAST_XML_PATH = "ZROMPNL_LASTXML";
+	
+	private static final String STRKEY_BTN_IMPORT = "PNLROM_BTN_IMPORT";
+	private static final String STRKEY_MBTN_REMOVE = "PNLROM_MBTN_REMOVE";
+	private static final String STRKEY_CDIA_REMROM_T = "PNLROM_CDIA_REMROM_T";
+	private static final String STRKEY_CDIA_REMROM_M = "PNLROM_CDIA_REMROM_M";
+	private static final String STRKEY_NDIA_REMROM_T = "PNLROM_NDIA_REMROM_T";
+	private static final String STRKEY_NDIA_REMROM_M = "PNLROM_NDIA_REMROM_M";
+	private static final String STRKEY_EDIA_REMROM_M = "PNLROM_EDIA_REMROM_M";
+	private static final String STRKEY_CDIA_MANXML_T = "PNLROM_CDIA_MANXML_T";
+	private static final String STRKEY_CDIA_MANXML_M = "PNLROM_CDIA_MANXML_M";
+	private static final String STRKEY_RES_UNK_ERR = "ADDROMRES_UNKERR";
+	private static final String STRKEY_INFOPNL_NOROM = "PNLROM_INFOPNL_NOROM";
+	private static final String STRKEY_INFOPNL_ERROR = "PNLROM_INFOPNL_ERROR";
+	private static final String STRKEY_INFOFIELD_GAMECODE = "PNLROM_INFOFIELD_GAMECODE";
+	private static final String STRKEY_INFOFIELD_INNAME = "PNLROM_INFOFIELD_INNAME";
+	private static final String STRKEY_INFOFIELD_VER = "PNLROM_INFOFIELD_VER";
+	private static final String STRKEY_INFOFIELD_TVSTD = "PNLROM_INFOFIELD_TVSTD";
+	private static final String STRKEY_INFOFIELD_REG = "PNLROM_INFOFIELD_REG";
+	private static final String STRKEY_INFOFIELD_ZID = "PNLROM_INFOFIELD_ZID";
+	private static final String STRKEY_INFOFIELD_MD5 = "PNLROM_INFOFIELD_MD5";
+	private static final String STRKEY_INFOFIELD_CRC1 = "PNLROM_INFOFIELD_CRC1";
+	private static final String STRKEY_INFOFIELD_CRC2 = "PNLROM_INFOFIELD_CRC2";
+	private static final String STRKEY_INFOFIELD_DMADATA = "PNLROM_INFOFIELD_DMADATA";
+	private static final String STRKEY_INFOFIELD_ROMPATH = "PNLROM_INFOFIELD_ROMPATH";
 
 	/*----- Instance Variables -----*/
 	
@@ -72,7 +98,7 @@ public class ZeqerPanelRoms extends JPanel{
 		GridBagLayout gridBagLayout = new GridBagLayout();
 		gridBagLayout.columnWidths = new int[]{0, 0, 0};
 		gridBagLayout.rowHeights = new int[]{0, 0};
-		gridBagLayout.columnWeights = new double[]{1.0, 1.0, Double.MIN_VALUE};
+		gridBagLayout.columnWeights = new double[]{1.0, 4.0, Double.MIN_VALUE};
 		gridBagLayout.rowWeights = new double[]{1.0, Double.MIN_VALUE};
 		setLayout(gridBagLayout);
 		
@@ -127,7 +153,7 @@ public class ZeqerPanelRoms extends JPanel{
 		gbl_pnlBtns.rowWeights = new double[]{0.0, Double.MIN_VALUE};
 		pnlBtns.setLayout(gbl_pnlBtns);
 		
-		JButton btnAdd = new JButton("Import...");
+		JButton btnAdd = new JButton(getString(STRKEY_BTN_IMPORT));
 		GridBagConstraints gbc_btnAdd = new GridBagConstraints();
 		gbc_btnAdd.insets = new Insets(5, 5, 5, 5);
 		gbc_btnAdd.gridx = 2;
@@ -148,6 +174,16 @@ public class ZeqerPanelRoms extends JPanel{
 	}
 	
 	/*----- Getters -----*/
+	
+	private String getString(String key){
+		if(core == null) return key;
+		return core.getString(key);
+	}
+	
+	public int getSelectedRomCount(){
+		if(lstRoms.isSelectionEmpty()) return 0;
+		return lstRoms.getSelectedValuesList().size();
+	}
 	
 	public ZeqerRom getSelectedRom(){
 		GuiRomNode node = lstRoms.getSelectedValue();
@@ -174,71 +210,71 @@ public class ZeqerPanelRoms extends JPanel{
 		try{
 			Writer pnlWriter = pnlInfo.getWriter();
 			if(rom == null){
-				pnlWriter.write("<Please select one ROM>");
+				pnlWriter.write("<" + getString(STRKEY_INFOPNL_NOROM) + ">");
 			}
 			else{
 				NusRomInfo rominfo = rom.getRomInfo();
 				N64ROMImage romhead = rom.getRomHead();
 				pnlWriter.write(rominfo.getROMName()); pnlWriter.write("\n");
-				pnlWriter.write("Gamecode: " + romhead.getGamecode() + "\n");
-				pnlWriter.write("Internal Name: " + romhead.getName() + "\n");
+				pnlWriter.write(getString(STRKEY_INFOFIELD_GAMECODE) + " " + romhead.getGamecode() + "\n");
+				pnlWriter.write(getString(STRKEY_INFOFIELD_INNAME) + " " + romhead.getName() + "\n");
 				
-				pnlWriter.write("Version: ");
+				pnlWriter.write(getString(STRKEY_INFOFIELD_VER) + " ");
 				switch(rominfo.getGameVersionEnum()){
-				case ZeqerRom.GAME_OCARINA_V1_0: pnlWriter.write("Ocarina of Time V1.0"); break;
-				case ZeqerRom.GAME_OCARINA_V1_1: pnlWriter.write("Ocarina of Time V1.1"); break;
-				case ZeqerRom.GAME_OCARINA_V1_2: pnlWriter.write("Ocarina of Time V1.2"); break;
-				case ZeqerRom.GAME_OCARINA_GC_V1_1: pnlWriter.write("Ocarina of Time (Gamecube - V1.1 Based)"); break;
-				case ZeqerRom.GAME_OCARINA_GC_V1_2: pnlWriter.write("Ocarina of Time (Gamecube - V1.2 Based)"); break;
-				case ZeqerRom.GAME_OCARINA_V0_9: pnlWriter.write("Ocarina of Time Prerelease Build"); break;
-				case ZeqerRom.GAME_OCARINA_MQ_V1_1: pnlWriter.write("Ocarina of Time Master Quest (V1.1 Based)"); break;
-				case ZeqerRom.GAME_OCARINA_MQ_V1_2: pnlWriter.write("Ocarina of Time Master Quest (V1.2 Based)"); break;
-				case ZeqerRom.GAME_OCARINA_MQDBG_V1_1: pnlWriter.write("Ocarina of Time Master Quest (V1.1 Based) Debug"); break;
-				case ZeqerRom.GAME_OCARINA_GZ: pnlWriter.write("Ocarina of Time Practice ROM (gz)"); break;
-				case ZeqerRom.GAME_OCARINA_MOD: pnlWriter.write("Ocarina of Time Modded ROM (General)"); break;
-				case ZeqerRom.GAME_OCARINA_MQ_GZ: pnlWriter.write("Ocarina of Time Master Quest Practice ROM (gz)"); break;
-				case ZeqerRom.GAME_OCARINA_MQ_MOD: pnlWriter.write("Ocarina of Time Master Quest Modded ROM (General)"); break;
-				case ZeqerRom.GAME_MAJORA_V1_0_J: pnlWriter.write("Majora's Mask (Japan Release)"); break;
-				case ZeqerRom.GAME_MAJORA_V1_0_I: pnlWriter.write("Majora's Mask (International)"); break;
-				case ZeqerRom.GAME_MAJORA_GC: pnlWriter.write("Majora's Mask (Gamecube)"); break;
-				case ZeqerRom.GAME_MAJORA_KZ: pnlWriter.write("Majora's Mask Practice ROM (kz)"); break;
-				case ZeqerRom.GAME_MAJORA_MOD: pnlWriter.write("Majora's Mask Modded ROM (General)"); break;
-				default: pnlWriter.write("(Unknown)"); break;
+				case ZeqerRom.GAME_OCARINA_V1_0: pnlWriter.write(getString(ZeqerRomStrings.STRKEY_VZ5_1_0)); break;
+				case ZeqerRom.GAME_OCARINA_V1_1: pnlWriter.write(getString(ZeqerRomStrings.STRKEY_VZ5_1_1)); break;
+				case ZeqerRom.GAME_OCARINA_V1_2: pnlWriter.write(getString(ZeqerRomStrings.STRKEY_VZ5_1_2)); break;
+				case ZeqerRom.GAME_OCARINA_GC_V1_1: pnlWriter.write(getString(ZeqerRomStrings.STRKEY_VZ5GC_1_1)); break;
+				case ZeqerRom.GAME_OCARINA_GC_V1_2: pnlWriter.write(getString(ZeqerRomStrings.STRKEY_VZ5GC_1_2)); break;
+				case ZeqerRom.GAME_OCARINA_V0_9: pnlWriter.write(getString(ZeqerRomStrings.STRKEY_VZ5_0_9)); break;
+				case ZeqerRom.GAME_OCARINA_MQ_V1_1: pnlWriter.write(getString(ZeqerRomStrings.STRKEY_VZ5MQ_1_1)); break;
+				case ZeqerRom.GAME_OCARINA_MQ_V1_2: pnlWriter.write(getString(ZeqerRomStrings.STRKEY_VZ5MQ_1_2)); break;
+				case ZeqerRom.GAME_OCARINA_MQDBG_V1_1: pnlWriter.write(getString(ZeqerRomStrings.STRKEY_VZ5MQDBG_1_1)); break;
+				case ZeqerRom.GAME_OCARINA_GZ: pnlWriter.write(getString(ZeqerRomStrings.STRKEY_VZ5_GZ)); break;
+				case ZeqerRom.GAME_OCARINA_MOD: pnlWriter.write(getString(ZeqerRomStrings.STRKEY_VZ5_MOD)); break;
+				case ZeqerRom.GAME_OCARINA_MQ_GZ: pnlWriter.write(getString(ZeqerRomStrings.STRKEY_VZ5MQ_GZ)); break;
+				case ZeqerRom.GAME_OCARINA_MQ_MOD: pnlWriter.write(getString(ZeqerRomStrings.STRKEY_VZ5MQ_MOD)); break;
+				case ZeqerRom.GAME_MAJORA_V1_0_J: pnlWriter.write(getString(ZeqerRomStrings.STRKEY_VZ6J)); break;
+				case ZeqerRom.GAME_MAJORA_V1_0_I: pnlWriter.write(getString(ZeqerRomStrings.STRKEY_VZ6I)); break;
+				case ZeqerRom.GAME_MAJORA_GC: pnlWriter.write(getString(ZeqerRomStrings.STRKEY_VZ6GC)); break;
+				case ZeqerRom.GAME_MAJORA_KZ: pnlWriter.write(getString(ZeqerRomStrings.STRKEY_VZ6_KZ)); break;
+				case ZeqerRom.GAME_MAJORA_MOD: pnlWriter.write(getString(ZeqerRomStrings.STRKEY_VZ6_MOD)); break;
+				default: pnlWriter.write("(" + getString(ZeqerRomStrings.STRKEY_V_UNK) + ")"); break;
 				}
 				pnlWriter.write("\n");
 				
-				pnlWriter.write("Video Output: ");
+				pnlWriter.write(getString(STRKEY_INFOFIELD_TVSTD) + " ");
 				switch(rominfo.getTVType()){
-				case ZeqerRom.TV_TYPE__NTSC: pnlWriter.write("NTSC"); break;
-				case ZeqerRom.TV_TYPE__PAL: pnlWriter.write("PAL"); break;
-				case ZeqerRom.TV_TYPE__MPAL: pnlWriter.write("MPAL"); break;
-				default: pnlWriter.write("(Unknown)"); break;
+				case ZeqerRom.TV_TYPE__NTSC: pnlWriter.write(getString(ZeqerRomStrings.STRKEY_TVSTD_NTSC)); break;
+				case ZeqerRom.TV_TYPE__PAL: pnlWriter.write(getString(ZeqerRomStrings.STRKEY_TVSTD_PAL)); break;
+				case ZeqerRom.TV_TYPE__MPAL: pnlWriter.write(getString(ZeqerRomStrings.STRKEY_TVSTD_MPAL)); break;
+				default: pnlWriter.write("(" + getString(ZeqerRomStrings.STRKEY_TVSTD_UNK) + ")"); break;
 				}
 				pnlWriter.write("\n");
 				
-				pnlWriter.write("Region: ");
+				pnlWriter.write(getString(STRKEY_INFOFIELD_REG) + " ");
 				char regchar = romhead.getGamecode().charAt(3);
 				switch(regchar){
-				case 'E': pnlWriter.write("North America"); break;
-				case 'J': pnlWriter.write("Japan"); break;
-				case 'P': pnlWriter.write("Europe/PAL"); break;
+				case 'E': pnlWriter.write(getString(ZeqerRomStrings.STRKEY_REG_NA)); break;
+				case 'J': pnlWriter.write(getString(ZeqerRomStrings.STRKEY_REG_JPN)); break;
+				case 'P': pnlWriter.write(getString(ZeqerRomStrings.STRKEY_REG_PAL)); break;
 				default: pnlWriter.write("\'" + regchar + "\'"); break;
 				}
 				pnlWriter.write("\n");
 				
-				pnlWriter.write("Zeqer ID: " + rominfo.getZeqerID() + "\n");
-				pnlWriter.write("Standard MD5: " + rominfo.getMD5String() + "\n");
+				pnlWriter.write(getString(STRKEY_INFOFIELD_ZID) + " " + rominfo.getZeqerID() + "\n");
+				pnlWriter.write(getString(STRKEY_INFOFIELD_MD5) + " " + rominfo.getMD5String() + "\n");
 				
-				pnlWriter.write("CRC1: " + String.format("%08x", romhead.getCRC1()) + "\n");
-				pnlWriter.write("CRC2: " + String.format("%08x", romhead.getCRC2()) + "\n");
-				pnlWriter.write("dmadata Offset: " + Long.toHexString(rominfo.getDMADataOffset()) + "\n");
-				pnlWriter.write("Path: " + rom.getRomPath() + "\n");
+				pnlWriter.write(getString(STRKEY_INFOFIELD_CRC1) + " " + String.format("%08x", romhead.getCRC1()) + "\n");
+				pnlWriter.write(getString(STRKEY_INFOFIELD_CRC2) + " " + String.format("%08x", romhead.getCRC2()) + "\n");
+				pnlWriter.write(getString(STRKEY_INFOFIELD_DMADATA) + " " + Long.toHexString(rominfo.getDMADataOffset()) + "\n");
+				pnlWriter.write(getString(STRKEY_INFOFIELD_ROMPATH) + " " + rom.getRomPath() + "\n");
 			}
 			pnlWriter.close();
 		}
 		catch(Exception ex){
 			ex.printStackTrace();
-			showError("ROM info could not be rendered");
+			showError(getString(STRKEY_INFOPNL_ERROR));
 		}
 		pnlInfo.repaint();
 	}
@@ -268,7 +304,7 @@ public class ZeqerPanelRoms extends JPanel{
 	public void onRightclickList(int x, int y){
 		JPopupMenu menu = new JPopupMenu();
 		
-		JMenuItem menuitem = new JMenuItem("Remove");
+		JMenuItem menuitem = new JMenuItem(getString(STRKEY_MBTN_REMOVE));
 		menu.add(menuitem);
 		menuitem.addActionListener(new ActionListener(){
 			public void actionPerformed(ActionEvent e){
@@ -282,8 +318,23 @@ public class ZeqerPanelRoms extends JPanel{
 	public void onClickMenuSelection_Delete(){
 		//This allows multiple deletions.
 		if(core == null) return;
+		if(this.lstRoms.isSelectionEmpty()){
+			JOptionPane.showMessageDialog(this, getString(STRKEY_NDIA_REMROM_M), 
+					getString(STRKEY_NDIA_REMROM_T), JOptionPane.WARNING_MESSAGE);
+			return;
+		}
+		
+		String msg = getString(STRKEY_CDIA_REMROM_M);
+		int scount = getSelectedRomCount();
+		msg = msg.replace("%d", Integer.toString(scount));
+		
+		int ret = JOptionPane.showConfirmDialog(this, msg, 
+				getString(STRKEY_CDIA_REMROM_T), JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+		
+		if(ret != JOptionPane.YES_OPTION) return;
+		
 		if(!core.removeImportedRoms(getSelectedRoms())){
-			showError("ROM removal failed. See stderr for details.");
+			showError(getString(STRKEY_EDIA_REMROM_M));
 		}
 		refreshRomList();
 	}
@@ -296,7 +347,8 @@ public class ZeqerPanelRoms extends JPanel{
 	public void onClickAddButton(){
 		if(core == null) return;
 		
-		int op = JOptionPane.showOptionDialog(this, "Would you like to manually provide an xml specification?", "Manual Import", 
+		int op = JOptionPane.showOptionDialog(this, getString(STRKEY_CDIA_MANXML_M), 
+				getString(STRKEY_CDIA_MANXML_T), 
 				JOptionPane.YES_NO_CANCEL_OPTION, 
 				JOptionPane.QUESTION_MESSAGE, null, null, null);
 		
@@ -314,7 +366,7 @@ public class ZeqerPanelRoms extends JPanel{
 					return false;
 				}
 				public String getDescription() {
-					return "eXtensible Markup Language Document (.xml)";
+					return getString(CommonStrings.STRKEY_FILEEXT_DESC_XML) + " (.xml)";
 				}
 			});	
 			
@@ -339,7 +391,7 @@ public class ZeqerPanelRoms extends JPanel{
 				return false;
 			}
 			public String getDescription() {
-				return "Nintendo 64 Cartridge ROM Image (.z64, .n64)";
+				return getString(CommonStrings.STRKEY_FILEEXT_DESC_NUSROM) + " (.z64, .n64)";
 			}
 		});
 		
@@ -351,7 +403,7 @@ public class ZeqerPanelRoms extends JPanel{
 				return false;
 			}
 			public String getDescription() {
-				return "Nintendo Gamecube Disc Image (.gcm, .iso)";
+				return getString(CommonStrings.STRKEY_FILEEXT_DESC_DOLROM) + " (.gcm, .iso)";
 			}
 		});
 		op = fc.showOpenDialog(this);
@@ -384,13 +436,14 @@ public class ZeqerPanelRoms extends JPanel{
 				}
 				catch(Exception ex){
 					ex.printStackTrace();
-					showError("Unknown Error: Import failed!");
+					showError(getString(STRKEY_RES_UNK_ERR));
 				}
 				return null;
 			}
 			
 			public void done(){
 				dialog.closeMe();
+				refreshRomList();
 			}
 		};
 		
@@ -401,15 +454,18 @@ public class ZeqerPanelRoms extends JPanel{
 	/*----- Text Boxes -----*/
 	
 	public void showWarning(String text){
-		JOptionPane.showMessageDialog(this, text, "Warning", JOptionPane.WARNING_MESSAGE);
+		JOptionPane.showMessageDialog(this, text, 
+				getString(CommonStrings.STRKEY_GUICMN_WARN_T), JOptionPane.WARNING_MESSAGE);
 	}
 	
 	public void showError(String text){
-		JOptionPane.showMessageDialog(this, text, "Error", JOptionPane.ERROR_MESSAGE);
+		JOptionPane.showMessageDialog(this, text, 
+				getString(CommonStrings.STRKEY_GUICMN_ERROR_T), JOptionPane.ERROR_MESSAGE);
 	}
 	
 	public void showInfo(String text){
-		JOptionPane.showMessageDialog(this, text, "Notice", JOptionPane.INFORMATION_MESSAGE);
+		JOptionPane.showMessageDialog(this, text, 
+				getString(CommonStrings.STRKEY_GUICMN_INFO_T), JOptionPane.INFORMATION_MESSAGE);
 	}
 	
 }

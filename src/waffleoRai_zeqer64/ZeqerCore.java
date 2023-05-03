@@ -560,6 +560,8 @@ public class ZeqerCore {
 	
 	/*----- RomInfo -----*/
 	
+	//TODO When reloading user roms, need to be able to reference custom xmls!
+	
 	public static final int ADDROM_ERROR_NONE = 0;
 	public static final int ADDROM_ERROR_BADROM = 1;
 	public static final int ADDROM_ERROR_IMAGE_ALREADY_IMPORTED = 2;
@@ -707,11 +709,29 @@ public class ZeqerCore {
 			String[] fields = line.split(",");
 			if(fields.length < 2) continue;
 			
-			RomInfoNode info = romdetector.matchRomByMD5(fields[0]);
-			if (info == null) continue;
+			RomInfoNode info = null;
+			if(fields.length > 2){
+				//Custom xml
+				ZeqerRomInfo zri = ZeqerRomInfo.readXML(fields[2]);
+				if(zri != null){
+					List<RomInfoNode> nlist = zri.getAllRomNodes();
+					if(!nlist.isEmpty()){
+						info = nlist.get(0);
+					}
+				}
+				if (info == null) continue;
+			}
+			else{
+				info = romdetector.matchRomByMD5(fields[0]);
+				if (info == null) continue;
+			}
+			
 			if(info instanceof NusRomInfo){
 				NusRomInfo rominfo = (NusRomInfo)info;
 				ZeqerRom rom = new ZeqerRom(fields[1], rominfo);
+				if(fields.length > 2){
+					rom.setInfoXMLPath(fields[2]);
+				}
 				userRoms.put(fields[0], rom);
 			}
 		}
@@ -730,6 +750,10 @@ public class ZeqerCore {
 			bw.write(entry.getValue().getRomInfo().getMD5String());
 			bw.write(",");
 			bw.write(entry.getValue().getRomPath());
+			String xml_path = entry.getValue().getInfoXMLPath();
+			if(xml_path != null){
+				bw.write("," + xml_path);
+			}
 			bw.write("\n");
 		}
 		bw.close();
@@ -809,6 +833,7 @@ public class ZeqerCore {
 		if(node instanceof NusRomInfo) {
 			NusRomInfo info = (NusRomInfo)node;
 			ZeqerRom rom = new ZeqerRom(file_path, info);
+			rom.setInfoXMLPath(xml_path);
 			userRoms.put(md5str, rom);
 			if(listener != null) listener.onRomRecordAdded(rom);
 			if(do_extraction){
@@ -989,11 +1014,13 @@ public class ZeqerCore {
 		}
 		
 		//Seq/Bank mapping
-		if(listener != null) listener.onSeqBankMapStart(errinfo);
 		int[] bankUids = bnkManager.loadVersionTable(zid);
-		if(!seqManager.mapSeqBanks(z_rom, bankUids)){
-			errinfo.genError = RomExtractionSummary.GENERR_SEQBNKMAP_FAILED;
-			return errinfo;
+		if(admin_write){
+			if(listener != null) listener.onSeqBankMapStart(errinfo);
+			if(!seqManager.mapSeqBanks(z_rom, bankUids)){
+				errinfo.genError = RomExtractionSummary.GENERR_SEQBNKMAP_FAILED;
+				return errinfo;
+			}
 		}
 		
 		//----- ABLDs

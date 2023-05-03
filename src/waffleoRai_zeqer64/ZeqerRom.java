@@ -53,6 +53,7 @@ public class ZeqerRom {
 	private String rom_path;
 	private N64ROMImage head;
 	
+	private String xml_path; //Optional. Mostly for bookkeeping.
 	private NusRomInfo info;
 	private N64ZFileTable dmadata;
 	
@@ -76,6 +77,7 @@ public class ZeqerRom {
 	public String getRomPath(){return rom_path;}
 	public NusRomInfo getRomInfo(){return info;}
 	public N64ROMImage getRomHead(){return head;}
+	public String getInfoXMLPath(){return xml_path;}
 	
 	public int getVirtualRomSize(){
 		if(dmadata == null) return 0;
@@ -117,6 +119,8 @@ public class ZeqerRom {
 	}
 	
 	/*----- Setters -----*/
+	
+	public void setInfoXMLPath(String value){xml_path = value;}
 	
 	/*----- Inner Classes -----*/
 	
