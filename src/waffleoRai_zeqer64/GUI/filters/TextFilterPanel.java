@@ -1,5 +1,4 @@
 package waffleoRai_zeqer64.GUI.filters;
-import javax.swing.border.EtchedBorder;
 
 import waffleoRai_Utils.VoidCallbackMethod;
 
@@ -64,7 +63,6 @@ public class TextFilterPanel<T> extends FilterPanel<T> {
 		setMinimumSize(new Dimension(MIN_WIDTH, pref_height));
 		setPreferredSize(new Dimension(MIN_WIDTH, pref_height));
 		
-		setBorder(new EtchedBorder(EtchedBorder.LOWERED, null, null));
 		GridBagLayout gridBagLayout = new GridBagLayout();
 		gridBagLayout.columnWidths = new int[]{0, 0};
 		gridBagLayout.rowHeights = new int[]{0, 0, 0, 0, 0};

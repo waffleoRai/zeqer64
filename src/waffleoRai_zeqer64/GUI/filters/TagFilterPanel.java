@@ -4,6 +4,8 @@ import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.GridBagLayout;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+
 import java.awt.GridBagConstraints;
 import java.awt.Insets;
 import java.awt.event.MouseAdapter;
@@ -16,6 +18,7 @@ import java.util.TreeSet;
 import javax.swing.JLabel;
 import javax.swing.JSeparator;
 import javax.swing.SwingConstants;
+import javax.swing.border.BevelBorder;
 
 import waffleoRai_Utils.VoidCallbackMethod;
 
@@ -50,6 +53,7 @@ public class TagFilterPanel<T> extends FilterPanel<T>{
 	private TagNode<T> head_tag = null;
 	private TagNode<T> tail_tag = null;
 	private boolean and_mode = false; //False = OR, true = AND
+	private String title;
 	
 	private JPanel pnlTags;
 	private JLabel lblOr;
@@ -69,6 +73,11 @@ public class TagFilterPanel<T> extends FilterPanel<T>{
 	/*----- Init -----*/
 	
 	public TagFilterPanel(Frame parent_frame){
+		this(parent_frame, null);
+	}
+	
+	public TagFilterPanel(Frame parent_frame, String title_text){
+		title = title_text;
 		parent = parent_frame;
 		action_callbacks = new LinkedList<VoidCallbackMethod>();
 		initGUI();
@@ -81,7 +90,7 @@ public class TagFilterPanel<T> extends FilterPanel<T>{
 		setMinimumSize(new Dimension(MIN_WIDTH, MIN_HEIGHT));
 		GridBagLayout gridBagLayout = new GridBagLayout();
 		gridBagLayout.columnWidths = new int[]{0, 0};
-		gridBagLayout.rowHeights = new int[]{0, 0, 0, 0};
+		gridBagLayout.rowHeights = new int[]{0, 50, 0, 0};
 		gridBagLayout.columnWeights = new double[]{1.0, Double.MIN_VALUE};
 		gridBagLayout.rowWeights = new double[]{0.0, 1.0, 0.0, Double.MIN_VALUE};
 		setLayout(gridBagLayout);
@@ -99,6 +108,16 @@ public class TagFilterPanel<T> extends FilterPanel<T>{
 		gbl_pnlOp.columnWeights = new double[]{0.0, 1.0, 0.0, 0.0, 0.0, Double.MIN_VALUE};
 		gbl_pnlOp.rowWeights = new double[]{0.0, Double.MIN_VALUE};
 		pnlOp.setLayout(gbl_pnlOp);
+		
+		if(title != null){
+			JLabel lblttl = new JLabel(title);
+			lblttl.setFont(new Font("Tahoma", Font.BOLD, 13));
+			GridBagConstraints gbc_lblt = new GridBagConstraints();
+			gbc_lblt.insets = new Insets(5, 5, 5, 5);
+			gbc_lblt.gridx = 0;
+			gbc_lblt.gridy = 0;
+			pnlOp.add(lblttl, gbc_lblt);
+		}
 		
 		lblAnd = new JLabel("AND");
 		lblAnd.setFont(fnt_andor_off);
@@ -135,13 +154,18 @@ public class TagFilterPanel<T> extends FilterPanel<T>{
 			}
 		});
 		
-		pnlTags = new JPanel();
+		JScrollPane scrollPane = new JScrollPane();
+		scrollPane.setViewportBorder(new BevelBorder(BevelBorder.LOWERED, null, null, null, null));
 		GridBagConstraints gbc_pnlTags = new GridBagConstraints();
 		gbc_pnlTags.insets = new Insets(0, 0, 5, 0);
 		gbc_pnlTags.fill = GridBagConstraints.BOTH;
 		gbc_pnlTags.gridx = 0;
 		gbc_pnlTags.gridy = 1;
-		add(pnlTags, gbc_pnlTags);
+		add(scrollPane, gbc_pnlTags);
+		
+		pnlTags = new JPanel();
+		scrollPane.setViewportView(pnlTags);
+		pnlTags.setBackground(Color.white);
 		pnlTags.setLayout(new FlowLayout(FlowLayout.LEFT, 2, 2));
 		
 		panel = new JPanel();
@@ -174,6 +198,8 @@ public class TagFilterPanel<T> extends FilterPanel<T>{
 	/*----- Getters -----*/
 
 	public boolean itemPassesFilters(T item){
+		if(head_tag == null) return true;
+		
 		boolean pass = false;
 		TagNode<T> node = head_tag;
 		while(node != null){
@@ -181,6 +207,7 @@ public class TagFilterPanel<T> extends FilterPanel<T>{
 				pass = node.filter.itemPasses(item, node.tag.getText());
 				if(node.tag.inNotMode()) pass = !pass;
 				if(pass){
+					//If it's in OR mode, one pass is enough.
 					if(!and_mode) return true;
 				}
 				else{
@@ -189,6 +216,7 @@ public class TagFilterPanel<T> extends FilterPanel<T>{
 			}
 			node = node.next;
 		}
+		if(!and_mode) return false;
 		return true;
 	}
 	
@@ -201,6 +229,8 @@ public class TagFilterPanel<T> extends FilterPanel<T>{
 		}
 		return set;
 	}
+	
+	public String getTitle(){return this.title;}
 	
 	/*----- Setters -----*/
 	
@@ -320,7 +350,9 @@ public class TagFilterPanel<T> extends FilterPanel<T>{
 			pnlTags.add(node.tag);
 			node = node.next;
 		}
+		pnlTags.validate();
 		redrawTags();
+		triggerRefilterCallbacks();
 	}
 	
 	private void redrawTags(){
@@ -332,16 +364,22 @@ public class TagFilterPanel<T> extends FilterPanel<T>{
 			node.tag.repaint();
 			node = node.next;
 		}
+		//pnlTags.repaint();
+		//repaint();
 	}
 	
 	public void disableAll(){
 		btnAdd.setEnabled(false);
 		lblOr.setEnabled(false);
 		lblAnd.setEnabled(false);
+		btnAdd.repaint();
+		lblOr.repaint();
+		lblAnd.repaint();
 		
 		TagNode<T> node = head_tag;
 		while(node != null){
 			node.tag.setEnabled(false);
+			node.tag.repaint();
 			node = node.next;
 		}
 	}
@@ -350,10 +388,14 @@ public class TagFilterPanel<T> extends FilterPanel<T>{
 		btnAdd.setEnabled(pool == null && !pool.isEmpty());
 		lblOr.setEnabled(true);
 		lblAnd.setEnabled(true);
+		btnAdd.repaint();
+		lblOr.repaint();
+		lblAnd.repaint();
 		
 		TagNode<T> node = head_tag;
 		while(node != null){
 			node.tag.setEnabled(true);
+			node.tag.repaint();
 			node = node.next;
 		}
 	}
@@ -373,7 +415,7 @@ public class TagFilterPanel<T> extends FilterPanel<T>{
 		if(head_tag == node) head_tag = node.next;
 		
 		updateTags();
-		triggerRefilterCallbacks();
+		//triggerRefilterCallbacks();
 	}
 	
 	private void onClickAND(){
@@ -401,21 +443,9 @@ public class TagFilterPanel<T> extends FilterPanel<T>{
 			head_tag = null;
 			tail_tag = null;
 			Collection<String> incl_tags = dialog.getIncluded();
-			TagNode<T> last_node = null;
-			TagNode<T> node = null;
 			for(String tag: incl_tags){
-				node = new TagNode<T>();
-				node.prev = last_node;
-				if(last_node != null){
-					last_node.next = node;
-				}
-				else{
-					head_tag = node;
-				}
-				node.filter = pool_filter;
-				node.tag = new TagLabel(tag);
+				addTag(pool_filter, tag);
 			}
-			tail_tag = node;
 		}
 		updateTags();
 	}

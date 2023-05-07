@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -158,6 +159,8 @@ public class ZeqerWaveTable {
 		public int getSampleRate(){
 			return Math.round(32000f * wave_info.getTuning());
 		}
+		
+		public byte[] getMD5(){return md5;}
 		
 		private void updateFlags(){
 			clearFlags(FLAG_ISACTOR | FLAG_ISENV | FLAG_ISSFX | FLAG_ISMUSIC);
@@ -309,8 +312,27 @@ public class ZeqerWaveTable {
 		return name_map.get(name.toUpperCase());
 	}
 	
-	/*----- Setters -----*/
+	public List<Integer> getAllEntryIDs(){
+		if(entries == null || entries.isEmpty()){
+			return new LinkedList<Integer>();
+		}
+		List<Integer> list = new ArrayList<Integer>(entries.size());
+		list.addAll(entries.keySet());
+		Collections.sort(list);
+		return list;
+	}
 	
+	public List<WaveTableEntry> getAllEntries(){
+		if(entries == null || entries.isEmpty()){
+			return new LinkedList<WaveTableEntry>();
+		}
+		List<WaveTableEntry> list = new ArrayList<WaveTableEntry>(entries.size());
+		list.addAll(entries.values());
+		return list;
+	}
+	
+	/*----- Setters -----*/	
+
 	public WaveTableEntry addEntryFromInfoBlock(Z64WaveInfo block, byte[] md5sum){
 		if(block == null || md5sum == null) return null;
 		WaveTableEntry entry = new WaveTableEntry();

@@ -1,5 +1,6 @@
 package waffleoRai_zeqer64.GUI;
 
+import javax.swing.BorderFactory;
 import javax.swing.JOptionPane;
 
 import waffleoRai_Utils.VoidCallbackMethod;
@@ -30,6 +31,7 @@ public class FilterListPanel<T> extends FilterPanel<T>{
 	}
 	
 	private void initGUI(){
+		setBorder(BorderFactory.createEtchedBorder());
 		layout = new GridBagLayout();
 		layout.columnWidths = new int[]{0};
 		layout.rowHeights = new int[]{0};

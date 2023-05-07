@@ -267,6 +267,11 @@ public class CoreGUIInterface implements ZeqerCoreInterface{
 		return null;
 	}
 	
+	public List<WaveTableEntry> getAllRegisteredSamples(){
+		if(core == null) return null;
+		return core.getAllValidWaveTableEntries();
+	}
+	
 	/*----- Envelope Management -----*/
 	
 	public Map<String, Z64Envelope> getAllEnvelopePresets(){

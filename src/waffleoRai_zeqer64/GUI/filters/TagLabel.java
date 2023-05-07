@@ -6,6 +6,7 @@ import java.awt.event.MouseEvent;
 import java.util.LinkedList;
 import java.util.List;
 
+import javax.swing.BorderFactory;
 import javax.swing.JLabel;
 
 import waffleoRai_Utils.VoidCallbackMethod;
@@ -34,6 +35,7 @@ public class TagLabel extends JLabel{
 	}
 	
 	private void initGUI(){
+		setBorder(BorderFactory.createEtchedBorder());
 		this.addMouseListener(new MouseAdapter(){
 			public void mouseClicked(MouseEvent e) {
 				int btn = e.getButton();

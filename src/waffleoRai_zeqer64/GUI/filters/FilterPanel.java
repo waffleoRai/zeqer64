@@ -4,7 +4,9 @@ import java.awt.Cursor;
 import java.util.LinkedList;
 import java.util.List;
 
+import javax.swing.BorderFactory;
 import javax.swing.JPanel;
+import javax.swing.border.EtchedBorder;
 
 import waffleoRai_Utils.VoidCallbackMethod;
 
@@ -16,6 +18,8 @@ public abstract class FilterPanel<T> extends JPanel {
 	
 	protected FilterPanel(){
 		action_callbacks = new LinkedList<VoidCallbackMethod>();
+		
+		setBorder(BorderFactory.createEtchedBorder(EtchedBorder.RAISED));
 	}
 
 	public abstract boolean itemPassesFilters(T item);

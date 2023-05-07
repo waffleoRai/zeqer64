@@ -7,7 +7,6 @@ import java.awt.Graphics;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
-import java.awt.Rectangle;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.LinkedList;
@@ -15,8 +14,10 @@ import java.util.List;
 
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.JSeparator;
 import javax.swing.SwingConstants;
+import javax.swing.border.BevelBorder;
 
 import waffleoRai_Utils.VoidCallbackMethod;
 
@@ -70,6 +71,8 @@ public class FlagFilterPanel<T> extends FilterPanel<T>{
  	
  	public FlagFilterPanel(String name){
  		action_callbacks = new LinkedList<VoidCallbackMethod>();
+ 		flags = new LinkedList<FlagNode<T>>();
+ 		group_name = name;
 		initGUI();
 	}
 	
@@ -98,6 +101,16 @@ public class FlagFilterPanel<T> extends FilterPanel<T>{
 		gbl_pnlOp.columnWeights = new double[]{0.0, 1.0, 0.0, 0.0, 0.0, Double.MIN_VALUE};
 		gbl_pnlOp.rowWeights = new double[]{0.0, Double.MIN_VALUE};
 		pnlOp.setLayout(gbl_pnlOp);
+		
+		if (group_name != null){
+			JLabel lblttl = new JLabel(group_name);
+			lblttl.setFont(new Font("Tahoma", Font.BOLD, 13));
+			GridBagConstraints gbc_lblt = new GridBagConstraints();
+			gbc_lblt.insets = new Insets(5, 5, 5, 5);
+			gbc_lblt.gridx = 0;
+			gbc_lblt.gridy = 0;
+			pnlOp.add(lblttl, gbc_lblt);
+		}
 		
 		lblAnd = new JLabel("AND");
 		lblAnd.setFont(fnt_andor_off);
@@ -134,12 +147,17 @@ public class FlagFilterPanel<T> extends FilterPanel<T>{
 			}
 		});
 		
-		pnlFlags = new JPanel();
+		JScrollPane scrollPane = new JScrollPane();
+		scrollPane.setViewportBorder(new BevelBorder(BevelBorder.LOWERED, null, null, null, null));
 		GridBagConstraints gbc_pnlTags = new GridBagConstraints();
 		gbc_pnlTags.fill = GridBagConstraints.BOTH;
 		gbc_pnlTags.gridx = 0;
 		gbc_pnlTags.gridy = 1;
-		add(pnlFlags, gbc_pnlTags);
+		add(scrollPane, gbc_pnlTags);
+		
+		pnlFlags = new JPanel();
+		pnlFlags.setBackground(Color.white);
+		scrollPane.setViewportView(pnlFlags);
 		layoutFlags = new GridBagLayout();
 		layoutFlags.columnWidths = new int[]{0};
 		layoutFlags.rowHeights = new int[]{0};
@@ -150,7 +168,17 @@ public class FlagFilterPanel<T> extends FilterPanel<T>{
 	
 	/*----- Getters -----*/
 	
+	public boolean allSwitchesOff(){
+		if(flags == null || flags.isEmpty()) return true;
+		for(FlagNode<T> node : flags){
+			if(node.label.getSwitchState() != LabelSwitch.SWITCHSTATE_OFF) return false;
+		}
+		return true;
+	}
+	
 	public boolean itemPassesFilters(T item) {
+		if(allSwitchesOff()) return true;
+
 		boolean pass = false;
 		for(FlagNode<T> node : flags){
 			if(node.label.getSwitchState() == LabelSwitch.SWITCHSTATE_OFF) continue;
@@ -166,6 +194,7 @@ public class FlagFilterPanel<T> extends FilterPanel<T>{
 			}
 		}
 		
+		if(!and_mode) return false;
 		return true;
 	}
 	
@@ -218,7 +247,7 @@ public class FlagFilterPanel<T> extends FilterPanel<T>{
 		});
 		
 		flags_dirty = true;
-		repaint();
+		if(this.isVisible()) repaint();
 	}
 	
 	public void clearSwitches(){
@@ -253,6 +282,7 @@ public class FlagFilterPanel<T> extends FilterPanel<T>{
 		}
 		lblOr.repaint();
 		lblAnd.repaint();
+		triggerRefilterCallbacks();
 	}
 	
 	private void addToFlagGrid(LabelSwitch lbl, int row, int col){
@@ -275,7 +305,7 @@ public class FlagFilterPanel<T> extends FilterPanel<T>{
 		for(int i = 0; i < flag_rows; i++) layoutFlags.rowWeights[i] = Double.MIN_VALUE;
 	}
 	
-	private boolean recalculateFlagsGrid(int comp_width){
+	private boolean recalculateFlagsGrid(Graphics g){
 		//Returns whether or not need to remove and rearrange labels
 		//First, determine rows and columns needed...
 		boolean ret = flags_dirty;
@@ -289,12 +319,13 @@ public class FlagFilterPanel<T> extends FilterPanel<T>{
 		//First determine col width...
 		flag_col_width = MIN_COL_WIDTH;
 		for(FlagNode<T> node : flags){
-			//TODO I do not know if this method will work for this purpose.
-			int w = node.label.getWidth();
+			int w = node.label.estimateWidth(g);
 			if(w > flag_col_width){
 				flag_col_width = w;
 			}
 		}
+		
+		int comp_width = g.getClipBounds().width;
 		
 		int flag_count = flags.size();
 		int newcols = comp_width/flag_col_width;
@@ -312,8 +343,8 @@ public class FlagFilterPanel<T> extends FilterPanel<T>{
 		return ret;
 	}
 	
-	private void updateFlagLabels(int comp_width){
-		if(recalculateFlagsGrid(comp_width)){
+	private void updateFlagLabels(Graphics g){
+		if(recalculateFlagsGrid(g)){
 			pnlFlags.removeAll();
 			updateFlagsLayout();
 			int r = 0;
@@ -325,13 +356,15 @@ public class FlagFilterPanel<T> extends FilterPanel<T>{
 					r++;
 				}
 			}
+			validate();
 		}
+		else updateLabelsInPlace();
 	}
 	
 	public void paintComponent(Graphics g){
 		if(!flags.isEmpty()){
-			Rectangle cb = g.getClipBounds();
-			updateFlagLabels(cb.width);
+			//Rectangle cb = g.getClipBounds();
+			updateFlagLabels(g);
 		}
 		
 		super.paintComponent(g);

@@ -31,6 +31,7 @@ public interface ZeqerCoreInterface {
 	public WaveTableEntry importSample(String path);
 	public boolean exportSample(WaveTableEntry wave, String path);
 	public Z64WaveInfo getDefaultPercussionSample();
+	public List<WaveTableEntry> getAllRegisteredSamples();
 	
 	/*----- Envelope Management -----*/
 	

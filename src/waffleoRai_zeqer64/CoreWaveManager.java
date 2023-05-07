@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.LinkedList;
+import java.util.List;
 
 import waffleoRai_Sound.nintendo.Z64Wave;
 import waffleoRai_Sound.nintendo.Z64WaveInfo;
@@ -264,6 +265,51 @@ class CoreWaveManager {
 		if(wav_table_sys == null) return null;
 		String wavdir = root_dir + SEP + ZeqerCore.DIRNAME_ZWAVE;
 		return ZeqerWaveTable.loadVersionWaveOffsetIDMap(wavdir, rom_id);
+	}
+	
+	public List<WaveTableEntry> getAllValidTableEntries(){
+		//Only return entries where there is a matching uwav file
+		List<WaveTableEntry> list = new LinkedList<WaveTableEntry>();
+		if(wav_table_user != null){
+			List<WaveTableEntry> alle = wav_table_user.getAllEntries();
+			for(WaveTableEntry e : alle){
+				String datpath = root_dir + SEP + e.getDataFileName();
+				if(FileBuffer.fileExists(datpath)){
+					//Load remaining metadata, if needed
+					if(e.getWaveInfo().getWaveSize() < 1){
+						try{
+							UltraWavFile uwav = UltraWavFile.createUWAV(datpath);
+							uwav.readWaveInfo(e.getWaveInfo());
+						}
+						catch(IOException | UnsupportedFileTypeException ex){
+							ex.printStackTrace();
+							continue;
+						}
+					}
+					list.add(e);
+				}
+			}
+		}
+		if(wav_table_sys != null){
+			List<WaveTableEntry> alle = wav_table_sys.getAllEntries();
+			for(WaveTableEntry e : alle){
+				String datpath = root_dir + SEP + ZeqerCore.DIRNAME_ZWAVE + SEP + e.getDataFileName();
+				if(FileBuffer.fileExists(datpath)){
+					if(e.getWaveInfo().getWaveSize() < 1){
+						try{
+							UltraWavFile uwav = UltraWavFile.createUWAV(datpath);
+							uwav.readWaveInfo(e.getWaveInfo());
+						}
+						catch(IOException | UnsupportedFileTypeException ex){
+							ex.printStackTrace();
+							continue;
+						}
+					}
+					list.add(e);
+				}
+			}
+		}
+		return list;
 	}
 	
 	/*----- Setters -----*/

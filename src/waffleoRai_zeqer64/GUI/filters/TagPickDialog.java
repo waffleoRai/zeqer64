@@ -44,6 +44,7 @@ public class TagPickDialog extends JDialog{
 		parent = parent_frame;
 		setMinimumSize(new Dimension(MIN_WIDTH,MIN_HEIGHT));
 		setPreferredSize(new Dimension(MIN_WIDTH,MIN_HEIGHT));
+		setLocationRelativeTo(parent);
 		initGUI();
 	}
 	
@@ -96,7 +97,7 @@ public class TagPickDialog extends JDialog{
 		gbl_pnlMid.rowWeights = new double[]{1.0, 0.0, 0.0, 1.0, Double.MIN_VALUE};
 		pnlMid.setLayout(gbl_pnlMid);
 		
-		JButton btnArrowR = new JButton("->");
+		JButton btnArrowR = new JButton(">");
 		GridBagConstraints gbc_btnArrowR = new GridBagConstraints();
 		gbc_btnArrowR.insets = new Insets(0, 0, 5, 0);
 		gbc_btnArrowR.gridx = 0;
@@ -108,7 +109,7 @@ public class TagPickDialog extends JDialog{
 			}
 		});
 		
-		JButton btnArrowL = new JButton("<-");
+		JButton btnArrowL = new JButton("<");
 		GridBagConstraints gbc_btnArrowL = new GridBagConstraints();
 		gbc_btnArrowL.insets = new Insets(0, 0, 5, 0);
 		gbc_btnArrowL.gridx = 0;

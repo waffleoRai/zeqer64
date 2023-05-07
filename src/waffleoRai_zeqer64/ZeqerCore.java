@@ -45,6 +45,7 @@ import waffleoRai_zeqer64.filefmt.ZeqerPresetTable;
 import waffleoRai_zeqer64.filefmt.ZeqerRomInfo;
 import waffleoRai_zeqer64.filefmt.ZeqerSeqTable;
 import waffleoRai_zeqer64.filefmt.ZeqerSeqTable.SeqTableEntry;
+import waffleoRai_zeqer64.filefmt.ZeqerWaveTable.WaveTableEntry;
 import waffleoRai_zeqer64.filefmt.ZeqerWaveTable;
 import waffleoRai_zeqer64.listeners.RomImportListener;
 
@@ -560,8 +561,6 @@ public class ZeqerCore {
 	
 	/*----- RomInfo -----*/
 	
-	//TODO When reloading user roms, need to be able to reference custom xmls!
-	
 	public static final int ADDROM_ERROR_NONE = 0;
 	public static final int ADDROM_ERROR_BADROM = 1;
 	public static final int ADDROM_ERROR_IMAGE_ALREADY_IMPORTED = 2;
@@ -967,6 +966,11 @@ public class ZeqerCore {
 		return wavManager.loadVersionWaveOffsetIDMap(rom_id);
 	}
 		
+	public List<WaveTableEntry> getAllValidWaveTableEntries(){
+		if(wavManager == null) return null;
+		return wavManager.getAllValidTableEntries();
+	}
+	
 	/*----- Data Saving -----*/
 	
 	private boolean admin_write = false;

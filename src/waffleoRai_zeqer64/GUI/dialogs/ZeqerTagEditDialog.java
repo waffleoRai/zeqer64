@@ -56,6 +56,7 @@ public class ZeqerTagEditDialog extends JDialog{
 	private void initGUI(){
 		setMinimumSize(new Dimension(DEFO_WIDTH, DEFO_HEIGHT));
 		setPreferredSize(new Dimension(DEFO_WIDTH, DEFO_HEIGHT));
+		setLocationRelativeTo(parent);
 		
 		setTitle("Edit Tags");
 		GridBagLayout gridBagLayout = new GridBagLayout();

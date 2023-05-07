@@ -1,12 +1,16 @@
 package waffleoRai_zeqer64.GUI.filters;
 
 import java.awt.Color;
+import java.awt.Font;
+import java.awt.Graphics;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.LinkedList;
 import java.util.List;
 
+import javax.swing.BorderFactory;
 import javax.swing.JLabel;
+import javax.swing.SwingConstants;
 
 import waffleoRai_Utils.VoidCallbackMethod;
 
@@ -47,6 +51,11 @@ public class LabelSwitch extends JLabel{
 	
 	private void initgui(){
 		callbacks = new LinkedList<VoidCallbackMethod>();
+		
+		setBorder(BorderFactory.createEtchedBorder());
+		setHorizontalAlignment(SwingConstants.CENTER);
+		setVerticalAlignment(SwingConstants.CENTER);
+		
 		this.addMouseListener(new MouseAdapter(){
 			public void mouseClicked(MouseEvent e) {
 				onMouseClick();
@@ -57,6 +66,17 @@ public class LabelSwitch extends JLabel{
 	/*----- Getters -----*/
 	
 	public int getSwitchState(){return current_state;}
+	
+	public int estimateWidth(Graphics g){
+		Font f = getFont();
+		String s = getText();
+		if(s == null) s = "";
+		if(g == null){
+			return ((f.getSize() + 2) * this.getText().length()) + 10;
+		}
+		
+		return g.getFontMetrics(f).stringWidth(s) + 6;
+	}
 	
 	/*----- Setters -----*/
 	

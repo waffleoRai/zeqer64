@@ -31,6 +31,7 @@ import javax.swing.event.ListSelectionListener;
 import waffleoRai_GUITools.WriterPanel;
 import waffleoRai_Sound.nintendo.Z64Sound;
 import waffleoRai_Sound.nintendo.Z64WaveInfo;
+import waffleoRai_Utils.FileUtils;
 import waffleoRai_Utils.VoidCallbackMethod;
 import waffleoRai_zeqer64.ZeqerCoreInterface;
 import waffleoRai_zeqer64.GUI.dialogs.progress.IndefProgressDialog;
@@ -249,6 +250,10 @@ public class ZeqerPanelSamples extends JPanel{
 		
 		addFilterPanels();
 		drawToInfoPanel(null);
+		
+		if(core != null){
+			addSamples(core.getAllRegisteredSamples());
+		}
 	}
 	
 	private void addFilterPanels(){
@@ -266,7 +271,8 @@ public class ZeqerPanelSamples extends JPanel{
 		pnlFilt.addPanel(fpnl1);
 		
 		//Tags (Maybe? I don't have tags on them right now, but they may be helpful.)
-		pnlTags = new TagFilterPanel<SampleNode>(parent);
+		pnlTags = new TagFilterPanel<SampleNode>(parent, "Tags");
+		
 		pnlFilt.addPanel(pnlTags);
 		
 		//Flags 1
@@ -466,6 +472,7 @@ public class ZeqerPanelSamples extends JPanel{
 	
 	private void drawToInfoPanel(SampleNode node){
 		try{
+			pnlInfo.clear();
 			Writer writer = pnlInfo.getWriter();
 			if(node == null || node.sample == null){
 				writer.write("<No sample selected>\n");
@@ -481,7 +488,7 @@ public class ZeqerPanelSamples extends JPanel{
 				writer.write("Frame Count: " + info.getFrameCount() + "\n");
 				writer.write("Loop: " + info.getLoopStart() + "\n");
 				writer.write("Loop Count: " + info.getLoopCount() + "\n");
-				writer.write("MD5: " + "" + "\n"); //TODO
+				writer.write("MD5: " + FileUtils.bytes2str(sample.getMD5()) + "\n");
 				
 				writer.write("Tags: ");
 				boolean first = true;

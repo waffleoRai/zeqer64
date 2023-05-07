@@ -31,12 +31,14 @@ public class ZeqerManagerForm extends JFrame{
 	private static final String STRKEY_MITEM_F_EXIT = "MAINFORM_MNUI_F_EXIT";
 	
 	private static final String STRKEY_TAB_ROMS = "MAINFORM_TAB_ROMS";
+	private static final String STRKEY_TAB_WAV = "MAINFORM_TAB_SMPL";
 
 	/*----- Instance Variables -----*/
 	
 	private ZeqerCoreInterface core;
 	
 	private ZeqerPanelRoms pnlRoms;
+	private ZeqerPanelSamples pnlSmpl;
 	
 	/*----- Init -----*/
 	
@@ -79,8 +81,8 @@ public class ZeqerManagerForm extends JFrame{
 		JPanel pnlInst = new JPanel();
 		tabbedPane.addTab("Instruments", null, pnlInst, null);
 		
-		JPanel pnlSmpl = new JPanel();
-		tabbedPane.addTab("Samples", null, pnlSmpl, null);
+		pnlSmpl = new ZeqerPanelSamples(this, core, true);
+		tabbedPane.addTab(getString(STRKEY_TAB_WAV), null, pnlSmpl, null);
 		
 		JMenuBar menuBar = new JMenuBar();
 		setJMenuBar(menuBar);
