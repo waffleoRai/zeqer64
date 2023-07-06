@@ -16,9 +16,9 @@ import javax.swing.JButton;
 import javax.swing.border.EtchedBorder;
 
 import waffleoRai_GUITools.GUITools;
-import waffleoRai_zeqer64.ZeqerCoreInterface;
 import waffleoRai_zeqer64.GUI.ZeqerPanelSamples;
 import waffleoRai_zeqer64.filefmt.ZeqerWaveTable.WaveTableEntry;
+import waffleoRai_zeqer64.iface.ZeqerCoreInterface;
 
 public class SamplePickDialog extends JDialog{
 

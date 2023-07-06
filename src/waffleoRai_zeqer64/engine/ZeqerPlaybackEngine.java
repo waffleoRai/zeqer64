@@ -364,7 +364,7 @@ public class ZeqerPlaybackEngine {
 		wordcount += wordblock.length;
 		
 		//Get all sample headers and do sample blocks
-		Collection<Integer> waves_ids = bnk.getAllWaveUIDs();
+		/*Collection<Integer> waves_ids = bnk.getAllWaveUIDs();
 		Map<Integer, Integer> offmap = woffmap.get(bnk.getPrimaryWaveArchiveIndex());
 		
 		//Eh fuggit, I don't feel like merging ADPCM tables
@@ -553,7 +553,7 @@ public class ZeqerPlaybackEngine {
 				output.add(wordblock);
 				wordcount += wordblock.length;	
 			}
-		}
+		}*/
 		
 		return wordcount;
 	}
@@ -603,14 +603,17 @@ public class ZeqerPlaybackEngine {
 				}
 				
 				//Get instrument counts and map to bnk_ref_map
-				int[] maparr = new int[]{i, mybank.usedInstSlots(), mybank.usedPercSlots(), mybank.usedSFXSlots()};
+				int[] maparr = new int[]{i, 
+						mybank.getEffectiveInstCount(), 
+						mybank.getEffectivePercCount(), 
+						mybank.getEffectiveSFXCount()};
 				bnk_ref_map.put(bnkid, maparr);
 				word = (maparr[1] & 0xff) << 24;
 				word |= (maparr[2] & 0xff) << 16;
 				word |= (maparr[3] & 0xffff);
 				wordblock[3] = word;
 				
-				mybank.setPrimaryWaveArchiveIndex(binfo.getWArc1());
+				mybank.setPrimaryWaveArcIndex(binfo.getWArc1());
 				wordcount += bankContentsToStream(mybank, maparr, wordlist);
 			}
 			else{

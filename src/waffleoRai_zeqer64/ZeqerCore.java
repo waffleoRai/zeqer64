@@ -30,6 +30,7 @@ import waffleoRai_Utils.FileBuffer;
 import waffleoRai_Utils.FileBuffer.UnsupportedFileTypeException;
 import waffleoRai_Utils.FileUtils;
 import waffleoRai_soundbank.nintendo.z64.Z64Bank;
+import waffleoRai_soundbank.nintendo.z64.Z64Envelope;
 import waffleoRai_soundbank.nintendo.z64.Z64Instrument;
 import waffleoRai_zeqer64.ZeqerInstaller.ZeqerInstallListener;
 import waffleoRai_zeqer64.engine.ZeqerPlaybackEngine;
@@ -84,7 +85,9 @@ public class ZeqerCore {
 	public static final String FN_USRROMS = "myroms.csv.jdfl";
 	
 	public static final String IKEY_VERSION = "VERSION";
-	public static final String CURRENT_VERSION = "0.2.0";
+	public static final String CURRENT_VERSION = "0.4.0";
+	public static final String IKEY_BUILDTAG = "BUILDTAG";
+	public static final int CURRENT_BUILDTAG = 2023070400;
 	
 	public static final String IKEY_PREFLAN = "LANGUAGE";
 	
@@ -375,11 +378,14 @@ public class ZeqerCore {
 		//settings
 		init_values = new HashMap<String, String>();
 		init_values.put(IKEY_VERSION, CURRENT_VERSION);
+		init_values.put(IKEY_BUILDTAG, Integer.toString(CURRENT_BUILDTAG));
 		saveSettingsFile(dirpath + File.separator + SETTINGS_FILE_NAME);
 		
 		ZeqerInstaller installer = new ZeqerInstaller(dirpath);
 		installer.setListener(listener);
 		good = good && installer.installToDir();
+		
+		if(bnkManager != null) bnkManager.loadEnvPresetTable();
 		
 		return good;
 	}
@@ -534,6 +540,92 @@ public class ZeqerCore {
 			Files.createDirectories(Paths.get(zbld_dir));
 		}
 		return true;
+	}
+	
+	public boolean needsUpdate(){
+		if(!init_values.containsKey(IKEY_BUILDTAG)) return true;
+		String stag = init_values.get(IKEY_BUILDTAG);
+		if(stag == null || stag.isEmpty()) return true;
+		
+		try{
+			int itag = Integer.parseInt(stag);
+			if(itag < CURRENT_BUILDTAG) return true;
+		}
+		catch(NumberFormatException ex){return true;}
+		
+		return false;
+	}
+	
+	public boolean updateToThisVersion(ZeqerInstallListener l) throws IOException{
+		//TODO
+		//Updates sys files.
+		//Many can just be overwritten...
+		//But preset table and buseqs that have been filled with data need to
+		//	have that data transferred properly
+		
+		//Move old files to a temp directory...
+		String prog_dir = getProgramDirectory();
+		String update_dir = prog_dir + SEP + "_update";
+		if(FileBuffer.directoryExists(update_dir)){
+			FileUtils.deleteRecursive(update_dir);
+		}
+		
+		Files.createDirectory(Paths.get(update_dir));
+		DirectoryStream<Path> dirstr = Files.newDirectoryStream(Paths.get(prog_dir));
+		if(dirstr == null) return false;
+		for(Path child : dirstr){
+			String fn = child.getFileName().toString();
+			if(Files.isDirectory(child)){
+				Files.move(child, Paths.get(update_dir + SEP + fn));
+			}
+			else{
+				if(!fn.endsWith(".ini")){
+					Files.move(child, Paths.get(update_dir + SEP + fn));
+				}
+			}
+		}
+		dirstr.close();
+		
+		//Copy updated files from JAR...
+		ZeqerInstaller installer = new ZeqerInstaller(prog_dir);
+		installer.setListener(l);
+		if(!installer.installToDir()) return false;
+		
+		//Move files back for common stuff
+		//--- User data for abld
+		FileUtils.moveDirectory(update_dir + SEP + DIRNAME_ABLD, prog_dir + SEP + DIRNAME_ABLD, true);
+		//--- User ROM list
+		Path romlist_path = Paths.get(update_dir + SEP + DIRNAME_ROMINFO + SEP + FN_USRROMS);
+		if(Files.isRegularFile(romlist_path)){
+			Files.move(romlist_path, Paths.get(prog_dir + SEP + DIRNAME_ROMINFO + SEP + FN_USRROMS));
+		}
+		
+		//Call updaters for each manager...
+		boolean good = true;
+		if(bnkManager != null){
+			try{
+				good = good && bnkManager.updateVersion(update_dir + SEP + DIRNAME_BANK);	
+			}
+			catch(UnsupportedFileTypeException ex){
+				ex.printStackTrace();
+				good = false;
+			}
+		}
+		//TODO Seq
+		//TODO Wav
+		
+		//Delete the temp dir
+		FileUtils.deleteRecursive(update_dir);
+		
+		//Finally, update version ini tags
+		if(good){
+			init_values.put(IKEY_VERSION, CURRENT_VERSION);
+			init_values.put(IKEY_BUILDTAG, Integer.toString(CURRENT_BUILDTAG));
+		}
+		
+		//TODO Reboot core?
+		
+		return good;
 	}
 	
 	/*----- ShutDown -----*/
@@ -836,7 +928,7 @@ public class ZeqerCore {
 			userRoms.put(md5str, rom);
 			if(listener != null) listener.onRomRecordAdded(rom);
 			if(do_extraction){
-				RomExtractionSummary exerr = extractSoundDataFromRom(rom, listener);
+				RomExtractionSummary exerr = extractSoundDataFromRom(rom, listener, true);
 				if(exerr.genError != RomExtractionSummary.ERROR_NONE) return ADDROM_ERROR_EXTRACT_FAIL;
 			}
 		}
@@ -971,15 +1063,27 @@ public class ZeqerCore {
 		return wavManager.getAllValidTableEntries();
 	}
 	
+	public Map<String, Z64Envelope> getSavedEnvPresets(){
+		if(bnkManager != null){
+			return bnkManager.getAllEnvelopePresets();
+		}
+		return new HashMap<String, Z64Envelope>();
+	}
+	
+	public List<ZeqerPreset> getAllValidPresets(){
+		if(bnkManager == null) return new LinkedList<ZeqerPreset>();
+		return bnkManager.getAllValidPresets();
+	}
+	
 	/*----- Data Saving -----*/
 	
 	private boolean admin_write = false;
 	
 	public RomExtractionSummary extractSoundDataFromRom(ZeqerRom z_rom) throws IOException{
-		return this.extractSoundDataFromRom(z_rom, null);
+		return this.extractSoundDataFromRom(z_rom, null, false);
 	}
 	
-	public RomExtractionSummary extractSoundDataFromRom(ZeqerRom z_rom, RomImportListener listener) throws IOException{
+	public RomExtractionSummary extractSoundDataFromRom(ZeqerRom z_rom, RomImportListener listener, boolean verbose) throws IOException{
 		//----- Check ROM
 		RomExtractionSummary errinfo = new RomExtractionSummary();
 		if(z_rom == null){
@@ -996,7 +1100,7 @@ public class ZeqerCore {
 		
 		//----- Waves
 		if(listener != null) listener.onWaveExtractStart(errinfo);
-		if(!wavManager.importROMWaves(z_rom, errinfo)){
+		if(!wavManager.importROMWaves(z_rom, errinfo, verbose)){
 			errinfo.genError = RomExtractionSummary.GENERR_WAV_DUMP_FAILED;
 			return errinfo;
 		}
@@ -1005,14 +1109,14 @@ public class ZeqerCore {
 		//Load wave loc map
 		if(listener != null) listener.onFontExtractStart(errinfo);
 		WaveLocIDMap wavelocs = wavManager.loadVersionWaveOffsetIDMap(zid);
-		if(!bnkManager.importROMBanks(z_rom, wavelocs, errinfo)){
+		if(!bnkManager.importROMBanks(z_rom, wavelocs, errinfo, verbose)){
 			errinfo.genError = RomExtractionSummary.GENERR_BNK_DUMP_FAILED;
 			return errinfo;
 		}
 		
 		//----- Seqs
 		if(listener != null) listener.onSeqExtractStart(errinfo);
-		if(!seqManager.importROMSeqs(z_rom, errinfo)){
+		if(!seqManager.importROMSeqs(z_rom, errinfo, verbose)){
 			errinfo.genError = RomExtractionSummary.GENERR_SEQ_DUMP_FAILED;
 			return errinfo;
 		}
@@ -1021,7 +1125,7 @@ public class ZeqerCore {
 		int[] bankUids = bnkManager.loadVersionTable(zid);
 		if(admin_write){
 			if(listener != null) listener.onSeqBankMapStart(errinfo);
-			if(!seqManager.mapSeqBanks(z_rom, bankUids)){
+			if(!seqManager.mapSeqBanks(z_rom, bankUids, verbose)){
 				errinfo.genError = RomExtractionSummary.GENERR_SEQBNKMAP_FAILED;
 				return errinfo;
 			}
@@ -1047,6 +1151,22 @@ public class ZeqerCore {
 		if(seqManager == null) return false;
 		seqManager.saveSeq(seq);
 		return true;
+	}
+	
+	public boolean addEnvPreset(String name, Z64Envelope env){
+		if(bnkManager == null) return false;
+		bnkManager.addEnvelopePreset(name, env);
+		return true;
+	}
+	
+	public boolean addUserPreset(ZeqerPreset preset){
+		if(bnkManager == null) return false;
+		return bnkManager.addUserPreset(preset) != 0;
+	}
+	
+	public boolean removeUserPreset(int uid){
+		if(bnkManager == null) return false;
+		return bnkManager.deletePreset(uid);
 	}
 	
 	/*----- Sys Table Building -----*/

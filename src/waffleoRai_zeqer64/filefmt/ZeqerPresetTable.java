@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -25,6 +26,7 @@ import waffleoRai_soundbank.nintendo.z64.Z64Drum;
 import waffleoRai_soundbank.nintendo.z64.Z64Envelope;
 import waffleoRai_soundbank.nintendo.z64.Z64Instrument;
 import waffleoRai_zeqer64.ZeqerPreset;
+import waffleoRai_zeqer64.presets.ZeqerDrumPreset;
 import waffleoRai_zeqer64.presets.ZeqerDummyPreset;
 import waffleoRai_zeqer64.presets.ZeqerInstPreset;
 import waffleoRai_zeqer64.presets.ZeqerPercPreset;
@@ -33,7 +35,7 @@ import waffleoRai_zeqer64.presets.ZeqerSFXPreset;
 public class ZeqerPresetTable {
 	
 	public static final String TBL_MAGIC = "zeqrINSt";
-	public static final int TBL_CURRENT_VERSION = 4;
+	public static final int TBL_CURRENT_VERSION = 5;
 	
 	private static final int HEADER_SIZE = 16+8;
 	
@@ -88,77 +90,27 @@ public class ZeqerPresetTable {
 			int flags = data.nextInt();
 			ZeqerPreset preset = null;
 			int type = flags & 0x3;
-			int eidx = -1;
-			int scount = 0;
 			if((flags & 0x80000000) != 0){
 				//Has data
 				switch(type){
 				case ZeqerPreset.PRESET_TYPE_INST:
-					ZeqerInstPreset ipreset = new ZeqerInstPreset();
-					Z64Instrument inst = ipreset.getInstrument();
-					ipreset.setUID(uid);
-					data.nextByte(); //Reserved
-					inst.setLowRangeTop(data.nextByte());
-					inst.setHighRangeBottom(data.nextByte());
-					inst.setDecay(data.nextByte());
-					data.nextShort(); //Reserved
-					eidx = Short.toUnsignedInt(data.nextShort());
-					if(eidx >= 0) inst.setEnvelope(envs[eidx]);
-					ipreset.setWaveIDLo(data.nextInt());
-					inst.setTuningLow(Float.intBitsToFloat(data.nextInt()));
-					ipreset.setWaveIDMid(data.nextInt());
-					inst.setTuningMiddle(Float.intBitsToFloat(data.nextInt()));
-					ipreset.setWaveIDHi(data.nextInt());
-					inst.setTuningHigh(Float.intBitsToFloat(data.nextInt()));
-					if(version >= 3){
-						mpos = data.getCurrentPosition();
-						SerializedString ss = data.readVariableLengthString("UTF8", mpos, BinFieldSize.WORD, 2);
-						ipreset.setEnumStringBase(ss.getString());
-						data.skipBytes(ss.getSizeOnDisk());
-					}
-					else{
-						ipreset.setEnumStringBase("IPRE_" + String.format("%08x", uid));
-					}
-					preset = ipreset;
+					preset = new ZeqerInstPreset(uid);
 					break;
 				case ZeqerPreset.PRESET_TYPE_PERC:
-					ZeqerPercPreset ppreset = new ZeqerPercPreset(uid);
-					long amtread = ppreset.readIn(data.getReferenceAt(data.getCurrentPosition()), envs, version);
-					data.skipBytes(amtread);
-					preset = ppreset;
+					preset = new ZeqerPercPreset(uid);
 					break;
 				case ZeqerPreset.PRESET_TYPE_SFX:
-					ZeqerSFXPreset spreset = new ZeqerSFXPreset(uid);
-					scount = Byte.toUnsignedInt(data.nextByte());
-					spreset.setGroupIndex(Byte.toUnsignedInt(data.nextByte()));
-					if(version >= 4) data.skipBytes(2); //Reserved
-					for(int j = 0; j < scount; j++){
-						int wid = data.nextInt();
-						spreset.setWaveID(j, wid);
-						if(wid != 0 && wid != -1){
-							spreset.setTuningValue(j, Float.intBitsToFloat(data.nextInt()));
-						}
-						else data.skipBytes(4L);
-					}
-					
-					//Read string table, if present
-					if(version >= 4){
-						data.skipBytes(4);
-						for(int j = 0; j < scount; j++){
-							SerializedString ss = data.readVariableLengthString("UTF8", data.getCurrentPosition(), BinFieldSize.WORD, 2);
-							spreset.setSlotEnumString(j, ss.getString());
-							data.skipBytes(ss.getSizeOnDisk());
-							ss = data.readVariableLengthString("UTF8", data.getCurrentPosition(), BinFieldSize.WORD, 2);
-							spreset.setSlotNameString(j, ss.getString());
-							data.skipBytes(ss.getSizeOnDisk());
-						}
-					}
-					
-					preset = spreset;
+					preset = new ZeqerSFXPreset(uid);
+					break;
+				case ZeqerPreset.PRESET_TYPE_DRUM:
+					preset = new ZeqerDrumPreset(uid);
 					break;
 				default:
 					throw new UnsupportedFileTypeException("ZeqerPresetTable.readTable || Unknown record type found: " + type);
 				}
+				
+				long amtread = preset.readIn(data.getReferenceAt(data.getCurrentPosition()), envs, version);
+				data.skipBytes(amtread);
 			}
 			else{
 				//Dummy
@@ -259,9 +211,7 @@ public class ZeqerPresetTable {
 			
 			key = "ENUM";
 			if(cidx_map.containsKey(key)){
-				if(entry instanceof ZeqerInstPreset){
-					((ZeqerInstPreset)entry).setEnumStringBase(fields[cidx_map.get(key)]);
-				}
+				entry.setEnumLabel(fields[cidx_map.get(key)]);
 			}
 
 			update_count++;
@@ -449,6 +399,24 @@ public class ZeqerPresetTable {
 		return name_map.get(name.toUpperCase());
 	}
 	
+	public ZeqerPreset searchForEquivalentPreset(Z64Instrument inst){
+		if(inst == null) return null;
+		for(ZeqerPreset other : presets.values()){
+			if(!(other instanceof ZeqerInstPreset)) continue;
+			ZeqerInstPreset ipreset = (ZeqerInstPreset)other;
+			Z64Instrument iother = ipreset.getInstrument();
+			if(iother == null) continue;
+			if(iother.instEquals(inst)) return other;
+		}
+		return null;
+	}
+	
+	public List<ZeqerPreset> getAll(){
+		List<ZeqerPreset> list = new ArrayList<ZeqerPreset>(presets.size()+1);
+		list.addAll(presets.values());
+		return list;
+	}
+	
 	/*----- Setters -----*/
 	
 	public void addPreset(ZeqerPreset preset){
@@ -499,6 +467,17 @@ public class ZeqerPresetTable {
 			if(preset instanceof ZeqerSFXPreset){
 				ZeqerSFXPreset spreset = (ZeqerSFXPreset)preset;
 				spreset.exportTSVLine(bw);
+			}
+		}
+		bw.close();
+		
+		tsvpath = dirpath + File.separator + "_zupst_drum_tbl.tsv";
+		bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(tsvpath), StandardCharsets.UTF_8));
+		bw.write("#NAME\tUID\tENUM\tENVELOPE_IDX\tDECAY\tWAVE\tUNITY_KEY\tFINE_TUNE\tTAGS\n");
+		for(ZeqerPreset preset : presets.values()){
+			if(preset instanceof ZeqerDrumPreset){
+				ZeqerDrumPreset dpreset = (ZeqerDrumPreset)preset;
+				dpreset.exportTSVLine(bw);
 			}
 		}
 		bw.close();

@@ -2,12 +2,15 @@ package waffleoRai_zeqer64.presets;
 
 import java.util.Random;
 
+import waffleoRai_Utils.BufferReference;
 import waffleoRai_Utils.FileBuffer;
+import waffleoRai_soundbank.nintendo.z64.Z64Drum;
+import waffleoRai_soundbank.nintendo.z64.Z64Envelope;
+import waffleoRai_soundbank.nintendo.z64.Z64Instrument;
 import waffleoRai_zeqer64.ZeqerPreset;
 
 public class ZeqerDummyPreset extends ZeqerPreset{
 	
-	private int uid;
 	private int type;
 	private String name;
 	
@@ -29,6 +32,42 @@ public class ZeqerDummyPreset extends ZeqerPreset{
 	
 	public void setName(String s){name = s;}
 	public void setType(int val){type = val;}
+	
+	public long readIn(BufferReference src, Z64Envelope[] envs, int version){
+		return 0L;
+	}
+	
+	public ZeqerInstPreset loadInstData(Z64Instrument inst){
+		if(inst == null) return null;
+		
+		ZeqerInstPreset ipre = new ZeqerInstPreset();
+		ipre.loadData(inst);
+		ipre.setUID(uid);
+		ipre.setEnumLabel(enumLabel);
+		ipre.setName(name);
+		
+		return ipre;
+	}
+	
+	public ZeqerDrumPreset loadDrumData(Z64Drum drum){
+		if(drum == null) return null;
+		
+		ZeqerDrumPreset dpre = new ZeqerDrumPreset();
+		dpre.loadDrumData(drum);
+		dpre.setUID(uid);
+		dpre.setEnumLabel(enumLabel);
+		dpre.setName(name);
+		
+		if(enumLabel == null){
+			dpre.setEnumLabel(String.format("DPRE_%08x", uid));
+		}
+		
+		if(name == null){
+			dpre.setName(String.format("DPRE_%08x", uid));
+		}
+		
+		return dpre;
+	}
 	
 	protected int serializeMe(FileBuffer buffer){
 		long init_size = buffer.getFileSize();

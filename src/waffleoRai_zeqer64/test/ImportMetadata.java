@@ -33,7 +33,7 @@ public class ImportMetadata {
 				System.err.println("ImportMetadata.updateInstNames || WARNING: Could not load data for bank " + String.format("%08x", e.getUID()));
 			}
 			else{
-				Collection<Z64Instrument> ilist = zbank.getAllInstruments();
+				Collection<Z64Instrument> ilist = zbank.getAllUniqueInstruments();
 				for(Z64Instrument inst : ilist){
 					ZeqerInstPreset preset = new ZeqerInstPreset(inst);
 					int hash_uid = preset.hashToUID();
@@ -55,7 +55,7 @@ public class ImportMetadata {
 					ppreset.setUID(hash_uid);
 					ZeqerPreset match = prs_tbl.getPreset(hash_uid);
 					if(match != null){
-						Collection<Z64Drum> udrums = zbank.getAllDrums();
+						Collection<Z64Drum> udrums = zbank.getAllUniqueDrums();
 						int j = 0;
 						for(Z64Drum d : udrums){
 							d.setName(match.getName() + " - " + (char)('A'+j));

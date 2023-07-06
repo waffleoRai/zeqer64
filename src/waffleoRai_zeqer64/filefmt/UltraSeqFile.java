@@ -23,11 +23,6 @@ import waffleoRai_zeqer64.ZeqerSeq.Module;
 import waffleoRai_zeqer64.filefmt.ZeqerSeqTable.SeqTableEntry;
 
 public class UltraSeqFile {
-	//TODO Bugs---
-	//	Writer is not writing overall file size in header correctly
-	//	Reader is interpreting chunk size as end offset I think. Don't do that.
-	
-	//TODO Make sure cmds are labeled in NUSALSeq (Could also put in ZeqerSeq)
 	
 	/*----- Constants -----*/
 	

@@ -125,9 +125,10 @@ public class EngineTables {
 		ret.code_table = new FileBuffer((bcount + 1) << 4, big_endian);
 		ret.ctbl = new BankInfoEntry[bcount];
 		
-		Z64Bank.setSerializationByteOrder(big_endian);
-		if(x64) Z64Bank.setSerialization64Bit();
-		else Z64Bank.setSerialization32Bit(); 
+		int ser_op = 0;
+		if(!big_endian) ser_op |= Z64Bank.SEROP_LITTLE_ENDIAN;
+		if(x64) ser_op |= Z64Bank.SEROP_64BIT;
+		
 		int i = 0; int global_pos = 0;
 		for(EngineBankInfo binfo : banks){
 			int buid = binfo.getBankUID();
@@ -159,26 +160,30 @@ public class EngineTables {
 					System.err.println("EngineTables.buildAudiobank || ERROR: Bank with UID 0x" + String.format("%08x", buid) + " not found!");
 					return null;
 				}
-				int icount = mybank.getInstCount();
-				int pcount = mybank.getPercCount();
-				int xcount = mybank.getSFXCount();
+				int icount = mybank.getEffectiveInstCount();
+				int pcount = mybank.getEffectivePercCount();
+				int xcount = mybank.getEffectiveSFXCount();
 				entry.setInstrumentCount(icount);
 				entry.setPercussionCount(pcount);
 				entry.setSFXCount(xcount);
 				//mybank.printMeTo(new OutputStreamWriter(System.err));
 				
 				//Update wave offsets
-				mybank.updateWaves(id_offset_map.getMap(binfo.getWArc1()));
-				mybank.setSamplesOrderedByUID(false);
-				mybank.printMeTo("C:\\Users\\Blythe\\Documents\\Desktop\\out\\n64test\\zeqer64\\binbuild_test\\d_audiobank\\audiobank_" + String.format("%02d", i) + ".txt");
+				/*
+				 * TODO This wave mapping scheme needs to be updated.
+				 * If samples occur in multiple banks, the offset fields
+				 * need to be updated to reflect offset in the bank AT HAND.
+				 * Since there is generally 1 Z64WaveInfo instance active in the 
+				 * core's wave manager at a time, I need a function that will 
+				 * instead tell the build to go through a samplebank's waves
+				 */
+				
+				//mybank.updateWaves(id_offset_map.getMap(binfo.getWArc1()));
+				//mybank.setSamplesOrderedByUID(false);
 				//mybank.printMeTo(new OutputStreamWriter(System.err));
 				
 				//Write output
-				int alloc = xcount << 8;
-				alloc += pcount << 9;
-				alloc += icount << 10;
-				FileBuffer buff = new FileBuffer(alloc, big_endian);
-				mybank.serializeTo(buff);
+				FileBuffer buff = mybank.serializeMe(ser_op);
 				int dsize = (int)buff.getFileSize();
 				int tsize = (dsize + 0xf) & ~0xf;
 				if(out != null){
@@ -193,8 +198,6 @@ public class EngineTables {
 			}
 			i++;
 		}
-		Z64Bank.setSerializationByteOrder(true);
-		Z64Bank.setSerialization32Bit();
 		
 		//Serialize code table
 		ret.code_table.addToFile((short)bcount);

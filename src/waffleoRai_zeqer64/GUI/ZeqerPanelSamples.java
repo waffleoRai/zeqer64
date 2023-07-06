@@ -33,7 +33,6 @@ import waffleoRai_Sound.nintendo.Z64Sound;
 import waffleoRai_Sound.nintendo.Z64WaveInfo;
 import waffleoRai_Utils.FileUtils;
 import waffleoRai_Utils.VoidCallbackMethod;
-import waffleoRai_zeqer64.ZeqerCoreInterface;
 import waffleoRai_zeqer64.GUI.dialogs.progress.IndefProgressDialog;
 import waffleoRai_zeqer64.GUI.filters.FlagFilterPanel;
 import waffleoRai_zeqer64.GUI.filters.TagFilterPanel;
@@ -41,6 +40,7 @@ import waffleoRai_zeqer64.GUI.filters.TextFilterPanel;
 import waffleoRai_zeqer64.GUI.filters.ZeqerFilter;
 import waffleoRai_zeqer64.filefmt.ZeqerWaveTable;
 import waffleoRai_zeqer64.filefmt.ZeqerWaveTable.WaveTableEntry;
+import waffleoRai_zeqer64.iface.ZeqerCoreInterface;
 
 public class ZeqerPanelSamples extends JPanel{
 
@@ -271,12 +271,12 @@ public class ZeqerPanelSamples extends JPanel{
 		pnlFilt.addPanel(fpnl1);
 		
 		//Tags (Maybe? I don't have tags on them right now, but they may be helpful.)
-		pnlTags = new TagFilterPanel<SampleNode>(parent, "Tags");
+		pnlTags = new TagFilterPanel<SampleNode>(parent, core.getString(ZeqerGUIUtils.STRKEY_FILPNL_TAGS));
 		
 		pnlFilt.addPanel(pnlTags);
 		
 		//Flags 1
-		FlagFilterPanel<SampleNode> fpnl2 = new FlagFilterPanel<SampleNode>("Flags");
+		FlagFilterPanel<SampleNode> fpnl2 = new FlagFilterPanel<SampleNode>(core.getString(ZeqerGUIUtils.STRKEY_FILPNL_FLAGS));
 		fpnl2.addSwitch(new ZeqerFilter<SampleNode>(){
 			public boolean itemPasses(SampleNode item){
 				if(item == null) return false;
@@ -316,7 +316,7 @@ public class ZeqerPanelSamples extends JPanel{
 		pnlFilt.addPanel(fpnl2);
 		
 		//Flags 2
-		FlagFilterPanel<SampleNode> fpnl3 = new FlagFilterPanel<SampleNode>("Additional Options");
+		FlagFilterPanel<SampleNode> fpnl3 = new FlagFilterPanel<SampleNode>(core.getString(ZeqerGUIUtils.STRKEY_FILPNL_ADDOP));
 		fpnl3.addSwitch(new ZeqerFilter<SampleNode>(){
 			public boolean itemPasses(SampleNode item){
 				if(item == null) return false;
@@ -525,6 +525,14 @@ public class ZeqerPanelSamples extends JPanel{
 	}
 	
 	/*----- Actions -----*/
+	
+	public void refreshSamplePool(){
+		setWait();
+		if(core != null){
+			addSamples(core.getAllRegisteredSamples());
+		}
+		unsetWait();
+	}
 	
 	public void refilter(){
 		updateList();

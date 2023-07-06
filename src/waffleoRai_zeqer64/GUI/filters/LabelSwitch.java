@@ -58,7 +58,7 @@ public class LabelSwitch extends JLabel{
 		
 		this.addMouseListener(new MouseAdapter(){
 			public void mouseClicked(MouseEvent e) {
-				onMouseClick();
+				onMouseClick(e.getButton());
 			}
 		});
 	}
@@ -130,17 +130,29 @@ public class LabelSwitch extends JLabel{
 	
 	/*----- Actions -----*/
 	
-	private void onMouseClick(){
+	private void onMouseClick(int btn){
 		if(!isEnabled()) return;
 		switch(current_state){
 		case SWITCHSTATE_OFF:
-			current_state = SWITCHSTATE_ON;
-			super.setForeground(color_on);
+			if(switch_type != TYPE_THREE_PHASE || btn == MouseEvent.BUTTON1){
+				current_state = SWITCHSTATE_ON;
+				super.setForeground(color_on);
+			}
+			else{
+				current_state = SWITCHSTATE_ON_NOT;
+				super.setForeground(color_not);
+			}
 			break;
 		case SWITCHSTATE_ON:
 			if(switch_type == TYPE_THREE_PHASE){
-				current_state = SWITCHSTATE_ON_NOT;
-				super.setForeground(color_not);
+				if(btn == MouseEvent.BUTTON1){
+					current_state = SWITCHSTATE_OFF;
+					super.setForeground(color_off);
+				}
+				else{
+					current_state = SWITCHSTATE_ON_NOT;
+					super.setForeground(color_not);
+				}
 			}
 			else{
 				current_state = SWITCHSTATE_OFF;
@@ -148,8 +160,14 @@ public class LabelSwitch extends JLabel{
 			}
 			break;
 		case SWITCHSTATE_ON_NOT:
-			current_state = SWITCHSTATE_OFF;
-			super.setForeground(color_off);
+			if(btn == MouseEvent.BUTTON1){
+				current_state = SWITCHSTATE_ON;
+				super.setForeground(color_on);
+			}
+			else{
+				current_state = SWITCHSTATE_OFF;
+				super.setForeground(color_off);
+			}
 			break;
 		}
 		for(VoidCallbackMethod func : callbacks) func.doMethod();

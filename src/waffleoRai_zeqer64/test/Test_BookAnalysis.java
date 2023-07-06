@@ -14,6 +14,7 @@ import waffleoRai_Sound.nintendo.N64ADPCMTable;
 import waffleoRai_Sound.nintendo.Z64WaveInfo;
 import waffleoRai_Utils.FileBuffer;
 import waffleoRai_soundbank.nintendo.z64.Z64Bank;
+import waffleoRai_soundbank.nintendo.z64.Z64Bank.Z64ReadOptions;
 import waffleoRai_zeqer64.ZeqerCore;
 import waffleoRai_zeqer64.ZeqerRom;
 import waffleoRai_zeqer64.filefmt.NusRomInfo;
@@ -85,13 +86,18 @@ public class Test_BookAnalysis {
 		for(int i = 0; i < bcount; i++){
 			BankInfo binfo = bank_tbl[i];
 			FileBuffer bnkdat = f_audiobank.createReadOnlyCopy(binfo.offset, binfo.offset + binfo.size);
-			Z64Bank bnk = Z64Bank.readBank(bnkdat, binfo.inst_count, binfo.perc_count, binfo.sfx_count);
+			//Z64Bank bnk = Z64Bank.readBank(bnkdat, binfo.inst_count, binfo.perc_count, binfo.sfx_count);
+			Z64ReadOptions op = new Z64ReadOptions();
+			op.instCount = binfo.inst_count;
+			op.percCount = binfo.perc_count;
+			op.sfxCount = binfo.sfx_count;
+			Z64Bank bnk = Z64Bank.readRaw(bnkdat, op);
 			bnkdat.dispose();
 			
 			int widx = binfo.warc_1;
 			if(widx == 1) widx = 0;
 			Map<Integer, Z64WaveInfo> warcmap = waveinfos.get(widx);
-			List<Z64WaveInfo> bnkwaves = bnk.getAllWaveInfoBlocks();
+			List<Z64WaveInfo> bnkwaves = bnk.getAllWaveBlocks();
 			for(Z64WaveInfo wib : bnkwaves){
 				int off = wib.getWaveOffset();
 				if(!warcmap.containsKey(off)){

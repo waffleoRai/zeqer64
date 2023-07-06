@@ -19,12 +19,12 @@ import waffleoRai_zeqer64.filefmt.ZeqerPresetTable;
 
 public class ZeqerPercPreset extends ZeqerPreset{
 
-	private String name;
 	private Z64Drum[] slots;
 	private ZeqerPercRegion[] regions; //Z64Drum instances stored here and linked in slots
 	private int[] wave_ids; //By slots
 	
 	private boolean hashmode = false;
+	private boolean regions_dirty = true;
 	
 	public ZeqerPercPreset(int uid){
 		super.uid = uid;
@@ -33,7 +33,6 @@ public class ZeqerPercPreset extends ZeqerPreset{
 		wave_ids = new int[64];
 	}
 	
-	public String getName() {return name;}
 	public int getType() {return ZeqerPreset.PRESET_TYPE_PERC;}
 	
 	public long readIn(BufferReference src, Z64Envelope[] envs, int version){
@@ -94,6 +93,7 @@ public class ZeqerPercPreset extends ZeqerPreset{
 			}
 		}
 		else {
+			regions_dirty = true;
 			for(int i = 0; i < entrycount; i++){
 				Z64Drum drum = new Z64Drum();
 				drum.setDecay(src.nextByte());
@@ -124,6 +124,13 @@ public class ZeqerPercPreset extends ZeqerPreset{
 	public Z64Drum getDrumInSlot(int idx){
 		if(idx < 0 || idx >= 64) return null;
 		return slots[idx];
+	}
+	
+	public int getSlotWaveID(int idx){
+		if(wave_ids == null) return 0;
+		if(idx < 0) return 0;
+		if(idx >= wave_ids.length) return 0;
+		return wave_ids[idx];
 	}
 	
 	public int getMaxUsedSlotCount(){
@@ -179,8 +186,6 @@ public class ZeqerPercPreset extends ZeqerPreset{
 		}
 		return list;
 	}
-
-	public void setName(String s) {name = s;}
 	
 	public void setWaveID(int idx, int value){
 		if(idx < 0 || idx >= 64) return;
@@ -199,6 +204,7 @@ public class ZeqerPercPreset extends ZeqerPreset{
 			}
 		}
 		slots[idx] = drum;
+		regions_dirty = true;
 	}
 	
 	public void clearAndReallocRegions(int regcount){
@@ -208,6 +214,7 @@ public class ZeqerPercPreset extends ZeqerPreset{
 			wave_ids[i] = 0;
 		}
 		regions = new ZeqerPercRegion[regcount];
+		regions_dirty = true;
 	}
 	
 	public int setRegion(int index, ZeqerPercRegion region){
@@ -252,10 +259,12 @@ public class ZeqerPercPreset extends ZeqerPreset{
 	public void consolidateRegions(){
 		//If only slots are recorded, then combine these into regions
 		//	for more streamlined serialization and user editing.
+		if(!regions_dirty) return;
+		if(slots == null) return;
+		
 		List<ZeqerPercRegion> templist = new LinkedList<ZeqerPercRegion>();
 		ZeqerPercRegion lastreg = null;
 		regions = null;
-		if(slots == null) return;
 		char nchar = 'A';
 		int lastwave = -1;
 		for(int i = 0; i < slots.length; i++){
@@ -297,6 +306,36 @@ public class ZeqerPercPreset extends ZeqerPreset{
 		int i = 0;
 		for(ZeqerPercRegion r : templist) regions[i++] = r;
 		templist.clear();
+		
+		regions_dirty = false;
+	}
+	
+	public int estimateWriteBufferSize(){
+		int sz = super.estimateWriteBufferSize();
+		sz += 4;
+		sz += 12 << 6;
+		
+		//String table
+		consolidateRegions();
+		sz += 4;
+		
+		if(regions != null){
+			int rcount = regions.length;
+			for(int i = 0; i < rcount; i++){
+				if(regions[i] != null){
+					String s = regions[i].getEnumStem();
+					if(s != null) sz += s.length() + 4;
+					else sz += 2;
+					
+					s = regions[i].getNameStem();
+					if(s != null) sz += s.length() + 4;
+					else sz += 2;
+				}
+				else sz += 4;
+			}
+		}
+	
+		return sz;
 	}
 	
 	protected int serializeMe(FileBuffer buffer) {

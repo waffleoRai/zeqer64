@@ -40,10 +40,10 @@ import waffleoRai_Sound.nintendo.Z64Sound.Z64Tuning;
 import waffleoRai_Sound.nintendo.Z64WaveInfo;
 import waffleoRai_soundbank.nintendo.z64.Z64Drum;
 import waffleoRai_soundbank.nintendo.z64.Z64Envelope;
-import waffleoRai_zeqer64.ZeqerCoreInterface;
 import waffleoRai_zeqer64.ZeqerUtils;
 import waffleoRai_zeqer64.GUI.dialogs.envedit.ZeqerEnvEditDialog;
 import waffleoRai_zeqer64.filefmt.ZeqerWaveTable.WaveTableEntry;
+import waffleoRai_zeqer64.iface.ZeqerCoreInterface;
 import waffleoRai_zeqer64.presets.ZeqerPercPreset;
 import waffleoRai_zeqer64.presets.ZeqerPercRegion;
 

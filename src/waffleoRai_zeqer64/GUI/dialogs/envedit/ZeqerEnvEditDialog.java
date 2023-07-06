@@ -29,7 +29,7 @@ import waffleoRai_GUITools.ComponentGroup;
 import waffleoRai_GUITools.GUITools;
 import waffleoRai_Sound.nintendo.Z64Sound;
 import waffleoRai_soundbank.nintendo.z64.Z64Envelope;
-import waffleoRai_zeqer64.ZeqerCoreInterface;
+import waffleoRai_zeqer64.iface.ZeqerCoreInterface;
 
 import javax.swing.JList;
 import javax.swing.JOptionPane;

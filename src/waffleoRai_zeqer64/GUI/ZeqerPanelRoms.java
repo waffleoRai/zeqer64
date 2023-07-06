@@ -24,10 +24,11 @@ import javax.swing.DefaultListModel;
 import javax.swing.JList;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
-import waffleoRai_zeqer64.ZeqerCoreInterface;
+
 import waffleoRai_zeqer64.ZeqerRom;
 import waffleoRai_zeqer64.GUI.dialogs.progress.IndefProgressDialog;
 import waffleoRai_zeqer64.filefmt.NusRomInfo;
+import waffleoRai_zeqer64.iface.ZeqerCoreInterface;
 import waffleoRai_zeqer64.strings.CommonStrings;
 import waffleoRai_zeqer64.strings.ZeqerRomStrings;
 
@@ -38,6 +39,7 @@ import javax.swing.filechooser.FileFilter;
 
 import waffleoRai_Containers.nintendo.nus.N64ROMImage;
 import waffleoRai_GUITools.WriterPanel;
+import waffleoRai_Utils.VoidCallbackMethod;
 
 import javax.swing.JButton;
 import javax.swing.JFileChooser;
@@ -77,6 +79,7 @@ public class ZeqerPanelRoms extends JPanel{
 	/*----- Instance Variables -----*/
 	
 	private ZeqerCoreInterface core;
+	private VoidCallbackMethod romImportCallback;
 		
 	private JFrame parent;
 	private WriterPanel pnlInfo;
@@ -202,6 +205,10 @@ public class ZeqerPanelRoms extends JPanel{
 	}
 	
 	/*----- Setters -----*/
+	
+	public void setImportCallback(VoidCallbackMethod func){
+		this.romImportCallback = func;
+	}
 	
 	/*----- Draw -----*/
 	
@@ -444,6 +451,9 @@ public class ZeqerPanelRoms extends JPanel{
 			public void done(){
 				dialog.closeMe();
 				refreshRomList();
+				if(romImportCallback != null){
+					romImportCallback.doMethod();
+				}
 			}
 		};
 		

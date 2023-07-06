@@ -3,7 +3,6 @@ package waffleoRai_zeqer64.GUI;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 
-import waffleoRai_zeqer64.ZeqerCoreInterface;
 import waffleoRai_zeqer64.ZeqerPreset;
 import waffleoRai_zeqer64.GUI.dialogs.InstTypeMiniDialog;
 import waffleoRai_zeqer64.GUI.dialogs.ZeqerDrumEditDialog;
@@ -12,6 +11,7 @@ import waffleoRai_zeqer64.GUI.filters.FlagFilterPanel;
 import waffleoRai_zeqer64.GUI.filters.TagFilterPanel;
 import waffleoRai_zeqer64.GUI.filters.TextFilterPanel;
 import waffleoRai_zeqer64.GUI.filters.ZeqerFilter;
+import waffleoRai_zeqer64.iface.ZeqerCoreInterface;
 import waffleoRai_zeqer64.presets.ZeqerInstPreset;
 import waffleoRai_zeqer64.presets.ZeqerPercPreset;
 import waffleoRai_zeqer64.presets.ZeqerSFXPreset;
@@ -210,7 +210,7 @@ public class ZeqerPanelInstruments extends JPanel{
 		}
 		btnNew.addActionListener(new ActionListener(){
 			public void actionPerformed(ActionEvent e) {
-				btnNewCallback();
+				//btnNewCallback();
 			}});
 		
 		JButton btnEdit = new JButton("Edit...");
@@ -229,7 +229,7 @@ public class ZeqerPanelInstruments extends JPanel{
 		}
 		btnEdit.addActionListener(new ActionListener(){
 			public void actionPerformed(ActionEvent e) {
-				btnEditCallback();
+				//btnEditCallback();
 			}});
 		
 		JButton btnDelete = new JButton("Delete");
@@ -247,11 +247,12 @@ public class ZeqerPanelInstruments extends JPanel{
 		}
 		btnDelete.addActionListener(new ActionListener(){
 			public void actionPerformed(ActionEvent e) {
-				btnDeleteCallback();
+				//btnDeleteCallback();
 			}});
 		
 		//TODO
 		JPanel pnlPlay = new JPanel();
+		pnlPlay.setBorder(new BevelBorder(BevelBorder.LOWERED, null, null, null, null));
 		GridBagConstraints gbc_pnlPlay = new GridBagConstraints();
 		gbc_pnlPlay.gridwidth = 2;
 		gbc_pnlPlay.fill = GridBagConstraints.BOTH;
@@ -260,12 +261,14 @@ public class ZeqerPanelInstruments extends JPanel{
 		add(pnlPlay, gbc_pnlPlay);
 		
 		addFilterPanels();
+		
+		lstSelectedEnable.setEnabling(!lstPresets.isSelectionEmpty());
 	}
 	
 	private void addFilterPanels(){
 		
 		//Preset type
-		FlagFilterPanel<InstNode> fpnl2 = new FlagFilterPanel<InstNode>("Flags");
+		FlagFilterPanel<InstNode> fpnl2 = new FlagFilterPanel<InstNode>(core.getString(ZeqerGUIUtils.STRKEY_FILPNL_FLAGS));
 		fpnl2.addSwitch(new ZeqerFilter<InstNode>(){
 			public boolean itemPasses(InstNode item){
 				if(item == null) return false;
@@ -295,7 +298,7 @@ public class ZeqerPanelInstruments extends JPanel{
 		});
 		pnlFilt.addPanel(fpnl1);
 		
-		pnlTags = new TagFilterPanel<InstNode>(parent);
+		pnlTags = new TagFilterPanel<InstNode>(parent, core.getString(ZeqerGUIUtils.STRKEY_FILPNL_TAGS));
 		pnlFilt.addPanel(pnlTags);
 		
 		//Might add flag panels too?
@@ -359,6 +362,12 @@ public class ZeqerPanelInstruments extends JPanel{
 		refilter();
 	}
 	
+	public void refreshPresetPool(){
+		setWait();
+		loadPresetsFromCore();
+		unsetWait();
+	}
+	
 	public void refilter(){
 		DefaultListModel<InstNode> mdl = new DefaultListModel<InstNode>();
 		if(allPresets != null){
@@ -376,6 +385,7 @@ public class ZeqerPanelInstruments extends JPanel{
 	
 	private void updateInfoPanel(InstNode selection){
 		try{
+			pnlInfo.clear();
 			Writer writer = pnlInfo.getWriter();
 			if(selection == null || selection.preset == null){
 				writer.write("<No preset selected>\n");
@@ -388,7 +398,7 @@ public class ZeqerPanelInstruments extends JPanel{
 					writer.write("Standard Instrument\n");
 					//Type specific...
 					ZeqerInstPreset ipreset = (ZeqerInstPreset)selection.preset;
-					writer.write("Enum Stem: " + ipreset.getEnumStringBase() + "\n");
+					writer.write("Enum Stem: " + ipreset.getEnumLabel() + "\n");
 					
 					Z64Instrument inst = ipreset.getInstrument();
 					if(inst != null){

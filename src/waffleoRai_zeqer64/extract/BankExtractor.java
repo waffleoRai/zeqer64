@@ -12,7 +12,9 @@ import waffleoRai_Sound.nintendo.Z64WaveInfo;
 import waffleoRai_Utils.FileBuffer;
 import waffleoRai_Utils.FileBuffer.UnsupportedFileTypeException;
 import waffleoRai_Utils.FileUtils;
+import waffleoRai_soundbank.nintendo.z64.UltraBankFile;
 import waffleoRai_soundbank.nintendo.z64.Z64Bank;
+import waffleoRai_soundbank.nintendo.z64.Z64Bank.Z64ReadOptions;
 import waffleoRai_soundbank.nintendo.z64.Z64Drum;
 import waffleoRai_soundbank.nintendo.z64.Z64Instrument;
 import waffleoRai_soundbank.nintendo.z64.Z64SoundEffect;
@@ -146,7 +148,9 @@ public class BankExtractor {
 			}
 			
 			FileBuffer bdat = audiobank.createReadOnlyCopy(stpos, stpos+filelen);
-			Z64Bank mybank = Z64Bank.readBank(bdat, icount, pcount, xcount);
+			//Z64Bank mybank = Z64Bank.readBank(bdat, icount, pcount, xcount);
+			Z64ReadOptions op = Z64Bank.genOptionsForKnownCounts(icount, pcount, xcount);
+			Z64Bank mybank = Z64Bank.readRaw(bdat, op);
 			bdat.dispose();
 			
 			//Substitute wave offsets
@@ -155,7 +159,7 @@ public class BankExtractor {
 				//Very specific to index 1 but I'll make it better later
 				omap = wavloc_map.get(warc-1);
 			}
-			List<Z64WaveInfo> wavelist = mybank.getAllWaveInfoBlocks();
+			List<Z64WaveInfo> wavelist = mybank.getAllWaveBlocks();
 			for(Z64WaveInfo winfo : wavelist){
 				int woff = winfo.getWaveOffset();
 				//System.err.println("woff = 0x" + Integer.toHexString(woff));
@@ -167,9 +171,11 @@ public class BankExtractor {
 			}
 			
 			//Re-serialize & Hash
-			mybank.setSamplesOrderedByUID(true);
+			/*mybank.setSamplesOrderedByUID(true);
 			FileBuffer serbank = new FileBuffer(filelen+1024, true);
 			mybank.serializeTo(serbank);
+			byte[] md5 = FileUtils.getMD5Sum(serbank.getBytes(0, serbank.getFileSize()));*/
+			FileBuffer serbank = mybank.serializeMe(Z64Bank.SEROP_REF_WAV_UIDS);
 			byte[] md5 = FileUtils.getMD5Sum(serbank.getBytes(0, serbank.getFileSize()));
 
 			//Check for matches
@@ -186,10 +192,14 @@ public class BankExtractor {
 					mybank.setUID(bentry.getUID());
 					mybank.setMedium(bentry.getMedium());
 					mybank.setCachePolicy(bentry.getCachePolicy());
-					mybank.setPrimaryWaveArchiveIndex(bentry.getWarcIndex());
-					mybank.setSecondaryWaveArchiveIndex(bentry.getSecondaryWarcIndex());
+					mybank.setPrimaryWaveArcIndex(bentry.getWarcIndex());
+					mybank.setSecondaryWaveArcIndex(bentry.getSecondaryWarcIndex());
 					data_path = dir_base + File.separator + bentry.getDataPathStem();
-					mybank.writeUFormat(data_path);
+					//mybank.writeUFormat(data_path);
+					UltraBankFile.writeUBNK(mybank, data_path, UltraBankFile.OP_LINK_WAVES_UID);
+					if(mybank.getEffectiveSFXCount() > 0){
+						UltraBankFile.writeUWSD(mybank, data_path, UltraBankFile.OP_LINK_WAVES_UID);
+					}
 				}
 			}
 			else{
@@ -214,10 +224,14 @@ public class BankExtractor {
 						mybank.setUID(bentry.getUID());
 						mybank.setMedium(bentry.getMedium());
 						mybank.setCachePolicy(bentry.getCachePolicy());
-						mybank.setPrimaryWaveArchiveIndex(bentry.getWarcIndex());
-						mybank.setSecondaryWaveArchiveIndex(bentry.getSecondaryWarcIndex());
+						mybank.setPrimaryWaveArcIndex(bentry.getWarcIndex());
+						mybank.setSecondaryWaveArcIndex(bentry.getSecondaryWarcIndex());
 						data_path = dir_base + File.separator + bentry.getDataPathStem();
-						mybank.writeUFormat(data_path);
+						//mybank.writeUFormat(data_path);
+						UltraBankFile.writeUBNK(mybank, data_path, UltraBankFile.OP_LINK_WAVES_UID);
+						if(mybank.getEffectiveSFXCount() > 0){
+							UltraBankFile.writeUWSD(mybank, data_path, UltraBankFile.OP_LINK_WAVES_UID);
+						}
 					}
 				}
 				else{
@@ -228,7 +242,7 @@ public class BankExtractor {
 			
 			//Extract presets...
 			//Instruments...
-			Collection<Z64Instrument> ilist = mybank.getAllInstruments();
+			Collection<Z64Instrument> ilist = mybank.getAllUniqueInstruments();
 			//System.err.println("DEBUG: ilist size: " + ilist.size());
 			for(Z64Instrument inst : ilist){
 				ZeqerInstPreset preset = new ZeqerInstPreset(inst);

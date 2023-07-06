@@ -3,9 +3,9 @@ package waffleoRai_zeqer64.GUI.dialogs;
 import javax.swing.JDialog;
 import javax.swing.JFrame;
 
-import waffleoRai_zeqer64.ZeqerCoreInterface;
 import waffleoRai_zeqer64.ZeqerUtils;
 import waffleoRai_zeqer64.GUI.dialogs.envedit.ZeqerEnvEditDialog;
+import waffleoRai_zeqer64.iface.ZeqerCoreInterface;
 import waffleoRai_zeqer64.presets.ZeqerInstPreset;
 import java.awt.GridBagLayout;
 import javax.swing.JPanel;
@@ -425,7 +425,7 @@ public class ZeqerInstEditDialog extends JDialog{
 		
 		setWait();
 		txtName.setText(ipreset.getName());
-		txtEnum.setText(ipreset.getEnumStringBase());
+		txtEnum.setText(ipreset.getEnumLabel());
 		
 		int rel = ipreset.getInstrument().getDecay();
 		sldRelease.setValue(rel);
@@ -582,7 +582,7 @@ public class ZeqerInstEditDialog extends JDialog{
 		txt = ZeqerUtils.fixHeaderEnumID(txt, true);
 		txtEnum.setText(txt);
 		txtEnum.repaint();
-		myInst.setEnumStringBase(txt);
+		myInst.setEnumLabel(txt);
 		
 		myInst.setEnvelope(tempEnv);
 		

@@ -2,8 +2,11 @@ package waffleoRai_zeqer64;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
@@ -20,6 +23,7 @@ import waffleoRai_zeqer64.extract.RomExtractionSummary;
 import waffleoRai_zeqer64.extract.RomExtractionSummary.ExtractionError;
 import waffleoRai_zeqer64.filefmt.NusRomInfo;
 import waffleoRai_zeqer64.filefmt.TSVTables;
+import waffleoRai_zeqer64.filefmt.UltraFile;
 import waffleoRai_zeqer64.filefmt.UltraSeqFile;
 import waffleoRai_zeqer64.filefmt.ZeqerSeqTable;
 import waffleoRai_zeqer64.filefmt.ZeqerSeqTable.SeqTableEntry;
@@ -80,6 +84,73 @@ class CoreSeqManager {
 			uid = r.nextInt();
 		}
 		return uid;
+	}
+	
+	/*----- Install -----*/
+	
+	protected boolean updateVersion(String temp_update_dir) throws IOException{
+		//For waves we pretty much just copy everything back except zwavs.bin
+		
+		Path src_dir_path = Paths.get(temp_update_dir);
+		if(!Files.isDirectory(src_dir_path)) return false;
+		
+		DirectoryStream<Path> dirstr = Files.newDirectoryStream(src_dir_path);
+		for(Path child : dirstr){
+			//User overwrites all of these.
+			if(Files.isDirectory(child)){
+				String fn = child.getFileName().toString();
+				if(!fn.equals(ZeqerCore.DIRNAME_ZSEQ)){
+					String target = root_dir + SEP + fn;
+					FileUtils.moveDirectory(child.toAbsolutePath().toString(), target, true);
+				}
+			}
+			else {
+				String target = root_dir + SEP + child.getFileName().toString();
+				Files.move(child, Paths.get(target), StandardCopyOption.REPLACE_EXISTING);
+			}
+		}
+		dirstr.close();
+		
+		src_dir_path = Paths.get(temp_update_dir + SEP + ZeqerCore.DIRNAME_ZSEQ);
+		if(Files.isDirectory(src_dir_path)){
+			dirstr = Files.newDirectoryStream(src_dir_path);
+			for(Path child : dirstr){
+				//User overwrites all of these.
+				if(Files.isDirectory(child)){
+					String target = root_dir + SEP + child.getFileName().toString();
+					FileUtils.moveDirectory(child.toAbsolutePath().toString(), target, true);
+				}
+				else {
+					String fn = child.getFileName().toString();
+					String target = root_dir + SEP + fn;
+					if(fn.endsWith(".buseq")){
+						if(FileBuffer.fileExists(target)){
+							//Load seq data from old and splice into new.
+							UltraFile oldseq = UltraFile.openUltraFile(child.toAbsolutePath().toString());
+							if(oldseq.hasChunk("DATA")){
+								UltraFile newseq = UltraFile.openUltraFile(target);
+								newseq.addOrReplaceChunk("DATA", oldseq.getChunkData("DATA"), 1);
+								newseq.writeTo(target);
+								newseq.close();
+							}
+							oldseq.close();
+						}
+						else{
+							//Just copy
+							Files.move(child, Paths.get(target), StandardCopyOption.REPLACE_EXISTING);
+						}
+					}
+					else{
+						if(!fn.equals(ZeqerCore.FN_SYSSEQ)){
+							Files.move(child, Paths.get(target), StandardCopyOption.REPLACE_EXISTING);
+						}
+					}
+				}
+			}
+			dirstr.close();
+		}
+		
+		return true;
 	}
 	
 	/*----- Getters -----*/
@@ -266,7 +337,7 @@ class CoreSeqManager {
 		}
 	}
 	
-	public boolean importROMSeqs(ZeqerRom z_rom, RomExtractionSummary errorInfo) throws IOException{
+	public boolean importROMSeqs(ZeqerRom z_rom, RomExtractionSummary errorInfo, boolean verbose) throws IOException{
 		if(z_rom == null) return false;
 		NusRomInfo rominfo = z_rom.getRomInfo();
 		if(rominfo == null) return false;
@@ -432,7 +503,7 @@ class CoreSeqManager {
 		return good;
 	}
 
-	public boolean mapSeqBanks(ZeqerRom z_rom, int[] bank_uids) throws IOException{
+	public boolean mapSeqBanks(ZeqerRom z_rom, int[] bank_uids, boolean verbose) throws IOException{
 		//Okay, so the seq/bank map table is weird.
 		//Appears to be positioned after bank table, right before seq table.
 		
@@ -466,7 +537,7 @@ class CoreSeqManager {
 			//Pull seq from table. If not found, warn and continue.
 			ZeqerSeq zs = loadSeq(seqids[i]);
 			if(zs == null){
-				System.err.println("WARNING: Sequence at index " + i + " could not be found in zeqer table!");
+				if(verbose) System.err.println("WARNING: Sequence at index " + i + " could not be found in zeqer table!");
 				continue;
 			}
 			SeqTableEntry entry = zs.getTableEntry();
@@ -481,7 +552,7 @@ class CoreSeqManager {
 				for(int j = 0; j < sbcount; j++){
 					int bidx = Byte.toUnsignedInt(code.getByte(roff+1+j));
 					if(bidx < 0 || bidx >= bank_uids.length){
-						System.err.println("WARNING: Bank index " + bidx + " out of range. Skipping seq " + i + "...");
+						if(verbose) System.err.println("WARNING: Bank index " + bidx + " out of range. Skipping seq " + i + "...");
 						continue;
 					}
 					entry.addBank(bank_uids[bidx]);
@@ -490,7 +561,7 @@ class CoreSeqManager {
 			else{
 				int bidx = Byte.toUnsignedInt(code.getByte(roff+1));
 				if(bidx < 0 || bidx >= bank_uids.length){
-					System.err.println("WARNING: Bank index " + bidx + " out of range. Skipping seq " + i + "...");
+					if(verbose) System.err.println("WARNING: Bank index " + bidx + " out of range. Skipping seq " + i + "...");
 					continue;
 				}
 				entry.setSingleBank(bank_uids[bidx]);

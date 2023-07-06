@@ -8,7 +8,8 @@ import java.awt.event.ActionListener;
 import javax.swing.JTabbedPane;
 
 import waffleoRai_GUITools.GUITools;
-import waffleoRai_zeqer64.ZeqerCoreInterface;
+import waffleoRai_Utils.VoidCallbackMethod;
+import waffleoRai_zeqer64.iface.ZeqerCoreInterface;
 
 import java.awt.Dimension;
 import java.awt.GridBagConstraints;
@@ -31,6 +32,7 @@ public class ZeqerManagerForm extends JFrame{
 	private static final String STRKEY_MITEM_F_EXIT = "MAINFORM_MNUI_F_EXIT";
 	
 	private static final String STRKEY_TAB_ROMS = "MAINFORM_TAB_ROMS";
+	private static final String STRKEY_TAB_INST = "MAINFORM_TAB_INST";
 	private static final String STRKEY_TAB_WAV = "MAINFORM_TAB_SMPL";
 
 	/*----- Instance Variables -----*/
@@ -38,6 +40,7 @@ public class ZeqerManagerForm extends JFrame{
 	private ZeqerCoreInterface core;
 	
 	private ZeqerPanelRoms pnlRoms;
+	private ZeqerPanelInstruments pnlInst;
 	private ZeqerPanelSamples pnlSmpl;
 	
 	/*----- Init -----*/
@@ -68,6 +71,9 @@ public class ZeqerManagerForm extends JFrame{
 		
 		pnlRoms = new ZeqerPanelRoms(core, this);
 		tabbedPane.addTab(getString(STRKEY_TAB_ROMS), null, pnlRoms, null);
+		pnlRoms.setImportCallback(new VoidCallbackMethod(){
+			public void doMethod() {onRomImport();}
+		});
 		
 		JPanel pnlAbld = new JPanel();
 		tabbedPane.addTab("Audio Builds", null, pnlAbld, null);
@@ -78,8 +84,8 @@ public class ZeqerManagerForm extends JFrame{
 		JPanel pnlFont = new JPanel();
 		tabbedPane.addTab("Soundfonts", null, pnlFont, null);
 		
-		JPanel pnlInst = new JPanel();
-		tabbedPane.addTab("Instruments", null, pnlInst, null);
+		pnlInst = new ZeqerPanelInstruments(this, core, true);
+		tabbedPane.addTab(getString(STRKEY_TAB_INST), null, pnlInst, null);
 		
 		pnlSmpl = new ZeqerPanelSamples(this, core, true);
 		tabbedPane.addTab(getString(STRKEY_TAB_WAV), null, pnlSmpl, null);
@@ -130,6 +136,11 @@ public class ZeqerManagerForm extends JFrame{
 	/*----- Draw -----*/
 	
 	/*----- Callbacks -----*/
+	
+	public void onRomImport(){
+		pnlSmpl.refreshSamplePool();
+		pnlInst.refreshPresetPool();
+	}
 	
 	private void mntmFileSaveCallback(){
 		//TODO

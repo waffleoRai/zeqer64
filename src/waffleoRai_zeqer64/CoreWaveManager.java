@@ -2,10 +2,15 @@ package waffleoRai_zeqer64;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 import waffleoRai_Sound.nintendo.Z64Wave;
 import waffleoRai_Sound.nintendo.Z64WaveInfo;
@@ -22,8 +27,9 @@ import waffleoRai_zeqer64.filefmt.UltraWavFile;
 import waffleoRai_zeqer64.filefmt.VersionWaveTable;
 import waffleoRai_zeqer64.filefmt.ZeqerWaveTable;
 import waffleoRai_zeqer64.filefmt.ZeqerWaveTable.WaveTableEntry;
+import waffleoRai_zeqer64.iface.SoundSampleSource;
 
-class CoreWaveManager {
+class CoreWaveManager implements SoundSampleSource{
 
 	private static final char SEP = File.separatorChar;
 	
@@ -67,6 +73,54 @@ class CoreWaveManager {
 				wav_table_user = ZeqerWaveTable.createTable();	
 			}
 		}
+	}
+	
+	/*----- Install -----*/
+	
+	protected boolean updateVersion(String temp_update_dir) throws IOException{
+		//For waves we pretty much just copy everything back except zwavs.bin
+		
+		Path src_dir_path = Paths.get(temp_update_dir);
+		if(!Files.isDirectory(src_dir_path)) return false;
+		
+		DirectoryStream<Path> dirstr = Files.newDirectoryStream(src_dir_path);
+		for(Path child : dirstr){
+			//User overwrites all of these.
+			if(Files.isDirectory(child)){
+				String fn = child.getFileName().toString();
+				if(!fn.equals(ZeqerCore.DIRNAME_ZWAVE)){
+					String target = root_dir + SEP + fn;
+					FileUtils.moveDirectory(child.toAbsolutePath().toString(), target, true);
+				}
+			}
+			else {
+				String target = root_dir + SEP + child.getFileName().toString();
+				Files.move(child, Paths.get(target), StandardCopyOption.REPLACE_EXISTING);
+			}
+		}
+		dirstr.close();
+		
+		src_dir_path = Paths.get(temp_update_dir + SEP + ZeqerCore.DIRNAME_ZWAVE);
+		if(Files.isDirectory(src_dir_path)){
+			dirstr = Files.newDirectoryStream(src_dir_path);
+			for(Path child : dirstr){
+				//User overwrites all of these.
+				if(Files.isDirectory(child)){
+					String target = root_dir + SEP + child.getFileName().toString();
+					FileUtils.moveDirectory(child.toAbsolutePath().toString(), target, true);
+				}
+				else {
+					String fn = child.getFileName().toString();
+					if(!fn.equals(ZeqerCore.FN_SYSWAVE)){
+						String target = root_dir + SEP + fn;
+						Files.move(child, Paths.get(target), StandardCopyOption.REPLACE_EXISTING);
+					}
+				}
+			}
+			dirstr.close();
+		}
+		
+		return true;
 	}
 	
 	/*----- Getters -----*/
@@ -312,9 +366,27 @@ class CoreWaveManager {
 		return list;
 	}
 	
+	public Map<Integer, Z64WaveInfo> getAllInfoMappedByUID(){
+		Map<Integer, Z64WaveInfo> map = new HashMap<Integer, Z64WaveInfo>();
+		
+		List<WaveTableEntry> entries = getAllValidTableEntries();
+		for(WaveTableEntry e : entries){
+			int id = e.getUID();
+			Z64WaveInfo winfo = e.getWaveInfo();
+			
+			if(winfo != null){
+				if((id != 0) && (id != -1)){
+					map.put(id, winfo);
+				}
+			}
+		}
+		
+		return map;
+	}
+	
 	/*----- Setters -----*/
 	
-	public boolean importROMWaves(ZeqerRom z_rom, RomExtractionSummary errorInfo) throws IOException{
+	public boolean importROMWaves(ZeqerRom z_rom, RomExtractionSummary errorInfo, boolean verbose) throws IOException{
 		if(z_rom == null) return false;
 	
 		NusRomInfo rominfo = z_rom.getRomInfo();
@@ -366,6 +438,10 @@ class CoreWaveManager {
 				//See if this wave already exists in database
 				String md5str = FileUtils.bytes2str(md5).toLowerCase();
 				WaveTableEntry entry = wav_table_sys.getEntryWithSum(md5str);
+				
+				if(winfo.getName() == null){
+					winfo.setName("uwav_" + md5str.substring(0, 8));
+				}
 				
 				if(entry == null){
 					//Need new entry. Also don't forget to copy actual wave file.

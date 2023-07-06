@@ -284,7 +284,7 @@ public class SoundfontXML {
 		
 		//Common attr
 		entry.drum = new Z64Drum();
-		entry.drum.setIDRandom();
+		//entry.drum.setIDRandom();
 		entry.drum.setName(xml_element.getAttribute("Name"));
 		
 		String attrstr = xml_element.getAttribute("Decay");
@@ -570,7 +570,7 @@ public class SoundfontXML {
 		Document xml_doc = XMLReader.readXMLStatic(path);
 		SoundfontXML sfxml = new SoundfontXML();
 		sfxml.output = new Z64Bank();
-		sfxml.output.setSamplesOrderedByUID(true);
+		//sfxml.output.setSamplesOrderedByUID(true);
 		
 		//Top soundfont node
 		NodeList nl = xml_doc.getElementsByTagName("Soundfont");
@@ -607,7 +607,8 @@ public class SoundfontXML {
 				SFXEntry sfxe = sfxml.readSoundEffect(child);
 				if(sfxe != null){
 					if(sfxe.index < 0) sfxe.index = c++;
-					sfxml.output.setSoundEffect(sfxe.sfx, sfxe.index);
+					//sfxml.output.setSoundEffect(sfxe.sfx, sfxe.index);
+					sfxml.output.setSFX(sfxe.index, sfxe.sfx);
 				}
 			}
 		}
@@ -655,7 +656,8 @@ public class SoundfontXML {
 				if(inste != null){
 					if(inste.index < 0) inste.index = c++;
 					inste.inst.setID(inste.index);
-					sfxml.output.setInstrument(inste.inst, inste.index);
+					//sfxml.output.setInstrument(inste.inst, inste.index);
+					sfxml.output.setInstrument(inste.index, inste.inst);
 				}
 			}
 		}

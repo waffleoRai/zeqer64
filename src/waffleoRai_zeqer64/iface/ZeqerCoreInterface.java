@@ -1,4 +1,4 @@
-package waffleoRai_zeqer64;
+package waffleoRai_zeqer64.iface;
 
 import java.util.Collection;
 import java.util.List;
@@ -6,6 +6,8 @@ import java.util.Map;
 
 import waffleoRai_Sound.nintendo.Z64WaveInfo;
 import waffleoRai_soundbank.nintendo.z64.Z64Envelope;
+import waffleoRai_zeqer64.ZeqerPreset;
+import waffleoRai_zeqer64.ZeqerRom;
 import waffleoRai_zeqer64.GUI.dialogs.progress.IndefProgressDialog;
 import waffleoRai_zeqer64.filefmt.ZeqerWaveTable.WaveTableEntry;
 

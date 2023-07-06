@@ -7,6 +7,7 @@ import java.util.List;
 
 import waffleoRai_Sound.nintendo.Z64WaveInfo;
 import waffleoRai_Utils.BinFieldSize;
+import waffleoRai_Utils.BufferReference;
 import waffleoRai_Utils.FileBuffer;
 import waffleoRai_Utils.FileUtils;
 import waffleoRai_soundbank.nintendo.z64.Z64Envelope;
@@ -19,13 +20,17 @@ public class ZeqerInstPreset extends ZeqerPreset{
 	private int waveid_lo;
 	private int waveid_mid;
 	private int waveid_hi;
-	private String enm_str;
 	
 	private boolean hashmode = false;
 	
 	public ZeqerInstPreset(){
 		inst = new Z64Instrument();
 		inst.setIDRandom();
+	}
+	
+	public ZeqerInstPreset(int guid){
+		inst = new Z64Instrument();
+		super.uid = guid;
 	}
 	
 	public ZeqerInstPreset(Z64Instrument i){
@@ -37,7 +42,6 @@ public class ZeqerInstPreset extends ZeqerPreset{
 	}
 	
 	public String getName(){return inst.getName();}
-	public String getEnumStringBase(){return enm_str;}
 	public int getType(){return ZeqerPreset.PRESET_TYPE_INST;}
 	public Z64Instrument getInstrument(){return inst;}
 	public int getWaveIDLo(){return waveid_lo;}
@@ -45,6 +49,44 @@ public class ZeqerInstPreset extends ZeqerPreset{
 	public int getWaveIDHi(){return waveid_hi;}
 	
 	public Z64Envelope getEnvelope(){return inst.getEnvelope();}
+	
+	public long readIn(BufferReference src, Z64Envelope[] envs, int version){
+		if(src == null) return 0;
+		if(version < 1) return 0;
+		
+		if(inst == null) inst = new Z64Instrument();
+		
+		long stpos = src.getBufferPosition();
+		src.add(1L); //Reserved
+		inst.setLowRangeTop(src.nextByte());
+		inst.setHighRangeBottom(src.nextByte());
+		inst.setDecay(src.nextByte());
+		src.add(2L); //Reserved
+		
+		int envidx = (int)src.nextShort();
+		if(envidx >= 0 && envs != null && envidx < envs.length){
+			inst.setEnvelope(envs[envidx]);
+		}
+		else inst.setEnvelope(null);
+		
+		waveid_lo = src.nextInt();
+		inst.setSampleLow(null);
+		inst.setTuningLow(Float.intBitsToFloat(src.nextInt()));
+		
+		waveid_mid = src.nextInt();
+		inst.setSampleMiddle(null);
+		inst.setTuningMiddle(Float.intBitsToFloat(src.nextInt()));
+		
+		waveid_hi = src.nextInt();
+		inst.setSampleHigh(null);
+		inst.setTuningHigh(Float.intBitsToFloat(src.nextInt()));
+		
+		if(version >= 3){
+			enumLabel = src.nextVariableLengthString(BinFieldSize.WORD, 2);
+		}
+		
+		return src.getBufferPosition() - stpos;
+	}
 	
 	public List<Z64Envelope> getEnvelopes(){
 		Z64Envelope env = inst.getEnvelope();
@@ -55,13 +97,34 @@ public class ZeqerInstPreset extends ZeqerPreset{
 	}
 	
 	public void setName(String s){inst.setName(s);}
-	public void setEnumStringBase(String s){enm_str = s;}
 	public void setWaveIDLo(int val){waveid_lo = val;}
 	public void setWaveIDMid(int val){waveid_mid = val;}
 	public void setWaveIDHi(int val){waveid_hi = val;}
 	
 	public void setEnvelope(Z64Envelope env){
 		inst.setEnvelope(env);
+	}
+	
+	public void loadData(Z64Instrument src){
+		inst.setDecay(src.getDecay());
+		inst.setEnvelope(src.getEnvelope());
+		inst.setHighRangeBottom(src.getHighRangeBottom());
+		inst.setLowRangeTop(src.getLowRangeTop());
+		inst.setTuningHigh(src.getTuningHigh());
+		inst.setTuningMiddle(src.getTuningMiddle());
+		inst.setTuningLow(src.getTuningLow());
+		
+		Z64WaveInfo winfo = src.getSampleMiddle();
+		inst.setSampleMiddle(winfo);
+		if(winfo != null) waveid_mid = winfo.getUID();
+		
+		winfo = src.getSampleLow();
+		inst.setSampleLow(winfo);
+		if(winfo != null) waveid_lo = winfo.getUID();
+		
+		winfo = src.getSampleHigh();
+		inst.setSampleHigh(winfo);
+		if(winfo != null) waveid_hi = winfo.getUID();
 	}
 	
 	public int hashToUID(){
@@ -77,6 +140,16 @@ public class ZeqerInstPreset extends ZeqerPreset{
 			val |= Byte.toUnsignedInt(md5[i]);
 		}
 		return val;
+	}
+	
+	public int estimateWriteBufferSize(){
+		int sz = super.estimateWriteBufferSize();
+		sz += 32;
+		
+		sz += 2; //Enum label size field
+		if(enumLabel != null) {sz += enumLabel.length() + 2;}
+		
+		return sz;
 	}
 	
 	protected int serializeMe(FileBuffer buffer){
@@ -143,10 +216,10 @@ public class ZeqerInstPreset extends ZeqerPreset{
 			else buffer.addToFile(Float.floatToRawIntBits(inst.getTuningHigh()));
 		}
 		
-		if(enm_str == null){
-			enm_str = String.format("IPRE_%08x", uid);
+		if(enumLabel == null){
+			enumLabel = String.format("IPRE_%08x", uid);
 		}
-		buffer.addVariableLengthString("UTF8", enm_str, BinFieldSize.WORD, 2);
+		buffer.addVariableLengthString("UTF8", enumLabel, BinFieldSize.WORD, 2);
 		
 		return (int)(buffer.getFileSize() - init_size);
 	}
@@ -155,10 +228,10 @@ public class ZeqerInstPreset extends ZeqerPreset{
 		w.write(getName() + "\t");
 		w.write(String.format("%08x\t", uid));
 		
-		if(enm_str == null){
-			enm_str = String.format("IPRE_%08x", uid);
+		if(enumLabel == null){
+			enumLabel = String.format("IPRE_%08x", uid);
 		}
-		w.write(enm_str + "\t");
+		w.write(enumLabel + "\t");
 		
 		Z64Envelope env = inst.getEnvelope();
 		if(env == null) w.write("-1\t");

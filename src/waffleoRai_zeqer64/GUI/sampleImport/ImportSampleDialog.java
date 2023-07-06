@@ -4,7 +4,6 @@ import java.awt.Frame;
 
 import javax.swing.JDialog;
 
-import waffleoRai_zeqer64.ZeqerCoreInterface;
 import java.awt.GridBagLayout;
 import javax.swing.JScrollPane;
 import java.awt.GridBagConstraints;
@@ -25,6 +24,7 @@ import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 
 import waffleoRai_GUITools.ComponentGroup;
+import waffleoRai_zeqer64.iface.ZeqerCoreInterface;
 
 public class ImportSampleDialog extends JDialog{
 

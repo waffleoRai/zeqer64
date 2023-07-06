@@ -2,7 +2,6 @@ package waffleoRai_zeqer64.GUI;
 
 import javax.swing.JFrame;
 
-import waffleoRai_zeqer64.ZeqerCoreInterface;
 import java.awt.GridBagLayout;
 import javax.swing.JButton;
 import java.awt.GridBagConstraints;
@@ -15,6 +14,7 @@ import javax.swing.JPanel;
 
 import waffleoRai_GUITools.GUITools;
 import waffleoRai_Utils.VoidCallbackMethod;
+import waffleoRai_zeqer64.iface.ZeqerCoreInterface;
 
 import java.awt.Dimension;
 import java.awt.Font;

@@ -1,9 +1,9 @@
 package waffleoRai_zeqer64.listeners;
 
-import waffleoRai_zeqer64.ZeqerCoreInterface;
 import waffleoRai_zeqer64.ZeqerRom;
 import waffleoRai_zeqer64.GUI.dialogs.progress.IndefProgressDialog;
 import waffleoRai_zeqer64.extract.RomExtractionSummary;
+import waffleoRai_zeqer64.iface.ZeqerCoreInterface;
 
 public class RomImportProgDiaListener implements RomImportListener{
 	

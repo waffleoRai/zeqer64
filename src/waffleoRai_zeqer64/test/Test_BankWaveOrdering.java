@@ -51,8 +51,8 @@ public class Test_BankWaveOrdering {
 				stderr.write("----- " + bname + " -----\n");
 				FileBuffer bfile = f_audiobank.createReadOnlyCopy(offset, offset + len);
 				bfile.writeFile(outdir + File.separator + bname + ".bin");
-				Z64Bank zbnk = Z64Bank.readBank(bfile, icount, pcount, xcount);
-				zbnk.debug_printWaveBlocks(stderr);
+				//Z64Bank zbnk = Z64Bank.readBank(bfile, icount, pcount, xcount);
+				//zbnk.debug_printWaveBlocks(stderr);
 				bfile.dispose();
 				
 				stderr.write("\n");

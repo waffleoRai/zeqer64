@@ -201,7 +201,7 @@ public class Test_BruteforceInsertSeq {
 					wid_map_b1.put(vwav_tbl[0][i][0], vwav_tbl[0][i][1]);
 				}*/
 				int audiotable_off = rom.getFileVirtualOffset(rom.getRomInfo().getDMADataIndex_audiotable());
-				List<Z64WaveInfo> fnt_samples = custom_font.getAllWaveInfoBlocks();
+				List<Z64WaveInfo> fnt_samples = custom_font.getAllWaveBlocks();
 				font_bin_alloc = fnt_samples.size() * (16+48+144);
 				
 				for(Z64WaveInfo winfo : fnt_samples){
@@ -217,11 +217,11 @@ public class Test_BruteforceInsertSeq {
 						ins_pos += wsz;
 					}
 				}
-				custom_font.setSamplesOrderedByUID(false);
+				//custom_font.setSamplesOrderedByUID(false);
 				font_bin_alloc += 16;
-				font_bin_alloc += custom_font.usedInstSlots() * (4+48); //Inst offset, env, inst block
-				font_bin_alloc += custom_font.usedPercSlots() * (4+32);
-				font_bin_alloc += custom_font.usedSFXSlots() * (8);
+				font_bin_alloc += custom_font.getEffectiveInstCount() * (4+48); //Inst offset, env, inst block
+				font_bin_alloc += custom_font.getEffectivePercCount() * (4+32);
+				font_bin_alloc += custom_font.getEffectiveSFXCount() * (8);
 			}
 			
 			//5. Serialize the font and seq, determine offsets and sizes
@@ -239,7 +239,8 @@ public class Test_BruteforceInsertSeq {
 			
 			if(custom_font != null){
 				font_bin = new FileBuffer(font_bin_alloc, true);
-				custom_font.serializeTo(font_bin);
+				//custom_font.serializeTo(font_bin);
+				custom_font.serializeTo(font_bin, Z64Bank.SEROP_DEFAULT);
 				off_fnt = ins_pos - audiobnk_off;
 				sz_fnt = ((int)font_bin.getFileSize() + 0xf) & ~0xf;
 				ins_pos += sz_fnt;
@@ -280,9 +281,9 @@ public class Test_BruteforceInsertSeq {
 					code_dat.replaceByte((byte)custom_font.getCachePolicy(), tbloff+9);
 					code_dat.replaceByte((byte)1, tbloff+10);
 					code_dat.replaceByte((byte)-1, tbloff+11);
-					code_dat.replaceByte((byte)custom_font.getInstCount(), tbloff+12);
-					code_dat.replaceByte((byte)custom_font.getPercCount(), tbloff+13);
-					code_dat.replaceShort((short)custom_font.getSFXCount(), tbloff+14);
+					code_dat.replaceByte((byte)custom_font.getEffectiveInstCount(), tbloff+12);
+					code_dat.replaceByte((byte)custom_font.getEffectivePercCount(), tbloff+13);
+					code_dat.replaceShort((short)custom_font.getEffectiveSFXCount(), tbloff+14);
 					System.err.println("Updated font record @ code 0x" + Long.toHexString(tbloff));
 				}
 			}

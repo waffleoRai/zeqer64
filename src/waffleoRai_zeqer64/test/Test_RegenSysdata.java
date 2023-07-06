@@ -15,7 +15,6 @@ import waffleoRai_zeqer64.ZeqerRom;
 import waffleoRai_zeqer64.engine.EngineBankInfo;
 import waffleoRai_zeqer64.engine.EngineWaveArcInfo;
 import waffleoRai_zeqer64.extract.RomExtractionSummary;
-import waffleoRai_zeqer64.extract.SoundExtractor;
 import waffleoRai_zeqer64.filefmt.AbldFile;
 import waffleoRai_zeqer64.filefmt.ZeqerWaveTable;
 import waffleoRai_zeqer64.filefmt.ZeqerWaveTable.WaveTableEntry;
@@ -49,7 +48,7 @@ public class Test_RegenSysdata {
 			Z64Bank loaded_bnk = ZeqerCore.getActiveCore().loadBank(bank_uid);
 			if(loaded_bnk != null){
 				Z64WaveInfo winfo = null;
-				Collection<Z64Instrument> insts = loaded_bnk.getAllInstruments();
+				Collection<Z64Instrument> insts = loaded_bnk.getAllUniqueInstruments();
 				for(Z64Instrument inst : insts){
 					winfo = inst.getSampleHigh();
 					if(winfo != null){
@@ -79,7 +78,7 @@ public class Test_RegenSysdata {
 					}
 				}
 				
-				Collection<Z64Drum> drums = loaded_bnk.getAllDrums();
+				Collection<Z64Drum> drums = loaded_bnk.getAllUniqueDrums();
 				for(Z64Drum drum : drums){
 					winfo = drum.getSample();
 					if(winfo != null){
@@ -195,7 +194,7 @@ public class Test_RegenSysdata {
 				ImportMetadata.main(new String[]{outpath, pmeta_wav, pmeta_seq, pmeta_prs, pmeta_bnk, pmeta_slb, pmeta_sal});
 			}
 			
-			//Generate scrubbed copies of presets and sequences TODO
+			//Generate scrubbed copies of presets and sequences
 			core.saveScrubbedCopies();
 			
 		}

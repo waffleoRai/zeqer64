@@ -9,13 +9,13 @@ import java.util.Map;
 import waffleoRai_Sound.nintendo.Z64WaveInfo;
 import waffleoRai_soundbank.nintendo.z64.Z64Envelope;
 import waffleoRai_zeqer64.ZeqerCore;
-import waffleoRai_zeqer64.ZeqerCoreInterface;
 import waffleoRai_zeqer64.ZeqerPreset;
 import waffleoRai_zeqer64.ZeqerRom;
 import waffleoRai_zeqer64.ZeqerStringManager;
 import waffleoRai_zeqer64.GUI.dialogs.progress.IndefProgressDialog;
 import waffleoRai_zeqer64.filefmt.NusRomInfo;
 import waffleoRai_zeqer64.filefmt.ZeqerWaveTable.WaveTableEntry;
+import waffleoRai_zeqer64.iface.ZeqerCoreInterface;
 import waffleoRai_zeqer64.listeners.RomImportProgDiaListener;
 
 public class CoreGUIInterface implements ZeqerCoreInterface{
@@ -275,30 +275,30 @@ public class CoreGUIInterface implements ZeqerCoreInterface{
 	/*----- Envelope Management -----*/
 	
 	public Map<String, Z64Envelope> getAllEnvelopePresets(){
-		//TODO
-		return null;
+		if(core == null) return null;
+		return core.getSavedEnvPresets();
 	}
 	
 	public boolean addEnvelopePreset(String name, Z64Envelope env){
-		//TODO
-		return false;
+		if(core == null) return false;
+		return core.addEnvPreset(name, env);
 	}
 	
 	/*----- Preset Management -----*/
 	
 	public List<ZeqerPreset> getAllInstPresets(){
-		//TODO
-		return null;
+		if(core == null) return null;
+		return core.getAllValidPresets();
 	}
 	
 	public boolean addUserPreset(ZeqerPreset preset){
-		//TODO
-		return false;
+		if(core == null) return false;
+		return core.addUserPreset(preset);
 	}
 	
 	public boolean deletePreset(int uid){
-		//TODO
-		return false;
+		if(core == null) return false;
+		return core.removeUserPreset(uid);
 	}
 
 }

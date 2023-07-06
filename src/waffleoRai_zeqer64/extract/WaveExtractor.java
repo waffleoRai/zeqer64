@@ -122,7 +122,8 @@ public class WaveExtractor {
 			BankInfoEntry e = bnk_tbl[i];
 			if(e == null) continue;
 			FileBuffer bnkdat = f_audiobank.createReadOnlyCopy(e.getOffset(), e.getOffset() + e.getSize());
-			Z64Bank bnk = Z64Bank.readBank(bnkdat, e.getInstrumentCount(), e.getPercussionCount(), e.getSFXCount());
+			Z64Bank bnk = Z64Bank.readRaw(bnkdat, 
+					Z64Bank.genOptionsForKnownCounts(e.getInstrumentCount(), e.getPercussionCount(), e.getSFXCount()));
 			bnkdat.dispose();
 			
 			int w_idx = e.getPrimaryWaveArcIndex();
@@ -137,7 +138,7 @@ public class WaveExtractor {
 			
 			//System.err.println("DEBUG Using WArc " + w_idx + " --");
 			Map<Integer, Z64WaveInfo> wmap = found.get(w_idx);
-			List<Z64WaveInfo> winfo_list = bnk.getAllWaveInfoBlocks();
+			List<Z64WaveInfo> winfo_list = bnk.getAllWaveBlocks();
 			for(Z64WaveInfo winfo : winfo_list){
 				int key = winfo.getWaveOffset();
 				if(!wmap.containsKey(key)){

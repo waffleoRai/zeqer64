@@ -62,6 +62,8 @@ public class RomExtractionSummary {
 	public int ipresetsAddedAsCustom = -1;
 	public int ppresetsNew = -1;
 	public int ppresetsAddedAsCustom = -1;
+	public int dpresetsNew = -1;
+	public int dpresetsAddedAsCustom = -1;
 	
 	//Seq
 	public int seqsFound = -1;

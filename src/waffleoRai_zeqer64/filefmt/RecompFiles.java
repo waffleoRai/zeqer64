@@ -220,7 +220,7 @@ public class RecompFiles {
 		hout.write("\n");
 		
 		//Drums
-		if(mybank.getPercCount() > 0){
+		if(mybank.getEffectivePercCount() > 0){
 			hout.write("/**** DRUMS ****/\n");
 			xmlout.write("\t<Drums>\n");
 			Z64Drum[] pslots = mybank.getPercussionSet();
@@ -242,7 +242,7 @@ public class RecompFiles {
 		else xmlout.write("\t<Drums/>\n");
 		
 		//SFX
-		if(mybank.getSFXCount() > 0){
+		if(mybank.getEffectiveSFXCount() > 0){
 			hout.write("/**** EFFECTS ****/\n");
 			xmlout.write("\t<SoundEffects>\n");
 			Z64SoundEffect[] sfxslots = mybank.getSFXSet();

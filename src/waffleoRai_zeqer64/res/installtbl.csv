@@ -12,6 +12,7 @@ nzse.xml,rominfo/nzse.xml,0
 pzle.xml,rominfo/pzle.xml,0
 audslots_oot.txt,rominfo/audslots_oot.txt,0
 audslots_oot1-0.txt,rominfo/audslots_oot1-0.txt,0
+envpresets.bin,bnk/envpresets.bin,0
 systables/zbanks.bin,bnk/zbnks/zbanks.bin,0
 systables/zpresets_scrubbed.bin,bnk/zbnks/zpresets.bin,0
 systables/zseqs.bin,seq/zseqs/zseqs.bin,0
