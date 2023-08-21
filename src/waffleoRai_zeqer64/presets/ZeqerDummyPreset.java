@@ -46,6 +46,12 @@ public class ZeqerDummyPreset extends ZeqerPreset{
 		ipre.setEnumLabel(enumLabel);
 		ipre.setName(name);
 		
+		if(this.tags != null && !this.tags.isEmpty()){
+			for(String tag : this.tags){
+				ipre.addTag(tag);
+			}
+		}
+		
 		return ipre;
 	}
 	
@@ -58,6 +64,12 @@ public class ZeqerDummyPreset extends ZeqerPreset{
 		dpre.setEnumLabel(enumLabel);
 		dpre.setName(name);
 		
+		if(this.tags != null && !this.tags.isEmpty()){
+			for(String tag : this.tags){
+				dpre.addTag(tag);
+			}
+		}
+		
 		if(enumLabel == null){
 			dpre.setEnumLabel(String.format("DPRE_%08x", uid));
 		}
@@ -67,6 +79,38 @@ public class ZeqerDummyPreset extends ZeqerPreset{
 		}
 		
 		return dpre;
+	}
+	
+	public ZeqerPercPreset loadDrumsetData(ZeqerPercPreset source){
+		if(source == null) return null;
+		int regcount = source.getRegionCount();
+		
+		ZeqerPercPreset ppreset = new ZeqerPercPreset(uid);
+		ppreset.clearAndReallocRegions(regcount);
+		
+		for(int i = 0; i < regcount; i++) {
+			ppreset.setRegion(i, source.getRegion(i));
+		}
+		
+		ppreset.setUID(uid);
+		ppreset.setEnumLabel(enumLabel);
+		ppreset.setName(name);
+		
+		if(this.tags != null && !this.tags.isEmpty()){
+			for(String tag : this.tags){
+				ppreset.addTag(tag);
+			}
+		}
+		
+		if(enumLabel == null){
+			ppreset.setEnumLabel(String.format("PPRE_%08x", uid));
+		}
+		
+		if(name == null){
+			ppreset.setName(String.format("PPRE_%08x", uid));
+		}
+		
+		return ppreset;
 	}
 	
 	protected int serializeMe(FileBuffer buffer){

@@ -385,7 +385,7 @@ public class TagFilterPanel<T> extends FilterPanel<T>{
 	}
 	
 	public void enableAll(){
-		btnAdd.setEnabled(pool == null && !pool.isEmpty());
+		btnAdd.setEnabled(pool != null && !pool.isEmpty());
 		lblOr.setEnabled(true);
 		lblAnd.setEnabled(true);
 		btnAdd.repaint();

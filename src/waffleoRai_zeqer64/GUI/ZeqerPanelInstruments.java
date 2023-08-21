@@ -6,12 +6,14 @@ import javax.swing.JPanel;
 import waffleoRai_zeqer64.ZeqerPreset;
 import waffleoRai_zeqer64.GUI.dialogs.InstTypeMiniDialog;
 import waffleoRai_zeqer64.GUI.dialogs.ZeqerDrumEditDialog;
+import waffleoRai_zeqer64.GUI.dialogs.ZeqerDrumsetEditDialog;
 import waffleoRai_zeqer64.GUI.dialogs.ZeqerInstEditDialog;
 import waffleoRai_zeqer64.GUI.filters.FlagFilterPanel;
 import waffleoRai_zeqer64.GUI.filters.TagFilterPanel;
 import waffleoRai_zeqer64.GUI.filters.TextFilterPanel;
 import waffleoRai_zeqer64.GUI.filters.ZeqerFilter;
 import waffleoRai_zeqer64.iface.ZeqerCoreInterface;
+import waffleoRai_zeqer64.presets.ZeqerDrumPreset;
 import waffleoRai_zeqer64.presets.ZeqerInstPreset;
 import waffleoRai_zeqer64.presets.ZeqerPercPreset;
 import waffleoRai_zeqer64.presets.ZeqerSFXPreset;
@@ -22,6 +24,7 @@ import java.awt.GridBagConstraints;
 import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.IOException;
 import java.io.Writer;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -38,9 +41,12 @@ import javax.swing.event.ListSelectionListener;
 
 import waffleoRai_GUITools.ComponentGroup;
 import waffleoRai_GUITools.WriterPanel;
+import waffleoRai_SeqSound.MIDI;
 import waffleoRai_Sound.nintendo.Z64Sound;
+import waffleoRai_Sound.nintendo.Z64Sound.Z64Tuning;
 import waffleoRai_Sound.nintendo.Z64WaveInfo;
 import waffleoRai_Utils.VoidCallbackMethod;
+import waffleoRai_soundbank.nintendo.z64.Z64Drum;
 import waffleoRai_soundbank.nintendo.z64.Z64Instrument;
 
 import javax.swing.DefaultListModel;
@@ -50,6 +56,8 @@ public class ZeqerPanelInstruments extends JPanel{
 	
 	//TODO need a subpanel class for playing on the piano or playing using a simple seq
 	//	Playback will probably have to involve sending a short command to native code for synthesis
+	
+	//TODO Add a duplicate preset to create new option
 
 	private static final long serialVersionUID = -6390624749239280331L;
 	
@@ -59,6 +67,40 @@ public class ZeqerPanelInstruments extends JPanel{
 	public static final int FLAGIDX_INST = 0;
 	public static final int FLAGIDX_PERC = 1;
 	public static final int FLAGIDX_SFX = 2;
+	
+	private static final String STRKEY_BTN_NEW = "PNLINST_BTN_NEW";
+	private static final String STRKEY_BTN_EDIT = "PNLINST_BTN_EDIT";
+	private static final String STRKEY_BTN_DUP = "PNLINST_BTN_DUP";
+	private static final String STRKEY_BTN_DELETE = "PNLINST_BTN_DELETE";
+	
+	private static final String STRKEY_FLTTYPE_INST = "PNLINST_FLAG_INST";
+	private static final String STRKEY_FLTTYPE_DRUM = "PNLINST_FLAG_DRUM";
+	private static final String STRKEY_FLTTYPE_PERC = "PNLINST_FLAG_PERC";
+	
+	private static final String STRKEY_INFO_ERROR_T = "PNLINST_INFOPNL_ERROR_T";
+	private static final String STRKEY_INFO_ERROR_M = "PNLINST_INFOPNL_ERROR_M";
+	private static final String STRKEY_INFO_NOPRS = "PNLINST_INFOPNL_NOPRS";
+	
+	private static final String STRKEY_IFIELD_TYPE = "PNLINST_INFOFIELD_TYPE";
+	private static final String STRKEY_IFIELD_ENUM = "PNLINST_INFOFIELD_ENUM";
+	private static final String STRKEY_IFIELD_RTIME = "PNLINST_INFOFIELD_RELTIME";
+	private static final String STRKEY_IFIELD_RUNIT = "PNLINST_INFOFIELD_RELUNIT";
+	private static final String STRKEY_IFIELD_REG = "PNLINST_INFOFIELD_REGIONS";
+	private static final String STRKEY_IFIELD_SLOTSUSED = "PNLINST_INFOFIELD_PSLOTSUSED";
+	private static final String STRKEY_IFIELD_PAN = "PNLINST_INFOFIELD_PAN";
+	private static final String STRKEY_IFIELD_SMPL = "PNLINST_INFOFIELD_SAMPLE";
+	private static final String STRKEY_IFIELD_NOSMPL = "PNLINST_INFOFIELD_SAMPLE_BAD";
+	private static final String STRKEY_IFIELD_ROOTTUNE = "PNLINST_INFOFIELD_TUNE_ROOT";
+	private static final String STRKEY_IFIELD_FINETUNE = "PNLINST_INFOFIELD_TUNE_FINE";
+	private static final String STRKEY_IFIELD_FINEUNIT = "PNLINST_INFOFIELD_TUNE_FINE_UNITS";
+	private static final String STRKEY_IFIELD_TAGS = "PNLINST_INFOFIELD_TAGS";
+	private static final String STRKEY_IFIELD_NOTAGS = "PNLINST_INFOFIELD_TAGS_NONE";
+	
+	private static final String STRKEY_IFIELD_PTYPE_I = "PNLINST_INFOFIELD_PTYPE_I";
+	private static final String STRKEY_IFIELD_PTYPE_D = "PNLINST_INFOFIELD_PTYPE_D";
+	private static final String STRKEY_IFIELD_PTYPE_P = "PNLINST_INFOFIELD_PTYPE_P";
+	private static final String STRKEY_IFIELD_PTYPE_X = "PNLINST_INFOFIELD_PTYPE_X";
+	private static final String STRKEY_IFIELD_PTYPE_U = "PNLINST_INFOFIELD_PTYPE_U";
 	
 	/*----- Inner Classes -----*/
 	
@@ -191,11 +233,11 @@ public class ZeqerPanelInstruments extends JPanel{
 		GridBagLayout gbl_pnlCtrl = new GridBagLayout();
 		gbl_pnlCtrl.columnWidths = new int[]{0, 0, 0, 0, 0};
 		gbl_pnlCtrl.rowHeights = new int[]{0, 0};
-		gbl_pnlCtrl.columnWeights = new double[]{0.0, 0.0, 1.0, 0.0, Double.MIN_VALUE};
+		gbl_pnlCtrl.columnWeights = new double[]{0.0, 0.0, 0.0, 1.0, 0.0, Double.MIN_VALUE};
 		gbl_pnlCtrl.rowWeights = new double[]{0.0, Double.MIN_VALUE};
 		pnlCtrl.setLayout(gbl_pnlCtrl);
 		
-		JButton btnNew = new JButton("New...");
+		JButton btnNew = new JButton(getString(STRKEY_BTN_NEW));
 		GridBagConstraints gbc_btnNew = new GridBagConstraints();
 		gbc_btnNew.insets = new Insets(0, 0, 0, 5);
 		gbc_btnNew.gridx = 0;
@@ -211,12 +253,32 @@ public class ZeqerPanelInstruments extends JPanel{
 		btnNew.addActionListener(new ActionListener(){
 			public void actionPerformed(ActionEvent e) {
 				//btnNewCallback();
+				dummyCallback();
 			}});
 		
-		JButton btnEdit = new JButton("Edit...");
+		JButton btnDup = new JButton(getString(STRKEY_BTN_DUP));
+		GridBagConstraints gbc_btnDup = new GridBagConstraints();
+		gbc_btnDup.insets = new Insets(0, 0, 0, 5);
+		gbc_btnDup.gridx = 1;
+		gbc_btnDup.gridy = 0;
+		pnlCtrl.add(btnDup, gbc_btnDup);
+		if(presetsEditable){
+			globalEnable.addComponent("btnDup", btnDup);
+			lstSelectedEnable.addComponent("btnDup", btnDup);
+		}
+		else{
+			btnDup.setEnabled(false);
+			btnDup.setVisible(false);
+		}
+		btnDup.addActionListener(new ActionListener(){
+			public void actionPerformed(ActionEvent e) {
+				btnDuplicateCallback();
+			}});
+		
+		JButton btnEdit = new JButton(getString(STRKEY_BTN_EDIT));
 		GridBagConstraints gbc_btnEdit = new GridBagConstraints();
 		gbc_btnEdit.insets = new Insets(0, 0, 0, 5);
-		gbc_btnEdit.gridx = 1;
+		gbc_btnEdit.gridx = 2;
 		gbc_btnEdit.gridy = 0;
 		pnlCtrl.add(btnEdit, gbc_btnEdit);
 		if(presetsEditable){
@@ -229,12 +291,13 @@ public class ZeqerPanelInstruments extends JPanel{
 		}
 		btnEdit.addActionListener(new ActionListener(){
 			public void actionPerformed(ActionEvent e) {
-				//btnEditCallback();
+				btnEditCallback();
+				//dummyCallback();
 			}});
 		
-		JButton btnDelete = new JButton("Delete");
+		JButton btnDelete = new JButton(getString(STRKEY_BTN_DELETE));
 		GridBagConstraints gbc_btnDelete = new GridBagConstraints();
-		gbc_btnDelete.gridx = 3;
+		gbc_btnDelete.gridx = 4;
 		gbc_btnDelete.gridy = 0;
 		pnlCtrl.add(btnDelete, gbc_btnDelete);
 		if(presetsEditable){
@@ -247,7 +310,8 @@ public class ZeqerPanelInstruments extends JPanel{
 		}
 		btnDelete.addActionListener(new ActionListener(){
 			public void actionPerformed(ActionEvent e) {
-				//btnDeleteCallback();
+				btnDeleteCallback();
+				//dummyCallback();
 			}});
 		
 		//TODO
@@ -275,14 +339,21 @@ public class ZeqerPanelInstruments extends JPanel{
 				if(item.preset == null) return false;
 				return (item.preset instanceof ZeqerInstPreset);
 			}
-		}, "Standard Instrument", true);
+		}, getString(STRKEY_FLTTYPE_INST), true);
+		fpnl2.addSwitch(new ZeqerFilter<InstNode>(){
+			public boolean itemPasses(InstNode item){
+				if(item == null) return false;
+				if(item.preset == null) return false;
+				return (item.preset instanceof ZeqerDrumPreset);
+			}
+		}, getString(STRKEY_FLTTYPE_DRUM), true);
 		fpnl2.addSwitch(new ZeqerFilter<InstNode>(){
 			public boolean itemPasses(InstNode item){
 				if(item == null) return false;
 				if(item.preset == null) return false;
 				return (item.preset instanceof ZeqerPercPreset);
 			}
-		}, "Percussion", true);
+		}, getString(STRKEY_FLTTYPE_PERC), true);
 		pnlFilt.addPanel(fpnl2);
 		
 		//Text search
@@ -298,6 +369,7 @@ public class ZeqerPanelInstruments extends JPanel{
 		});
 		pnlFilt.addPanel(fpnl1);
 		
+		//Tag panel
 		pnlTags = new TagFilterPanel<InstNode>(parent, core.getString(ZeqerGUIUtils.STRKEY_FILPNL_TAGS));
 		pnlFilt.addPanel(pnlTags);
 		
@@ -309,6 +381,11 @@ public class ZeqerPanelInstruments extends JPanel{
 	}
 	
 	/*----- Getters -----*/
+	
+	protected String getString(String key){
+		if(core == null) return key;
+		return core.getString(key);
+	}
 	
 	public ZeqerPreset getSelectedPreset(){
 		if(lstPresets.isSelectionEmpty()) return null;
@@ -352,6 +429,7 @@ public class ZeqerPanelInstruments extends JPanel{
 				return tags.contains(txt);
 			}
 		});
+		pnlTags.repaint();
 		refilter();
 	}
 	
@@ -383,64 +461,155 @@ public class ZeqerPanelInstruments extends JPanel{
 		updateInfoPanel(null);
 	}
 	
+	private void writeInstTuningInfo(float raw_tune, Writer writer) throws IOException{
+		Z64Tuning cmn_tune = Z64Sound.calculateTuning((byte)60, raw_tune);
+		
+		int rootkey = cmn_tune.root_key;
+		int octave = (rootkey / 12) - 1;
+		String notename = MIDI.NOTES[rootkey % 12];
+		
+		writer.write(notename + octave + " (" + rootkey + ") ");
+		
+		if(cmn_tune.fine_tune >= 0){
+			writer.write("+" + cmn_tune.fine_tune);
+		}
+		else writer.write(Byte.toString(cmn_tune.fine_tune));
+		
+		writer.write(" " + getString(STRKEY_IFIELD_FINEUNIT));
+		
+	}
+	
+	private void writeInstInfo(InstNode selection, Writer writer) throws IOException{
+		writer.write(getString(STRKEY_IFIELD_PTYPE_I) + "\n");
+		//Type specific...
+		ZeqerInstPreset ipreset = (ZeqerInstPreset)selection.preset;
+		writer.write(getString(STRKEY_IFIELD_ENUM) + " " + ipreset.getEnumLabel() + "\n");
+		
+		Z64Instrument inst = ipreset.getInstrument();
+		if(inst != null){
+			int relraw = Byte.toUnsignedInt(inst.getDecay());
+			writer.write(getString(STRKEY_IFIELD_RTIME) + " " + 
+					relraw + " (" +
+					Z64Sound.releaseValueToMillis(relraw) + " " + getString(STRKEY_IFIELD_RUNIT) + ")\n");
+			
+			writer.write(getString(STRKEY_IFIELD_REG) + " -- \n");
+			String sname = null;
+			Z64WaveInfo smpl = inst.getSampleLow();
+			if(smpl != null){
+				writer.write("0 - " + inst.getLowRangeTop() + ":\t");
+				sname = smpl.getName();
+				if(sname != null) writer.write(sname);
+				else writer.write(String.format("(%08x)", smpl.getUID()));
+				
+				float raw_tune = inst.getTuningLow();
+				writer.write(" [");
+				writeInstTuningInfo(raw_tune, writer);
+				
+				writer.write("]\n");
+				//Start middle
+				writer.write((inst.getLowRangeTop() + 1) + " - ");
+			}
+			else writer.write("0 - ");
+			
+			if(inst.getSampleHigh() != null){
+				writer.write((inst.getHighRangeBottom() - 1) + ":\t");
+			}
+			else writer.write("127:\t");
+			
+			
+			smpl = inst.getSampleMiddle();
+			sname = smpl.getName();
+			if(sname != null) writer.write(sname);
+			else writer.write(String.format("(%08x)", smpl.getUID()));
+			
+			float raw_tune = inst.getTuningMiddle();
+			writer.write(" [");
+			writeInstTuningInfo(raw_tune, writer);
+			writer.write("]\n");
+			
+			smpl = inst.getSampleHigh();
+			if(smpl != null){
+				writer.write(inst.getHighRangeBottom() + " - 127:\t");
+				sname = smpl.getName();
+				if(sname != null) writer.write(sname);
+				else writer.write(String.format("(%08x)", smpl.getUID()));
+				
+				raw_tune = inst.getTuningHigh();
+				writer.write(" [");
+				writeInstTuningInfo(raw_tune, writer);
+				writer.write("]\n");
+			}
+		}
+	}
+	
+	private void writeDrumInfo(InstNode selection, Writer writer)  throws IOException{
+		writer.write(getString(STRKEY_IFIELD_PTYPE_D) + "\n");
+		ZeqerDrumPreset dpreset = (ZeqerDrumPreset)selection.preset;
+		writer.write(getString(STRKEY_IFIELD_ENUM) + " " + dpreset.getEnumLabel() + "\n");
+		
+		Z64Drum drum = dpreset.getData();
+		if(drum != null){
+			int relraw = Byte.toUnsignedInt(drum.getDecay());
+			writer.write(getString(STRKEY_IFIELD_RTIME) + " " + 
+					relraw + " (" +
+					Z64Sound.releaseValueToMillis(relraw) + " " + getString(STRKEY_IFIELD_RUNIT) + ")\n");
+			writer.write(getString(STRKEY_IFIELD_PAN) + " " + 
+					ZeqerGUIUtils.pan2String(drum.getPan(), core) + String.format(" (0x%02x)\n", drum.getPan()));
+			
+			Z64WaveInfo smpl = drum.getSample();
+			writer.write(getString(STRKEY_IFIELD_SMPL) + " ");
+			if(smpl != null){
+				String name = smpl.getName();
+				if(name != null) writer.write(name);
+				else writer.write(String.format("(%08x)", smpl.getUID()));
+			}
+			else writer.write("<" + getString(STRKEY_IFIELD_NOSMPL) + ">");
+			writer.write("\n");
+			
+			int ukey = drum.getRootKey();
+			int octave = (ukey/12) - 1;
+			String note = MIDI.NOTES[ukey%12];
+			writer.write(getString(STRKEY_IFIELD_ROOTTUNE) + " " + note + octave + " (" + ukey + ")\n");
+			writer.write(getString(STRKEY_IFIELD_FINETUNE) + " " + drum.getFineTune() + " " + getString(STRKEY_IFIELD_FINEUNIT) + "\n");
+		}
+	}
+	
+	private void writePercSetInfo(InstNode selection, Writer writer) throws IOException{
+		writer.write(getString(STRKEY_IFIELD_PTYPE_P) + "\n");
+		ZeqerPercPreset perc = (ZeqerPercPreset)selection.preset;
+		writer.write(getString(STRKEY_IFIELD_REG) + " " + perc.getRegionCount() + "\n");
+		writer.write(getString(STRKEY_IFIELD_SLOTSUSED) + " " + perc.getMaxUsedSlotCount() + "\n");
+	}
+	
 	private void updateInfoPanel(InstNode selection){
 		try{
 			pnlInfo.clear();
 			Writer writer = pnlInfo.getWriter();
 			if(selection == null || selection.preset == null){
-				writer.write("<No preset selected>\n");
+				writer.write("<" + getString(STRKEY_INFO_NOPRS) + ">\n");
 			}
 			else{
 				writer.write(selection.preset.getName() + "\n");
 				writer.write("UID: " + String.format("%08x\n", selection.preset.getUID()));
-				writer.write("Type: ");
+				writer.write(getString(STRKEY_IFIELD_TYPE) + " ");
 				if(selection.preset instanceof ZeqerInstPreset){
-					writer.write("Standard Instrument\n");
-					//Type specific...
-					ZeqerInstPreset ipreset = (ZeqerInstPreset)selection.preset;
-					writer.write("Enum Stem: " + ipreset.getEnumLabel() + "\n");
-					
-					Z64Instrument inst = ipreset.getInstrument();
-					if(inst != null){
-						int relraw = inst.getDecay();
-						writer.write("Release Time: " + Z64Sound.releaseValueToMillis(relraw) + " milliseconds\n");
-						writer.write("Regions -- \n");
-						Z64WaveInfo smpl = inst.getSampleLow();
-						if(smpl != null){
-							writer.write("0 - " + inst.getLowRangeTop() + ":\t");
-							writer.write(smpl.getName() + "\n");
-							writer.write((inst.getLowRangeTop() + 1) + " - ");
-						}
-						else writer.write("0 - ");
-						
-						if(inst.getSampleHigh() != null){
-							writer.write((inst.getHighRangeBottom() - 1) + ":\t");
-						}
-						else writer.write("127:\t");
-						smpl = inst.getSampleMiddle();
-						writer.write(smpl.getName() + "\n");
-						
-						smpl = inst.getSampleHigh();
-						if(smpl != null){
-							writer.write(inst.getHighRangeBottom() + " - 127:\t");
-							writer.write(smpl.getName() + "\n");
-						}
-					}
+					writeInstInfo(selection, writer);
 				}
 				else if(selection.preset instanceof ZeqerPercPreset){
-					writer.write("Percussion Set\n");
-					ZeqerPercPreset perc = (ZeqerPercPreset)selection.preset;
-					writer.write("Regions: " + perc.getRegionCount() + "\n");
-					writer.write("Max Slots Used: " + perc.getMaxUsedSlotCount() + "\n");
+					writePercSetInfo(selection, writer);
+				}
+				else if(selection.preset instanceof ZeqerDrumPreset){
+					writeDrumInfo(selection, writer);
 				}
 				else if(selection.preset instanceof ZeqerSFXPreset){
-					writer.write("SFX Set\n");
+					writer.write(getString(STRKEY_IFIELD_PTYPE_X) + "\n");
 				}
 				else{
-					writer.write("Unknown\n");
+					writer.write(getString(STRKEY_IFIELD_PTYPE_U) + "\n");
 				}
 				
-				writer.write("Tags: ");
+				//Tags
+				writer.write(getString(STRKEY_IFIELD_TAGS) + " ");
 				boolean first = true;
 				List<String> tags = selection.preset.getAllTags();
 				if(tags != null && !tags.isEmpty()){
@@ -450,38 +619,51 @@ public class ZeqerPanelInstruments extends JPanel{
 						first = false;	
 					}
 				}
-				else writer.write("<None>");
+				else writer.write("<" + getString(STRKEY_IFIELD_NOTAGS) + ">");
 				writer.write("\n");
 			}
 			writer.close();
 		}
 		catch(Exception ex){
 			ex.printStackTrace();
-			JOptionPane.showMessageDialog(this, "ERROR: Could not render information for selected sample!",
-						"Preset Info", JOptionPane.ERROR_MESSAGE);
+			JOptionPane.showMessageDialog(this, getString(STRKEY_INFO_ERROR_M),
+						getString(STRKEY_INFO_ERROR_T), JOptionPane.ERROR_MESSAGE);
 		}
 		pnlInfo.repaint();
 	}
 	
-	public void setWait(){
+	public void disableAll(){
 		globalEnable.setEnabling(false);
 		pnlFilt.disableAll();
 		globalEnable.repaint();
 		pnlFilt.repaint();
-		setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
 	}
 	
-	public void unsetWait(){
+	public void reenable(){
 		globalEnable.setEnabling(true);
 		pnlFilt.enableAll();
 		lstSelectedEnable.setEnabling(!lstPresets.isSelectionEmpty());
 		
 		globalEnable.repaint();
 		pnlFilt.repaint();
+	}
+	
+	public void setWait(){
+		disableAll();
+		setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+	}
+	
+	public void unsetWait(){
+		reenable();
 		setCursor(null);
 	}
 	
 	/*----- Callbacks -----*/
+	
+	private void dummyCallback(){
+		JOptionPane.showMessageDialog(this, "Sorry, this component doesn't work yet!", 
+				"Notice", JOptionPane.INFORMATION_MESSAGE);
+	}
 	
 	private void lstPresetsSelectCallback(){
 		setWait();
@@ -492,12 +674,18 @@ public class ZeqerPanelInstruments extends JPanel{
 		unsetWait();
 	}
 	
+	private void btnDuplicateCallback(){
+		//TODO
+		dummyCallback();
+	}
+	
 	private void btnNewCallback(){
 		if(!presetsEditable) return;
 		
 		//Need a dialog that asks if want to create
 		//	a std inst or a perc preset.
 		setWait();
+		InstNode inode = null;
 		int ret = InstTypeMiniDialog.showDialog(parent);
 		if(ret == InstTypeMiniDialog.SELECTION_INST){
 			ZeqerInstEditDialog dialog = new ZeqerInstEditDialog(parent, core);
@@ -505,36 +693,57 @@ public class ZeqerPanelInstruments extends JPanel{
 			//Disposes itself in closeMe()
 			
 			if(dialog.getExitSelection()){
-				ZeqerInstPreset instp = dialog.getInstrument();
-				if(core != null){
-					core.addUserPreset(instp);
+				ZeqerInstPreset instp = new ZeqerInstPreset();
+				int result = dialog.loadDataToInstrument(instp);
+				
+				if(result == ZeqerInstEditDialog.INSTLOAD_ERR_NONE){
+					if(core != null){
+						core.addUserPreset(instp);
+					}
+					inode = new InstNode(instp);
 				}
-				InstNode inode = new InstNode(instp);
-				allPresets.add(inode);
-				Collections.sort(allPresets);
-				clearAllFilters();
-				lstPresets.setSelectedValue(inode, true);
-				updateInfoPanel(inode);
+				else{
+					//TODO
+				}
 			}
 		}
 		else if(ret == InstTypeMiniDialog.SELECTION_PERC){
-			ZeqerDrumEditDialog dialog = new ZeqerDrumEditDialog(parent, core);
+			ZeqerDrumsetEditDialog dialog = new ZeqerDrumsetEditDialog(parent, core);
 			dialog.showMe(this);
 			//Disposes itself in closeMe()
-			
-			ZeqerPercPreset percp = dialog.getDrum();
-			if(percp != null){
+
+			if(dialog.getExitSelection()){
+				ZeqerPercPreset percp = new ZeqerPercPreset(1);
+				dialog.loadDataIntoDrum(percp);
 				if(core != null){
 					core.addUserPreset(percp);
 				}
-				InstNode inode = new InstNode(percp);
-				allPresets.add(inode);
-				Collections.sort(allPresets);
-				clearAllFilters();
-				lstPresets.setSelectedValue(inode, true);
-				updateInfoPanel(inode);
+				inode = new InstNode(percp);
 			}
 		}
+		else if(ret == InstTypeMiniDialog.SELECTION_DRUM){
+			ZeqerDrumEditDialog dialog = new ZeqerDrumEditDialog(parent, core);
+			dialog.showMe(this);
+			
+			if(dialog.getExitSelection()){
+				ZeqerDrumPreset drump = new ZeqerDrumPreset();
+				dialog.loadDataInto(drump);
+				if(core != null){
+					core.addUserPreset(drump);
+				}
+				inode = new InstNode(drump);
+			}
+			
+		}
+		
+		if(inode != null){
+			allPresets.add(inode);
+			Collections.sort(allPresets);
+			clearAllFilters();
+			lstPresets.setSelectedValue(inode, true);
+			updateInfoPanel(inode);
+		}
+		
 		unsetWait();
 	}
 	
@@ -549,27 +758,52 @@ public class ZeqerPanelInstruments extends JPanel{
 		setWait();
 		InstNode sel = lstPresets.getSelectedValue();
 		if(sel != null && sel.preset != null){
+			
+			if(core != null){
+				if(!core.isEditablePreset(sel.preset.getUID())){
+					int ret = JOptionPane.showConfirmDialog(this, 
+							"Edits on selected preset will not be saved. Continue?", 
+							"Edit Preset", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+					if(ret != JOptionPane.YES_OPTION){
+						unsetWait();
+						return;
+					}
+				}
+			}
+			
 			if(sel.preset instanceof ZeqerInstPreset){
 				ZeqerInstPreset instp = (ZeqerInstPreset)sel.preset;
 				ZeqerInstEditDialog dialog = new ZeqerInstEditDialog(parent, core, instp);
 				dialog.showMe(this);
 				//Disposes itself in closeMe()
 				
-				//The save option in this dialog updates the inst preset by reference.
-				//So shouldn't need to do anything else there.
-				
-				updateInfoPanel(sel);
+				if(dialog.getExitSelection()){
+					dialog.loadDataToInstrument(instp);
+					updateInfoPanel(sel);
+				}
 			}
 			else if(sel.preset instanceof ZeqerPercPreset){
 				ZeqerPercPreset percp = (ZeqerPercPreset)sel.preset;
-				ZeqerDrumEditDialog dialog = new ZeqerDrumEditDialog(parent, core);
+				ZeqerDrumsetEditDialog dialog = new ZeqerDrumsetEditDialog(parent, core);
 				dialog.setDrum(percp);
 				dialog.showMe(this);
 				//Disposes itself in closeMe()
 				
-				//Like inst, the drum dialog writes back to ref on save.
+				if(dialog.getExitSelection()){
+					dialog.loadDataIntoDrum(percp);
+					updateInfoPanel(sel);
+				}
+			}
+			else if(sel.preset instanceof ZeqerDrumPreset){
+				ZeqerDrumPreset drump = (ZeqerDrumPreset)sel.preset;
+				ZeqerDrumEditDialog dialog = new ZeqerDrumEditDialog(parent, core);
+				dialog.loadDrumData(drump);
+				dialog.showMe(this);
 				
-				updateInfoPanel(sel);
+				if(dialog.getExitSelection()){
+					dialog.loadDataInto(drump);
+					updateInfoPanel(sel);
+				}
 			}
 		}
 		

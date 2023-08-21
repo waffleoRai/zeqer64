@@ -2,12 +2,16 @@ package waffleoRai_zeqer64.presets;
 
 import java.util.Random;
 
+import waffleoRai_Sound.nintendo.Z64Sound;
 import waffleoRai_soundbank.nintendo.z64.Z64Drum;
 
 public class ZeqerPercRegion {
 	
-	private byte minNote = 0;
-	private byte maxNote = 127;
+	public static final int PERCREG_MIN_NOTE = Z64Sound.STDRANGE_BOTTOM;
+	public static final int PERCREG_MAX_NOTE = Z64Sound.STDRANGE_BOTTOM + Z64Sound.STDRANGE_SIZE - 1;
+	
+	private byte minNote = PERCREG_MIN_NOTE;
+	private byte maxNote = PERCREG_MAX_NOTE;
 	private Z64Drum data = null;
 	
 	private String nameStem = null;
@@ -26,12 +30,47 @@ public class ZeqerPercRegion {
 	public String getNameStem(){return nameStem;}
 	public String getEnumStem(){return enumStem;}
 	
-	public void setMinNote(byte val){minNote = val;}
-	public void setMinNote(int val){minNote = (byte)val;}
-	public void setMaxNote(byte val){maxNote = val;}
-	public void setMaxNote(int val){maxNote = (byte)val;}
+	public void setMinNote(byte val){
+		if(val < PERCREG_MIN_NOTE) val = PERCREG_MIN_NOTE;
+		if(val > PERCREG_MAX_NOTE) val = PERCREG_MAX_NOTE;
+		minNote = val;
+	}
+	
+	public void setMinNote(int val){
+		if(val < PERCREG_MIN_NOTE) val = PERCREG_MIN_NOTE;
+		if(val > PERCREG_MAX_NOTE) val = PERCREG_MAX_NOTE;
+		minNote = (byte)val;
+	}
+	
+	public void setMaxNote(byte val){
+		if(val < PERCREG_MIN_NOTE) val = PERCREG_MIN_NOTE;
+		if(val > PERCREG_MAX_NOTE) val = PERCREG_MAX_NOTE;
+		maxNote = val;
+	}
+	
+	public void setMaxNote(int val){
+		if(val < PERCREG_MIN_NOTE) val = PERCREG_MIN_NOTE;
+		if(val > PERCREG_MAX_NOTE) val = PERCREG_MAX_NOTE;
+		maxNote = (byte)val;
+	}
+	
 	public void setDrumData(Z64Drum drum){data = drum;}
 	public void setNameStem(String val){nameStem = val;}
 	public void setEnumStem(String val){enumStem = val;}
+	
+	public int getMinSlot(){return (int)minNote - PERCREG_MIN_NOTE;}
+	public int getMaxSlot(){return (int)maxNote - PERCREG_MIN_NOTE;}
+	
+	public void setMinSlot(int val){
+		if(val < 0) return;
+		if(val >= 64) return;
+		minNote = (byte)(val + PERCREG_MIN_NOTE);
+	}
+	
+	public void setMaxSlot(int val){
+		if(val < 0) return;
+		if(val >= 64) return;
+		maxNote = (byte)(val + PERCREG_MIN_NOTE);
+	}
 
 }

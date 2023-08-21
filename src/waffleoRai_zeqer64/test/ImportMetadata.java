@@ -28,7 +28,7 @@ public class ImportMetadata {
 	private static void updateInstNames(ZeqerBankTable bnk_tbl, ZeqerPresetTable prs_tbl){
 		Collection<BankTableEntry> bentries = bnk_tbl.getAllEntries();
 		for(BankTableEntry e : bentries){
-			Z64Bank zbank = ZeqerCore.getActiveCore().loadBank(e.getUID());
+			Z64Bank zbank = ZeqerCore.getActiveCore().loadBankData(e.getUID());
 			if(zbank == null){
 				System.err.println("ImportMetadata.updateInstNames || WARNING: Could not load data for bank " + String.format("%08x", e.getUID()));
 			}

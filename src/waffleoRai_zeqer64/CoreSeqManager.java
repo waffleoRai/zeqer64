@@ -52,6 +52,10 @@ class CoreSeqManager {
 		sys_write_enabled = sysMode;
 		parse_seq_on_load = !sysMode;
 		
+		loadTables();
+	}
+	
+	private void loadTables() throws IOException, UnsupportedFileTypeException{
 		String zdir = root_dir + SEP + ZeqerCore.DIRNAME_ZSEQ;
 		if(!FileBuffer.directoryExists(zdir)){
 			Files.createDirectories(Paths.get(zdir));
@@ -86,6 +90,19 @@ class CoreSeqManager {
 		return uid;
 	}
 	
+	protected boolean hardReset(){
+		seq_table_sys = null;
+		seq_table_user = null;
+		
+		try{loadTables();}
+		catch(Exception ex){
+			ex.printStackTrace();
+			return false;
+		}
+		
+		return true;
+	}
+	
 	/*----- Install -----*/
 	
 	protected boolean updateVersion(String temp_update_dir) throws IOException{
@@ -117,12 +134,12 @@ class CoreSeqManager {
 			for(Path child : dirstr){
 				//User overwrites all of these.
 				if(Files.isDirectory(child)){
-					String target = root_dir + SEP + child.getFileName().toString();
+					String target = root_dir + SEP + ZeqerCore.DIRNAME_ZSEQ + SEP + child.getFileName().toString();
 					FileUtils.moveDirectory(child.toAbsolutePath().toString(), target, true);
 				}
 				else {
 					String fn = child.getFileName().toString();
-					String target = root_dir + SEP + fn;
+					String target = root_dir + SEP + ZeqerCore.DIRNAME_ZSEQ + SEP + fn;
 					if(fn.endsWith(".buseq")){
 						if(FileBuffer.fileExists(target)){
 							//Load seq data from old and splice into new.
@@ -130,6 +147,15 @@ class CoreSeqManager {
 							if(oldseq.hasChunk("DATA")){
 								UltraFile newseq = UltraFile.openUltraFile(target);
 								newseq.addOrReplaceChunk("DATA", oldseq.getChunkData("DATA"), 1);
+								
+								//Have to unset a flag in the META chunk too...
+								FileBuffer meta = newseq.getChunkData("META");
+								if(meta != null){
+									int b = Byte.toUnsignedInt(meta.getByte(4L));
+									b &= 0x7F;
+									meta.replaceByte((byte)b, 4L);
+								}
+								
 								newseq.writeTo(target);
 								newseq.close();
 							}
@@ -259,6 +285,46 @@ class CoreSeqManager {
 			ex.printStackTrace();
 			return null;
 		}
+	}
+	
+	public List<ZeqerSeq> getAllValidSeqs() throws IOException, UnsupportedFileTypeException{
+		//To be valid, file must be present AND have a DATA block!
+		List<ZeqerSeq> list = new LinkedList<ZeqerSeq>();
+		if(seq_table_sys != null){
+			String zdir = root_dir + SEP + ZeqerCore.DIRNAME_ZSEQ;
+			List<SeqTableEntry> entries = seq_table_sys.getAllEntries();
+			for(SeqTableEntry entry : entries){
+				String useqPath = zdir + SEP + entry.getDataFileName();
+				if(!FileBuffer.fileExists(useqPath)) continue;
+				
+				//Check for DATA chunk...
+				UltraSeqFile file = UltraSeqFile.openUSEQ(useqPath);
+				if(file.hasDATAChunk()){
+					ZeqerSeq zseq = new ZeqerSeq(entry);
+					zseq.setSourcePath(useqPath);
+					list.add(zseq);
+				}
+				file.clearStoredFileData();
+			}
+		}
+		
+		if(seq_table_user != null){
+			List<SeqTableEntry> entries = seq_table_user.getAllEntries();
+			for(SeqTableEntry entry : entries){
+				String useqPath = root_dir + SEP + entry.getDataFileName();
+				if(!FileBuffer.fileExists(useqPath)) continue;
+				
+				//Check for DATA chunk...
+				UltraSeqFile file = UltraSeqFile.openUSEQ(useqPath);
+				if(file.hasDATAChunk()){
+					ZeqerSeq zseq = new ZeqerSeq(entry);
+					zseq.setSourcePath(useqPath);
+					list.add(zseq);
+				}
+				file.clearStoredFileData();
+			}
+		}
+		return list;
 	}
 	
 	public int[] loadVersionTable(String zeqer_id) throws IOException{
@@ -484,6 +550,12 @@ class CoreSeqManager {
 				uid_tbl[i] = entry.getUID();
 			}
 			myseq.dispose();
+			
+			if(entry != null){
+				//Version flags
+				if(rominfo.isZ5()) entry.setFlags(ZeqerSeqTable.FLAG_Z5);
+				if(rominfo.isZ6()) entry.setFlags(ZeqerSeqTable.FLAG_Z6);
+			}
 		}
 		
 		//Resolve references

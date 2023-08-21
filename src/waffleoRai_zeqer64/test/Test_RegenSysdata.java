@@ -45,7 +45,7 @@ public class Test_RegenSysdata {
 		List<EngineBankInfo> banklist = abld.getBanks();
 		for(EngineBankInfo bnk : banklist){
 			int bank_uid = bnk.getBankUID();
-			Z64Bank loaded_bnk = ZeqerCore.getActiveCore().loadBank(bank_uid);
+			Z64Bank loaded_bnk = ZeqerCore.getActiveCore().loadBankData(bank_uid);
 			if(loaded_bnk != null){
 				Z64WaveInfo winfo = null;
 				Collection<Z64Instrument> insts = loaded_bnk.getAllUniqueInstruments();

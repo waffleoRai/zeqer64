@@ -58,6 +58,12 @@ public class EnvEditAHDSSimpleDialog extends JDialog{
 	private static final int PARAM_ERR_DTIME = 3;
 	private static final int PARAM_ERR_SLVL = 4;
 	private static final int PARAM_ERR_STIME = 5;
+	
+	private static final int DEFO_ATTACK = 200;
+	private static final int DEFO_DECAY = 1000;
+	private static final int DEFO_HOLD = 100;
+	private static final double DEFO_SUSTAIN = 1.0;
+	private static final int DEFO_SUSTIME = 5000;
 
 	/*----- Instance Variables -----*/
 	
@@ -159,6 +165,7 @@ public class EnvEditAHDSSimpleDialog extends JDialog{
 		pnlATime.add(lblTime, gbc_lblTime);
 		
 		txtATime = new JTextField();
+		txtATime.setText(Integer.toString(DEFO_ATTACK));
 		GridBagConstraints gbc_txtATime = new GridBagConstraints();
 		gbc_txtATime.insets = new Insets(5, 5, 5, 5);
 		gbc_txtATime.fill = GridBagConstraints.HORIZONTAL;
@@ -267,6 +274,7 @@ public class EnvEditAHDSSimpleDialog extends JDialog{
 		
 		txtHTime = new JTextField();
 		txtHTime.setColumns(10);
+		txtHTime.setText(Integer.toString(DEFO_HOLD));
 		GridBagConstraints gbc_txtHTime = new GridBagConstraints();
 		gbc_txtHTime.fill = GridBagConstraints.HORIZONTAL;
 		gbc_txtHTime.insets = new Insets(5, 5, 5, 5);
@@ -330,6 +338,7 @@ public class EnvEditAHDSSimpleDialog extends JDialog{
 		pnlDTime.add(lblTime_1, gbc_lblTime_1);
 		
 		txtDTime = new JTextField();
+		txtDTime.setText(Integer.toString(DEFO_DECAY));
 		GridBagConstraints gbc_txtDTime = new GridBagConstraints();
 		gbc_txtDTime.insets = new Insets(5, 5, 5, 0);
 		gbc_txtDTime.fill = GridBagConstraints.HORIZONTAL;
@@ -460,6 +469,7 @@ public class EnvEditAHDSSimpleDialog extends JDialog{
 		pnlSLevel.add(lblLevel, gbc_lblLevel);
 		
 		txtSLevel = new JTextField();
+		txtSLevel.setText(Double.toString(DEFO_SUSTAIN));
 		GridBagConstraints gbc_txtSLevel = new GridBagConstraints();
 		gbc_txtSLevel.insets = new Insets(0, 0, 0, 5);
 		gbc_txtSLevel.fill = GridBagConstraints.HORIZONTAL;
@@ -549,6 +559,7 @@ public class EnvEditAHDSSimpleDialog extends JDialog{
 		pnlSTime.add(lblTime_2, gbc_lblTime_2);
 		
 		txtSTime = new JTextField();
+		txtSTime.setText(Integer.toString(DEFO_SUSTIME));
 		GridBagConstraints gbc_txtSTime = new GridBagConstraints();
 		gbc_txtSTime.insets = new Insets(0, 0, 0, 5);
 		gbc_txtSTime.fill = GridBagConstraints.HORIZONTAL;
@@ -1029,14 +1040,14 @@ public class EnvEditAHDSSimpleDialog extends JDialog{
 		rbgSDir.repaintAll();
 		if(id == RB_DIR_IDX_FLAT){
 			txtSTime.setEnabled(false);
-			rbgSDir.setEnabledAll(false);
+			rbgSCurve.setEnabledAll(false);
 		}
 		else{
 			txtSTime.setEnabled(true);
-			rbgSDir.setEnabledAll(true);
+			rbgSCurve.setEnabledAll(true);
 		}
 		txtSTime.repaint();
-		rbgSDir.repaintAll();
+		rbgSCurve.repaintAll();
 	}
 	
 	private void onClickSCurveRadio(int id){

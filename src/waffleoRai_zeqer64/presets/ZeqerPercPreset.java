@@ -63,9 +63,9 @@ public class ZeqerPercPreset extends ZeqerPreset{
 					drum.setEnvelope(envs[val]);
 				}
 				val = src.nextInt();
-				Z64Tuning tune = new Z64Tuning();
-				tune.root_key = src.nextByte();
-				tune.fine_tune = src.nextByte();
+
+				drum.setRootKey(src.nextByte());
+				drum.setFineTune(src.nextByte());
 				minnote = src.nextByte();
 				maxnote = src.nextByte();
 				
@@ -223,9 +223,9 @@ public class ZeqerPercPreset extends ZeqerPreset{
 		regions[index] = region;
 		
 		if(region != null){
-			int minnote = region.getMinNote();
-			int maxnote = region.getMaxNote();
-			for(int i = minnote; i <= maxnote; i++){
+			int min = region.getMinSlot();
+			int max = region.getMaxSlot();
+			for(int i = min; i <= max; i++){
 				slots[i] = region.getDrumData();
 				if(slots[i] != null){
 					Z64WaveInfo winfo = slots[i].getSample();

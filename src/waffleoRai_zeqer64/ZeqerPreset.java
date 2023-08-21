@@ -53,9 +53,21 @@ public abstract class ZeqerPreset extends ALabeledElement {
 			name = String.format("preset_%08x", uid);
 			setName(name);
 		}
-		buffer.addVariableLengthString("UTF8", name, BinFieldSize.WORD, 2);	
+		buffer.addVariableLengthString(ZeqerCore.ENCODING, name, BinFieldSize.WORD, 2);	
 		sz += name.length() + 2;
 		if((sz % 2) != 0) sz++;
+		
+		//Enum Label
+		String elbl = getEnumLabel();
+		if(elbl != null){
+			buffer.addVariableLengthString(ZeqerCore.ENCODING, elbl, BinFieldSize.WORD, 2);	
+			sz += elbl.length() + 2;
+			if((sz % 2) != 0) sz++;
+		}
+		else{
+			buffer.addToFile((short)0);
+			sz += 2;
+		}
 		
 		//Tags.
 		StringBuilder sb = new StringBuilder(1024);
@@ -66,7 +78,7 @@ public abstract class ZeqerPreset extends ALabeledElement {
 			first = false;
 		}
 		String tagstr = sb.toString();
-		buffer.addVariableLengthString("UTF8", tagstr, BinFieldSize.WORD, 2);	
+		buffer.addVariableLengthString(ZeqerCore.ENCODING, tagstr, BinFieldSize.WORD, 2);	
 		sz += tagstr.length() + 2;
 		if((sz % 2) != 0) sz++;
 		

@@ -75,6 +75,9 @@ public class ZeqerGUIMain {
 
 		public void onFileExtractDone(String filepath) {}
 		
+		public void onUpdateFileProcessStart(){}
+		public void init(){}
+		public void close(){}
 	}
 	
 	private static void installBtnCallback(JFrame parent, CoreGUIInterface core){

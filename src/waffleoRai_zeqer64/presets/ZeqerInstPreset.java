@@ -81,7 +81,7 @@ public class ZeqerInstPreset extends ZeqerPreset{
 		inst.setSampleHigh(null);
 		inst.setTuningHigh(Float.intBitsToFloat(src.nextInt()));
 		
-		if(version >= 3){
+		if(version >= 3 && version < 6){
 			enumLabel = src.nextVariableLengthString(BinFieldSize.WORD, 2);
 		}
 		
@@ -219,7 +219,7 @@ public class ZeqerInstPreset extends ZeqerPreset{
 		if(enumLabel == null){
 			enumLabel = String.format("IPRE_%08x", uid);
 		}
-		buffer.addVariableLengthString("UTF8", enumLabel, BinFieldSize.WORD, 2);
+		//buffer.addVariableLengthString("UTF8", enumLabel, BinFieldSize.WORD, 2);
 		
 		return (int)(buffer.getFileSize() - init_size);
 	}

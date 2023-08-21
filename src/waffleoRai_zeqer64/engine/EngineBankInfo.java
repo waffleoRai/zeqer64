@@ -15,6 +15,7 @@ public class EngineBankInfo {
 	private int warc2 = -1;
 	private int cachePolicy = SoundTables.CACHE__TEMPORARY;
 	private int medium = SoundTables.MEDIUM_CART;
+	private int subslot = -1;
 	
 	/*----- Initialization -----*/
 	
@@ -25,6 +26,7 @@ public class EngineBankInfo {
 	public int getWArc2() {return warc2;}
 	public int getCachePolicy() {return cachePolicy;}
 	public int getMedium() {return medium;}
+	public int getSubSlot(){return subslot;}
 	
 	/*----- Setters -----*/
 	
@@ -33,11 +35,13 @@ public class EngineBankInfo {
 	public void setWArc2(int val) {warc2 = val;}
 	public void setCachePolicy(int val) {cachePolicy = val;}
 	public void setMedium(int val) {medium = val;}
+	public void setSubSlot(int val){subslot = val;}
 
 	/*----- Serialize -----*/
 	
 	public FileBuffer serializeMe(){
-		FileBuffer buff = new FileBuffer(8, true);
+		FileBuffer buff = new FileBuffer(12, true);
+		if(subslot >= 0) buff.addToFile(subslot);
 		buff.addToFile(uid);
 		buff.addToFile((byte)medium);
 		buff.addToFile((byte)cachePolicy);

@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 
 import waffleoRai_SeqSound.n64al.NUSALSeq;
+import waffleoRai_SeqSound.n64al.NUSALSeqCommand;
 import waffleoRai_Sound.nintendo.Z64Sound;
 import waffleoRai_Utils.BinFieldSize;
 import waffleoRai_Utils.BufferReference;
@@ -79,6 +80,8 @@ public class UltraSeqFile {
 		}
 		return chunk_data;
 	}
+	
+	public boolean hasDATAChunk(){return chunks.containsKey("DATA");}
 	
 	private static void readMETA(BufferReference chunk_data, ZeqerSeq dest, UltraSeqFile file){
 		int flags = 0;
@@ -259,6 +262,13 @@ public class UltraSeqFile {
 	
 	public static ZeqerSeq readUSEQ(UltraSeqFile useq, SeqTableEntry tblEntry, boolean trySeqParse) throws IOException{
 		ZeqerSeq zseq = new ZeqerSeq(tblEntry);
+		if(readUSEQInto(useq, zseq, trySeqParse)) return zseq;
+		return null;
+	}
+	
+	public static boolean readUSEQInto(UltraSeqFile useq, ZeqerSeq zseq, boolean trySeqParse) throws IOException{
+		if(zseq == null) return false;
+		if(useq == null) return false;
 		
 		//as of 1.2 DATA is not required if correct flag is set. So need DATA *or* META
 		
@@ -273,7 +283,7 @@ public class UltraSeqFile {
 		//Read DATA block (since it's minimum required if flag not set)
 		if((useq.meta_flags & 0x8000) == 0){
 			chunk_data = useq.loadChunk("DATA");
-			if(chunk_data == null) return null;
+			if(chunk_data == null) return false;
 			readDATA(chunk_data, zseq, trySeqParse);
 			useq.data_len = chunk_data.intFromFile(0L);
 			chunk_data.dispose();
@@ -304,7 +314,37 @@ public class UltraSeqFile {
 			chunk_data.dispose();
 		}
 		
-		return zseq;
+		//Assign labels to data (if data is parsed)
+		NUSALSeq seqdat = zseq.getSequence();
+		if(seqdat != null){
+			List<Label> lbllist = zseq.getCommonLabels();
+			if(lbllist != null){
+				for(Label lbl : lbllist){
+					NUSALSeqCommand cmd = seqdat.getCommandAt(lbl.getPosition());
+					if(cmd != null){
+						cmd.setLabel(lbl.getName());
+					}
+				}
+			}
+			
+			Module[] mods = zseq.getModules();
+			if(mods != null){
+				for(int i = 0; i < mods.length; i++){
+					if(mods[i] == null) continue;
+					lbllist = mods[i].getAllLabels();
+					if(lbllist != null){
+						for(Label lbl : lbllist){
+							NUSALSeqCommand cmd = seqdat.getCommandAt(lbl.getPosition());
+							if(cmd != null){
+								cmd.setLabel(lbl.getName());
+							}
+						}
+					}
+				}
+			}
+		}
+		
+		return true;
 	}
 	
 	/*----- Writing -----*/

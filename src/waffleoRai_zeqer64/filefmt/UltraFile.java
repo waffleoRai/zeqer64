@@ -130,11 +130,12 @@ public class UltraFile{
 		header.addToFile((short)0xfeff);
 		header.addToFile((byte)ver_major);
 		header.addToFile((byte)ver_minor);
-		header.addToFile(fsize);
+		header.addToFile((int)fsize);
 		header.addToFile((short)HEADER_SIZE);
 		header.addToFile((short)ccount);
 		
 		BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(path));
+		header.writeToStream(bos);
 		
 		for(String cid : chunk_order){
 			FileBuffer dat = chunks.get(cid);

@@ -25,6 +25,10 @@ public class ZeqerInstaller {
 		public void onTableReadStart();
 		public void onFileExtractStart(String filepath);
 		public void onFileExtractDone(String filepath);
+		public void onUpdateFileProcessStart();
+		
+		public void init();
+		public void close();
 	}
 
 	private String install_dir;

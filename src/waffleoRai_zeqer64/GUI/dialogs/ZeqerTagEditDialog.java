@@ -4,6 +4,7 @@ import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Frame;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -160,13 +161,14 @@ public class ZeqerTagEditDialog extends JDialog{
 			for(int i = 0; i < count; i++){
 				items[i] = mdl.getElementAt(i);
 			}
+			return items;
 		}
 		return null;
 	}
 	
 	/*----- Setters -----*/
 	
-	public void loadTags(List<String> tags){
+	public void loadTags(Collection<String> tags){
 		globalEnable.setEnabling(false);
 		globalEnable.repaint();
 		

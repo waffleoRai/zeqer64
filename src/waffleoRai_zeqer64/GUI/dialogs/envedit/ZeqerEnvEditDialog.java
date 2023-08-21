@@ -270,7 +270,11 @@ public class ZeqerEnvEditDialog extends JDialog{
 		gbc_btnSimple.gridy = 0;
 		pnlOkay.add(btnSimple, gbc_btnSimple);
 		btnSimple.addActionListener(new ActionListener(){
-			public void actionPerformed(ActionEvent e) {btnSimpleEnvCallback();}});
+			public void actionPerformed(ActionEvent e) {
+				btnSimpleEnvCallback();
+				//dummyCallback();
+				}}
+		);
 		globalEnable.addComponent("btnSimple", btnSimple);
 		
 		JButton btnOkay = new JButton("Okay");

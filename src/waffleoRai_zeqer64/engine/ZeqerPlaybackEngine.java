@@ -595,7 +595,7 @@ public class ZeqerPlaybackEngine {
 			
 			if(refid < 0){
 				//Have to actually serialize font
-				Z64Bank mybank = ZeqerCore.getActiveCore().loadBank(bnkid);
+				Z64Bank mybank = ZeqerCore.getActiveCore().loadBankData(bnkid);
 				if(mybank == null){
 					System.err.println("ZeqerPlaybackEngine.transferAudiobank || ERROR: Bank with ID 0x" + 
 							String.format("%08x", bnkid) + " could not be found!");

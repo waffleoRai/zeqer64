@@ -1,5 +1,6 @@
 package waffleoRai_zeqer64;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -7,6 +8,7 @@ import java.util.List;
 import waffleoRai_SeqSound.n64al.NUSALSeq;
 import waffleoRai_Utils.FileBuffer;
 import waffleoRai_Utils.FileUtils;
+import waffleoRai_zeqer64.filefmt.UltraSeqFile;
 import waffleoRai_zeqer64.filefmt.ZeqerSeqTable.SeqTableEntry;
 
 public class ZeqerSeq {
@@ -45,6 +47,17 @@ public class ZeqerSeq {
 	public static final int PARSE_ERR_CRASH = 1;
 	public static final int PARSE_ERR_TIMEOUT = 2;
 	public static final int PARSE_ERR_OTHER_IRQ = 3;
+	
+	public static final int SEQTYPE_UNKNOWN = 0;
+	public static final int SEQTYPE_BGM = 1;
+	public static final int SEQTYPE_BGM_PROG = 2;
+	public static final int SEQTYPE_BGM_PIECE = 3;
+	public static final int SEQTYPE_JINGLE = 4;
+	public static final int SEQTYPE_OCARINA = 5;
+	public static final int SEQTYPE_CUTSCENE = 6;
+	public static final int SEQTYPE_AMBIENT = 7;
+	public static final int SEQTYPE_SFX = 8;
+	public static final int SEQTYPE_INTRMUS = 9;
 	
 	/*----- Inner Classes -----*/
 	
@@ -153,6 +166,7 @@ public class ZeqerSeq {
 	private List<Label> common_labels;
 	private List<IOAlias> common_aliases;
 	
+	private String useq_path = null;
 	private NUSALSeq sequence = null;
 	private FileBuffer raw_data = null; //Only used if seq cannot be parsed!
 	
@@ -196,6 +210,11 @@ public class ZeqerSeq {
 		return(sequence == null) && (raw_data == null);
 	}
 	
+	public boolean dataLoaded(){
+		//Anything in the useq, including the modules and that.
+		return sequence != null || raw_data != null;
+	}
+	
  	public Module getModule(int index){
 		if(index < 0 || modules == null) return null;
 		if(index >= modules.size()) return null;
@@ -227,6 +246,33 @@ public class ZeqerSeq {
 	public void setMaxVoiceLoad(int val){max_voice_load = val;}
 	public void setSequence(NUSALSeq seq){sequence = seq;}
 	public void setRawData(FileBuffer val){raw_data = val;}
+	public void setSourcePath(String val){useq_path = val;}
+	
+	public boolean loadData(boolean attemptSeqParse){
+		//Everything not in the table entry, including modules etc.
+		if(useq_path == null || useq_path.isEmpty()) return false;
+		if(!FileBuffer.fileExists(useq_path)) return false;
+		
+		try{
+			UltraSeqFile myfile = UltraSeqFile.openUSEQ(useq_path);
+			UltraSeqFile.readUSEQInto(myfile, this, attemptSeqParse);
+		}
+		catch(Exception ex){
+			ex.printStackTrace();
+			return false;
+		}
+		
+		return true;
+	}
+	
+	public void unloadData(){
+		//Everything not in the table entry, including modules etc.
+		if(modules != null) modules.clear();
+		if(common_labels != null) common_labels.clear();
+		if(common_aliases != null) common_aliases.clear();
+		sequence = null;
+		raw_data = null;
+	}
 	
 	public void clearData(){
 		sequence = null;
@@ -330,6 +376,22 @@ public class ZeqerSeq {
 			}
 		}
 		return false;
+	}
+	
+	public boolean save(){
+		if(!updateTableEntry()) return false;
+		if(sequence == null && raw_data == null) return false;
+		
+		if(useq_path == null) return false;
+		try {
+			UltraSeqFile.writeUSEQ(this, useq_path);
+		} 
+		catch (IOException e) {
+			e.printStackTrace();
+			return false;
+		}
+		
+		return true;
 	}
 	
 	/*----- Misc. -----*/

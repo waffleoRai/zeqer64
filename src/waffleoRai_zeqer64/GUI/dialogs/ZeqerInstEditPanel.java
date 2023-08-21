@@ -36,8 +36,8 @@ public class ZeqerInstEditPanel extends JPanel{
 	private static final long serialVersionUID = -846022860700414964L;
 	
 	public static final int MIN_WIDTH = 300;
-	public static final int MIN_HEIGHT_NOREG = 100;
-	public static final int MIN_HEIGHT_REG = 145;
+	public static final int MIN_HEIGHT_NOREG = 160;
+	public static final int MIN_HEIGHT_REG = 180;
 	
 	public static final int REGION_TYPE_MID = 0;
 	public static final int REGION_TYPE_LO = 1;
@@ -48,10 +48,12 @@ public class ZeqerInstEditPanel extends JPanel{
 	private JFrame parent;
 	private ZeqerCoreInterface core;
 	
+	private boolean editable = true;
+	
 	private ComponentGroup incl_enable;
+	private ComponentGroup cgEditable;
 	
 	private JTextField txtSample;
-	private JTextField txtFineTune;
 	private JCheckBox cbInclude;
 	private JSpinner spnUnityKey;
 	private JSpinner spnLimitNote;
@@ -85,15 +87,16 @@ public class ZeqerInstEditPanel extends JPanel{
 	private void initGUI(int region_type){
 		
 		incl_enable = new ComponentGroup();
+		cgEditable = new ComponentGroup();
 		
 		boolean inclReg = (region_type != REGION_TYPE_MID);
 		int height = !inclReg ? MIN_HEIGHT_NOREG:MIN_HEIGHT_REG;
 		setMinimumSize(new Dimension(MIN_WIDTH, height));
-		setPreferredSize(new Dimension(284, 145));
+		setPreferredSize(new Dimension(284, 180));
 		
 		GridBagLayout gridBagLayout = new GridBagLayout();
 		gridBagLayout.columnWidths = new int[]{0, 0};
-		gridBagLayout.rowHeights = new int[]{0, 0, 0, 0};
+		gridBagLayout.rowHeights = new int[]{30, 0, 0, 0};
 		gridBagLayout.columnWeights = new double[]{1.0, Double.MIN_VALUE};
 		gridBagLayout.rowWeights = new double[]{0.0, 1.0, 1.0, Double.MIN_VALUE};
 		setLayout(gridBagLayout);
@@ -120,9 +123,10 @@ public class ZeqerInstEditPanel extends JPanel{
 		pnlHiLo.add(cbInclude, gbc_chckbxInclude);
 		if(inclReg){
 			cbInclude.setSelected(true);
+			cgEditable.addComponent("cbInclude", cbInclude);
 		}
 		else{
-			cbInclude.setSelected(false);
+			cbInclude.setSelected(true);
 			cbInclude.setEnabled(false);
 			cbInclude.setVisible(false);
 		}
@@ -174,9 +178,9 @@ public class ZeqerInstEditPanel extends JPanel{
 		add(pnlTune, gbc_pnlTune);
 		GridBagLayout gbl_pnlTune = new GridBagLayout();
 		gbl_pnlTune.columnWidths = new int[]{0, 55, 100, 0, 0};
-		gbl_pnlTune.rowHeights = new int[]{0, 0, 0};
+		gbl_pnlTune.rowHeights = new int[]{0, 0, 0, 0};
 		gbl_pnlTune.columnWeights = new double[]{0.0, 0.0, 0.0, 1.0, Double.MIN_VALUE};
-		gbl_pnlTune.rowWeights = new double[]{0.0, 0.0, Double.MIN_VALUE};
+		gbl_pnlTune.rowWeights = new double[]{0.0, 0.0, 0.0, Double.MIN_VALUE};
 		pnlTune.setLayout(gbl_pnlTune);
 		
 		JLabel lblUnityKey = new JLabel("Unity Key:");
@@ -198,7 +202,7 @@ public class ZeqerInstEditPanel extends JPanel{
 		
 		JLabel lblFineTune = new JLabel("Fine Tune:");
 		GridBagConstraints gbc_lblFineTune = new GridBagConstraints();
-		gbc_lblFineTune.insets = new Insets(0, 5, 0, 5);
+		gbc_lblFineTune.insets = new Insets(0, 5, 5, 5);
 		gbc_lblFineTune.gridx = 0;
 		gbc_lblFineTune.gridy = 1;
 		pnlTune.add(lblFineTune, gbc_lblFineTune);
@@ -207,7 +211,7 @@ public class ZeqerInstEditPanel extends JPanel{
 		GridBagConstraints gbc_slider = new GridBagConstraints();
 		gbc_slider.gridwidth = 2;
 		gbc_slider.fill = GridBagConstraints.HORIZONTAL;
-		gbc_slider.insets = new Insets(0, 0, 0, 5);
+		gbc_slider.insets = new Insets(0, 0, 5, 5);
 		gbc_slider.gridx = 1;
 		gbc_slider.gridy = 1;
 		pnlTune.add(sldFineTune, gbc_slider);
@@ -219,10 +223,11 @@ public class ZeqerInstEditPanel extends JPanel{
 		
 		lblFineAmt = new JLabel("0 cents");
 		GridBagConstraints gbc_lblFineAmt = new GridBagConstraints();
-		gbc_lblFineAmt.anchor = GridBagConstraints.WEST;
+		gbc_lblFineAmt.gridwidth = 2;
 		gbc_lblFineAmt.insets = new Insets(0, 0, 0, 5);
-		gbc_lblFineAmt.gridx = 3;
-		gbc_lblFineAmt.gridy = 1;
+		gbc_lblFineAmt.anchor = GridBagConstraints.WEST;
+		gbc_lblFineAmt.gridx = 1;
+		gbc_lblFineAmt.gridy = 2;
 		pnlTune.add(lblFineAmt, gbc_lblFineAmt);
 		
 		JPanel pnlSample = new JPanel();
@@ -263,6 +268,7 @@ public class ZeqerInstEditPanel extends JPanel{
 		gbc_btnSample.gridy = 1;
 		pnlSample.add(btnSample, gbc_btnSample);
 		incl_enable.addComponent("btnSample", btnSample);
+		cgEditable.addComponent("btnSample", btnSample);
 		btnSample.addActionListener(new ActionListener(){
 			public void actionPerformed(ActionEvent e) {
 				btnSetSampleCallback();
@@ -297,6 +303,11 @@ public class ZeqerInstEditPanel extends JPanel{
 	}
 	
 	/*----- Setters -----*/
+	
+	public void setEditable(boolean b){
+		editable = b;
+		setEnabled();
+	}
 	
 	public void setRegionIncluded(boolean val){
 		cbInclude.setSelected(val);
@@ -349,8 +360,8 @@ public class ZeqerInstEditPanel extends JPanel{
 		//Clamp value between -100 and 100
 		if(value < -100) value = -100;
 		if(value > 100) value = 100;
-		txtFineTune.setText(Integer.toString(value));
-		txtFineTune.repaint();
+		sldFineTune.setValue(value);
+		updateFineTuneLabel(value);
 	}
 	
 	public void setNoteLimitSpinnerCallback(VoidCallbackMethod func){
@@ -390,10 +401,16 @@ public class ZeqerInstEditPanel extends JPanel{
 		incl_enable.repaint();
 		
 		if(cbInclude.isVisible()){
-			spnLimitNote.setEnabled(true);
 			cbInclude.setEnabled(true);
+			spnLimitNote.setEnabled(cbInclude.isSelected());
 			spnLimitNote.repaint();
+			
 			cbInclude.repaint();	
+		}
+		
+		if(!editable){
+			cgEditable.setEnabling(false);
+			cgEditable.repaint();
 		}
 	}
 	

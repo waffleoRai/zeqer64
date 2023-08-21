@@ -37,9 +37,13 @@ public class ZeqerBankTable {
 	/*----- Constants -----*/
 	
 	public static final String MAGIC = "zeqrBNKt";
-	public static final short CURRENT_VERSION = 3;
+	public static final short CURRENT_VERSION = 4;
 	
 	private static final char SEP = File.separatorChar;
+	
+	public static final int FLAG_CUSTOM = 0x1;
+	public static final int FLAG_Z5 = 0x2;
+	public static final int FLAG_Z6 = 0x4;
 	
 	/*----- Inner Classes -----*/
 	
@@ -125,8 +129,16 @@ public class ZeqerBankTable {
 		public int getSecondaryWarcIndex(){return Byte.toUnsignedInt(warc2_idx);}
 		public byte getMedium(){return medium;}
 		public byte getCachePolicy(){return cache;}
-		public int getPercussionCount(){return (int)icounts[1];}
+		public int getInstrumentCount(){return icounts[0];}
+		public int getPercussionCount(){return icounts[1];}
+		public int getSFXCount(){return icounts[2];}
+		public ZonedDateTime getDateModified(){return time_modified;}
 		public boolean hasTag(String tag){return tags.contains(tag);}
+		public int getFlags(){return flags;}
+		
+		public boolean flagsSet(int mask){
+			return (flags & mask) != 0;
+		}
 		
 		public Collection<String> getTags(){
 			List<String> list = new ArrayList<String>(tags.size());
@@ -163,6 +175,14 @@ public class ZeqerBankTable {
 		
 		public void setCachePolicy(int val){
 			cache = (byte)val;
+		}
+		
+		public void setFlags(int mask){
+			flags |= mask;
+		}
+		
+		public void clearFlags(int mask){
+			flags &= ~mask;
 		}
 		
 		public void addTag(String tag){tags.add(tag);}

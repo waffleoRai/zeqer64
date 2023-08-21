@@ -18,7 +18,7 @@ import waffleoRai_zeqer64.ZeqerPreset;
 public class ZeqerDrumPreset extends ZeqerPreset{
 	
 	private Z64Drum data;
-	private int waveid; //For linking
+	private int waveid = 0; //For linking
 	
 	public ZeqerDrumPreset(){
 		data = new Z64Drum();
@@ -90,6 +90,9 @@ public class ZeqerDrumPreset extends ZeqerPreset{
 		else{
 			data.setName(String.format("DPRE_%08x", uid));
 		}
+		
+		data.setRootKey(drum.getRootKey());
+		data.setFineTune(drum.getFineTune());
 	}
 	
 	public int hashToUID(){
@@ -149,8 +152,10 @@ public class ZeqerDrumPreset extends ZeqerPreset{
 		tuning.fine_tune = src.nextByte();
 		data.setTuning(tuning);
 		
-		enumLabel = src.nextVariableLengthString(BinFieldSize.WORD, 2);
-		
+		if(version < 6){
+			enumLabel = src.nextVariableLengthString(BinFieldSize.WORD, 2);
+		}
+
 		return src.getBufferPosition() - stpos;
 	}
 	
@@ -203,10 +208,10 @@ public class ZeqerDrumPreset extends ZeqerPreset{
 			buffer.addToFile((byte)0);
 		}
 		
-		if(enumLabel != null){
+		/*if(enumLabel != null){
 			buffer.addVariableLengthString(enumLabel, BinFieldSize.WORD, 2);
 		}
-		else buffer.addToFile((short)0);
+		else buffer.addToFile((short)0);*/
 		
 		return (int)(buffer.getFileSize() - init_size);
 	}

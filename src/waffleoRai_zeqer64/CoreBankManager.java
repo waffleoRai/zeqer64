@@ -77,6 +77,10 @@ class CoreBankManager {
 		waveManager = wavmgr;
 		envPresets = new HashMap<String, Z64Envelope>();
 		
+		loadTables();
+	}
+	
+	private void loadTables() throws UnsupportedFileTypeException, IOException{
 		String zdir = root_dir + SEP + ZeqerCore.DIRNAME_ZBANK;
 		if(!FileBuffer.directoryExists(zdir)){
 			Files.createDirectories(Paths.get(zdir));
@@ -179,7 +183,7 @@ class CoreBankManager {
 				for(int i = 0; i < rcount; i++){
 					ZeqerPercRegion reg = ppreset.getRegion(i);
 					if(reg != null){
-						int min_note = reg.getMinNote();
+						int min_note = reg.getMinSlot();
 						int wid = ppreset.getSlotWaveID(min_note);
 						if((wid != 0) && (wid != -1)){
 							Z64Drum drum = reg.getDrumData();
@@ -188,6 +192,9 @@ class CoreBankManager {
 						}
 					}
 				}
+			}
+			else if(preset instanceof ZeqerDrumPreset){
+				updateDrumPresetWaveLinks((ZeqerDrumPreset)preset);
 			}
 			else if(preset instanceof ZeqerSFXPreset){
 				//Preset object doesn't have direct link.
@@ -255,11 +262,19 @@ class CoreBankManager {
 														ZeqerInstPreset ipre = (ZeqerInstPreset)opre;
 														ZeqerInstPreset new_ipre = dummy.loadInstData(ipre.getInstrument());
 														newPresets.addPreset(new_ipre);
+														updateInstPresetWaveLinks(new_ipre);
 													}
 													else if(opre instanceof ZeqerDrumPreset){
 														ZeqerDrumPreset dpre = (ZeqerDrumPreset)opre;
 														ZeqerDrumPreset new_dpre = dummy.loadDrumData(dpre.getData());
 														newPresets.addPreset(new_dpre);
+														updateDrumPresetWaveLinks(new_dpre);
+													}
+													else if(opre instanceof ZeqerPercPreset){
+														ZeqerPercPreset ppre = (ZeqerPercPreset)opre;
+														ZeqerPercPreset new_ppre = dummy.loadDrumsetData(ppre);
+														newPresets.addPreset(new_ppre);
+														updateDrumsetPresetWaveLinks(new_ppre);
 													}
 													else{
 														opre.setName(npre.getName());
@@ -307,6 +322,23 @@ class CoreBankManager {
 		return true;
 	}
 	
+	protected boolean hardReset(){
+		bnk_table_sys = null;
+		bnk_table_user = null;
+		preset_table_sys = null;
+		preset_table_user = null;
+		envPresets.clear();
+		flag_save_systbl_usermode = false;
+		
+		try{loadTables();}
+		catch(Exception ex){
+			ex.printStackTrace();
+			return false;
+		}
+		
+		return true;
+	}
+	
 	/*----- Getters -----*/
 	
 	public String getSysTablePath(){
@@ -332,6 +364,11 @@ class CoreBankManager {
 		else{
 			return getUserTablePath() + SEP + String.format("%08x.bubnk", uid);	
 		}
+	}
+	
+	public boolean isSysPreset(int uid){
+		if(preset_table_sys == null) return false;
+		return preset_table_sys.hasPreset(uid);
 	}
 	
 	public boolean isSysBank(int uid){
@@ -519,12 +556,46 @@ class CoreBankManager {
 		else{
 			if(bnk_table_user != null) entry = bnk_table_user.getBank(bank_uid);
 			if(entry != null){
-				ZeqerBank bnk = new ZeqerBank(entry, waveManager, true);
+				ZeqerBank bnk = new ZeqerBank(entry, waveManager, false);
 				bnk.setDataSaveStem(root_dir + SEP + entry.getDataPathStem());
 				return bnk;
 			}
 		}
 		return null;
+	}
+	
+	public List<ZeqerBank> getAllValidBanks(){
+		List<ZeqerBank> list = new LinkedList<ZeqerBank>();
+		if(bnk_table_sys != null){
+			String zdir = root_dir + SEP + ZeqerCore.DIRNAME_ZBANK;
+			Collection<BankTableEntry> contents = bnk_table_sys.getAllEntries();
+			for(BankTableEntry entry : contents){
+				//Check for bubnk or buwsd file
+				boolean dataokay = false;
+				String fpath = zdir + SEP + entry.getDataFileName();
+				if(FileBuffer.fileExists(fpath)) dataokay = true;
+				if(!dataokay){
+					fpath = zdir + SEP + entry.getWSDFileName();
+					if(FileBuffer.fileExists(fpath)) dataokay = true;
+				}
+				
+				if(dataokay){
+					ZeqerBank bnk = new ZeqerBank(entry, waveManager, !sys_write_enabled);
+					bnk.setDataSaveStem(zdir + SEP + entry.getDataPathStem());
+					list.add(bnk);
+				}
+			}
+		}
+		if(bnk_table_user != null){
+			//Probably don't need to check for file presence...?
+			Collection<BankTableEntry> contents = bnk_table_user.getAllEntries();
+			for(BankTableEntry entry : contents){
+				ZeqerBank bnk = new ZeqerBank(entry, waveManager, false);
+				bnk.setDataSaveStem(root_dir + SEP + entry.getDataPathStem());
+				list.add(bnk);
+			}
+		}
+		return list;
 	}
 	
 	public int[] loadVersionTable(String zeqer_id) throws IOException{
@@ -897,6 +968,113 @@ class CoreBankManager {
 		return data_path; //Returns the ultrabank file stem
 	}
 	
+	private void updateDrumsetPresetWaveLinks(ZeqerPercPreset preset){
+		if(waveManager == null || preset == null) return;
+		
+		int rcount = preset.getRegionCount();
+		for(int i = 0; i < rcount; i++){
+			ZeqerPercRegion reg = preset.getRegion(i);
+			if(reg != null){
+				Z64Drum drum = reg.getDrumData();
+				if(drum == null) continue;
+				
+				Z64WaveInfo winfo = null;
+				
+				int wid = preset.getSlotWaveID(reg.getMinSlot());
+				if((wid == 0) || (wid == -1)){
+					winfo = drum.getSample();
+					if(winfo != null){
+						wid = winfo.getUID();
+						int minnote = reg.getMinSlot();
+						int maxnote = reg.getMaxSlot();
+						for(int j = minnote; j <= maxnote; j++){
+							preset.setWaveID(j, wid);
+						}
+					}
+				}
+				
+				if((wid != 0) && (wid != -1)){
+					winfo = waveManager.getWaveInfo(wid);
+					if(winfo != null) drum.setSample(winfo);
+				}
+			}
+		}
+		
+	}
+	
+	private void updateDrumPresetWaveLinks(ZeqerDrumPreset preset){
+		if(waveManager == null || preset == null) return;
+		
+		Z64Drum drum = preset.getData();
+		if(drum == null) return;
+		Z64WaveInfo winfo = null;
+		
+		int wid = preset.getWaveID();
+		if((wid == 0) || (wid == -1)){
+			winfo = drum.getSample();
+			if(winfo != null){
+				wid = winfo.getUID();
+				preset.setWaveID(wid);
+			}
+		}
+		
+		if((wid != 0) && (wid != -1)){
+			winfo = waveManager.getWaveInfo(wid);
+			if(winfo != null) drum.setSample(winfo);
+		}
+	}
+	
+	private void updateInstPresetWaveLinks(ZeqerInstPreset preset){
+		if(waveManager == null || preset == null) return;
+		
+		Z64Instrument inst = preset.getInstrument();
+		if(inst == null) return;
+		Z64WaveInfo winfo = null;
+		
+		//Mid sample
+		int wid = preset.getWaveIDMid();
+		if((wid == 0) || (wid == -1)){
+			winfo = inst.getSampleMiddle();
+			if(winfo != null){
+				wid = winfo.getUID();
+				preset.setWaveIDMid(wid);
+			}
+		}
+		if((wid != 0) && (wid != -1)){
+			winfo = waveManager.getWaveInfo(wid);
+			if(winfo != null) inst.setSampleMiddle(winfo);
+		}
+		
+		//Lo
+		wid = preset.getWaveIDLo();
+		if((wid == 0) || (wid == -1)){
+			winfo = inst.getSampleLow();
+			if(winfo != null){
+				wid = winfo.getUID();
+				preset.setWaveIDLo(wid);
+			}
+		}
+		if((wid != 0) && (wid != -1)){
+			winfo = waveManager.getWaveInfo(wid);
+			if(winfo != null) inst.setSampleLow(winfo);
+		}
+		
+		//Hi
+		wid = preset.getWaveIDHi();
+		if((wid == 0) || (wid == -1)){
+			winfo = inst.getSampleHigh();
+			if(winfo != null){
+				wid = winfo.getUID();
+				preset.setWaveIDHi(wid);
+			}
+		}
+		if((wid != 0) && (wid != -1)){
+			winfo = waveManager.getWaveInfo(wid);
+			if(winfo != null) inst.setSampleHigh(winfo);
+		}
+		
+	}
+	
 	private void importUpdateInstPreset(RomImportContext ctx, Z64Instrument inst){
 		ZeqerInstPreset preset = new ZeqerInstPreset(inst);
 		int hash_uid = preset.hashToUID();
@@ -918,11 +1096,13 @@ class CoreBankManager {
 				}
 				else ctx.good = false;
 			}
+			updateInstPresetWaveLinks(preset);
 		}
 		else{
 			//If it's a dummy, swap it out for one with data.
 			ctx.preset_ids.add(hash_uid);
 			if(!match.hasData()){
+				//Load data
 				if(sys_write_enabled) {
 					//Also this just overwrites all of it.
 					//We want to keep the metadata...
@@ -937,12 +1117,16 @@ class CoreBankManager {
 						ZeqerInstPreset imatch = (ZeqerInstPreset)match;
 						imatch.loadData(inst);
 						flag_save_systbl_usermode = true;
+						
+						updateInstPresetWaveLinks(imatch);
 					}
 					else if(match instanceof ZeqerDummyPreset){
 						ZeqerInstPreset imatch = ((ZeqerDummyPreset) match).loadInstData(inst);
 						preset_table_sys.addPreset(imatch);
 						flag_save_systbl_usermode = true;
 						match = imatch;
+						
+						updateInstPresetWaveLinks(imatch);
 					}
 				}
 			}
@@ -955,7 +1139,7 @@ class CoreBankManager {
 		}
 	}
 	
-	private void importUpdateDrumPreset(RomImportContext ctx, Z64Drum drum){
+	private Z64Drum importUpdateDrumPreset(RomImportContext ctx, Z64Drum drum){
 		ZeqerDrumPreset dpreset = new ZeqerDrumPreset(drum);
 		int dhash = dpreset.hashToUID();
 		dpreset.setUID(dhash);
@@ -980,6 +1164,8 @@ class CoreBankManager {
 				}
 				else ctx.good = false;
 			}
+			updateDrumPresetWaveLinks(dpreset);
+			return dpreset.getData();
 		}
 		else{
 			//Load data if empty.
@@ -987,6 +1173,7 @@ class CoreBankManager {
 			if(!dmatch.hasData()){
 				if(sys_write_enabled) {
 					preset_table_sys.addPreset(dpreset);
+					updateDrumPresetWaveLinks(dpreset);
 				}
 				else{
 					//But still need to swap in the data if in user mode
@@ -997,12 +1184,15 @@ class CoreBankManager {
 						ZeqerDrumPreset ddmatch = (ZeqerDrumPreset)dmatch;
 						ddmatch.loadDrumData(drum);
 						flag_save_systbl_usermode = true;
+						updateDrumPresetWaveLinks(ddmatch);
 					}
 					else if(dmatch instanceof ZeqerDummyPreset){
 						ZeqerDrumPreset ddmatch = ((ZeqerDummyPreset) dmatch).loadDrumData(drum);
 						preset_table_sys.addPreset(ddmatch);
 						flag_save_systbl_usermode = true;
 						dmatch = ddmatch;
+						
+						updateDrumPresetWaveLinks(ddmatch);
 					}
 				}
 			}
@@ -1011,6 +1201,96 @@ class CoreBankManager {
 			if(dmatch instanceof ZeqerDrumPreset){
 				ZeqerDrumPreset ddpreset = (ZeqerDrumPreset)dmatch;
 				ctx.name_enum_map.put(ddpreset.getName(), ddpreset.getEnumLabel());
+				return ddpreset.getData();
+			}
+		}
+		
+		return null;
+	}
+	
+	private void importUpdateDrumset(RomImportContext ctx){
+		Z64Drum[] drums = ctx.mybank.getPercussionSet();
+		ZeqerPercPreset ppreset = new ZeqerPercPreset(-1);
+		ppreset.setName("perc_" + ctx.z_rom.getRomInfo().getZeqerID() 
+				+ String.format("_%02x", ctx.bankIndex));
+		for(int j = 0; j < 64; j++){
+			if(drums[j] != null) ppreset.setDrumToSlot(j, drums[j]);
+		}
+		
+		int hash_uid = ppreset.hashToUID(); //Calls consolidateRegions()
+		ppreset.setUID(hash_uid);
+		ZeqerPreset match = preset_table_sys.getPreset(hash_uid);
+		if(match == null){
+			if(sys_write_enabled){
+				//Add to table.
+				preset_table_sys.addPreset(ppreset);
+				ctx.preset_ids.add(hash_uid);
+				if(ctx.errorInfo != null) ctx.errorInfo.ppresetsNew++;
+			}
+			else{
+				if(ctx.verbose) System.err.println("CoreBankManager.importROMBanks || WARNING: Could not match preset 0x" + Integer.toHexString(hash_uid));
+				if(preset_table_user != null){
+					preset_table_user.addPreset(ppreset);
+					ctx.preset_ids.add(hash_uid);
+					if(ctx.errorInfo != null) ctx.errorInfo.ppresetsAddedAsCustom++;
+				}
+				else ctx.good = false;
+			}
+		}
+		else{
+			//If it's a dummy, swap it out for one with data.
+			ctx.preset_ids.add(hash_uid);
+			if(!match.hasData()){
+				if(sys_write_enabled) {
+					preset_table_sys.addPreset(ppreset);
+				}
+				else{
+					int rcount = ppreset.getRegionCount();
+					if(match instanceof ZeqerPercPreset){
+						ZeqerPercPreset pmatch = (ZeqerPercPreset)match;
+						pmatch.clearAndReallocRegions(rcount);
+						for(int i = 0; i < rcount; i++){
+							pmatch.setRegion(i, ppreset.getRegion(i));
+						}
+						ppreset = pmatch;
+						flag_save_systbl_usermode = true;
+					}
+					else if(match instanceof ZeqerDummyPreset){
+						ppreset = ((ZeqerDummyPreset) match).loadDrumsetData(ppreset);
+						preset_table_sys.addPreset(ppreset);
+						flag_save_systbl_usermode = true;
+					}
+				}
+			}
+		}
+		
+		//Shouldn't need wavelinking for set since should happen when processing indiv drums...
+		
+		//Individual Drums
+		int rcount = ppreset.getRegionCount();
+		for(int r = 0; r < rcount; r++){
+			ZeqerPercRegion reg = ppreset.getRegion(r);
+			if(reg != null){
+				Z64Drum drum = reg.getDrumData();
+				if(drum != null){
+					importUpdateDrumPreset(ctx, drum);
+				}
+				//Link back to drumset
+				reg.setDrumData(drum);
+			}
+		}
+		
+		//Drum enums
+		for(int n = 0; n < 64; n++){
+			Z64Drum drum = ctx.mybank.getDrumInSlot(n);
+			if(drum != null){
+				String dname = drum.getName();
+				if(dname != null){
+					String denum = ctx.name_enum_map.get(dname);
+					if(denum != null){
+						ctx.mybank.setDrumPresetEnumString(n, String.format("%s_%02d", denum, n));
+					}
+				}
 			}
 		}
 	}
@@ -1038,69 +1318,7 @@ class CoreBankManager {
 		
 		//Percussion (as a set)
 		if(ctx.bankInfo.getPercussionCount() > 0){
-			Z64Drum[] drums = ctx.mybank.getPercussionSet();
-			ZeqerPercPreset ppreset = new ZeqerPercPreset(-1);
-			ppreset.setName("perc_" + ctx.z_rom.getRomInfo().getZeqerID() 
-					+ String.format("_%02x", ctx.bankIndex));
-			for(int j = 0; j < 64; j++){
-				if(drums[j] != null) ppreset.setDrumToSlot(j, drums[j]);
-			}
-			
-			int hash_uid = ppreset.hashToUID();
-			ppreset.setUID(hash_uid); //Calls consolidateRegions()
-			ZeqerPreset match = preset_table_sys.getPreset(hash_uid);
-			if(match == null){
-				if(sys_write_enabled){
-					//Add to table.
-					preset_table_sys.addPreset(ppreset);
-					ctx.preset_ids.add(hash_uid);
-					if(ctx.errorInfo != null) ctx.errorInfo.ppresetsNew++;
-				}
-				else{
-					if(ctx.verbose) System.err.println("CoreBankManager.importROMBanks || WARNING: Could not match preset 0x" + Integer.toHexString(hash_uid));
-					if(preset_table_user != null){
-						preset_table_user.addPreset(ppreset);
-						ctx.preset_ids.add(hash_uid);
-						if(ctx.errorInfo != null) ctx.errorInfo.ppresetsAddedAsCustom++;
-					}
-					else ctx.good = false;
-				}
-			}
-			else{
-				//If it's a dummy, swap it out for one with data.
-				ctx.preset_ids.add(hash_uid);
-				if(!match.hasData()){
-					if(sys_write_enabled) {
-						preset_table_sys.addPreset(ppreset);
-					}
-				}
-			}
-			
-			//Individual Drums
-			int rcount = ppreset.getRegionCount();
-			for(int r = 0; r < rcount; r++){
-				ZeqerPercRegion reg = ppreset.getRegion(r);
-				if(reg != null){
-					Z64Drum drum = reg.getDrumData();
-					if(drum != null){
-						importUpdateDrumPreset(ctx, drum);
-					}
-				}
-			}
-			
-			//Drum enums
-			for(int n = 0; n < 64; n++){
-				Z64Drum drum = ctx.mybank.getDrumInSlot(n);
-				if(drum != null){
-					String dname = drum.getName();
-					if(dname != null){
-						String denum = ctx.name_enum_map.get(dname);
-						if(denum != null){
-							ctx.mybank.setDrumPresetEnumString(n, String.format("%s_%02d", denum, n));
-						}
-					}
-				}
-			}
+			importUpdateDrumset(ctx);
 		}
 	}
 	
@@ -1147,6 +1365,15 @@ class CoreBankManager {
 		String md5str = FileUtils.bytes2str(ctx.md5);
 		ctx.bentry = bnk_table_sys.matchBankMD5(md5str);
 		String data_path = importBankToTable(ctx);
+		
+		//Version flags
+		if(ctx.bentry != null){
+			NusRomInfo rominfo = ctx.z_rom.getRomInfo();
+			if(rominfo != null){
+				if(rominfo.isZ5()) ctx.bentry.setFlags(ZeqerBankTable.FLAG_Z5);
+				if(rominfo.isZ6()) ctx.bentry.setFlags(ZeqerBankTable.FLAG_Z6);
+			}
+		}
 		
 		//Extract presets in sys mode, *match* them in user mode
 		importUpdatePresets(ctx);

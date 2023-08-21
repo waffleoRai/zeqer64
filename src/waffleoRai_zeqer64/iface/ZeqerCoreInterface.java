@@ -8,10 +8,19 @@ import waffleoRai_Sound.nintendo.Z64WaveInfo;
 import waffleoRai_soundbank.nintendo.z64.Z64Envelope;
 import waffleoRai_zeqer64.ZeqerPreset;
 import waffleoRai_zeqer64.ZeqerRom;
+import waffleoRai_zeqer64.ZeqerSeq;
 import waffleoRai_zeqer64.GUI.dialogs.progress.IndefProgressDialog;
+import waffleoRai_zeqer64.ZeqerBank;
+import waffleoRai_zeqer64.ZeqerInstaller.ZeqerInstallListener;
+import waffleoRai_zeqer64.filefmt.AbldFile;
+import waffleoRai_zeqer64.filefmt.ZeqerBankTable.BankTableEntry;
 import waffleoRai_zeqer64.filefmt.ZeqerWaveTable.WaveTableEntry;
 
 public interface ZeqerCoreInterface {
+	
+	/*----- Updates -----*/
+	public boolean updateAvailable();
+	public boolean performUpdate(ZeqerInstallListener l);
 	
 	/*----- Settings Keys -----*/
 	public String getSetting(String key);
@@ -27,6 +36,7 @@ public interface ZeqerCoreInterface {
 	public boolean removeImportedRoms(Collection<ZeqerRom> romlist);
 	public String importRom(String path, IndefProgressDialog listener); //Also does detection. Or attempts. Returns error message
 	public String importRom(String path, String xmlpath, IndefProgressDialog listener); //When detection fails. Returns error message.
+	public ZeqerRom getRom(String romid);
 	
 	/*----- Sample Management -----*/
 	public boolean playSample(WaveTableEntry wave);
@@ -43,7 +53,23 @@ public interface ZeqerCoreInterface {
 	/*----- Preset Management -----*/
 	
 	public List<ZeqerPreset> getAllInstPresets();
+	public boolean isEditablePreset(int uid);
 	public boolean addUserPreset(ZeqerPreset preset);
 	public boolean deletePreset(int uid);
+	
+	/*----- Bank Management -----*/
+	
+	public List<ZeqerBank> getAllValidBanks();
+	public boolean isEditableBank(int uid);
+	public BankTableEntry getBankInfo(int uid);
+	public ZeqerBank getBank(int uid);
+	
+	/*----- Seq Management -----*/
+	
+	public List<ZeqerSeq> getAllValidSeqs();
+	
+	/*----- Abld Management -----*/
+	
+	public List<AbldFile> getAllAblds();
 	
 }

@@ -155,7 +155,7 @@ public class EngineTables {
 				
 				//Load
 				//System.err.println("Looking at bank " + i + String.format(" (%08x)", buid));
-				Z64Bank mybank = ZeqerCore.getActiveCore().loadBank(buid);
+				Z64Bank mybank = ZeqerCore.getActiveCore().loadBankData(buid);
 				if(mybank == null){
 					System.err.println("EngineTables.buildAudiobank || ERROR: Bank with UID 0x" + String.format("%08x", buid) + " not found!");
 					return null;

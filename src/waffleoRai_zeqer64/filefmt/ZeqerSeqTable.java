@@ -35,9 +35,15 @@ public class ZeqerSeqTable {
 	/*----- Constants -----*/
 	
 	public static final String MAGIC = "zeqrSEQt";
-	public static final short CURRENT_VERSION = 3;
+	public static final short CURRENT_VERSION = 4;
 	
 	public static final int FLAG_MULTIBANK = 0x00000001;
+	public static final int FLAG_PROJECT = 0x00000002;
+	public static final int FLAG_CUSTOM = 0x00000100;
+	public static final int FLAG_Z5 = 0x00000200;
+	public static final int FLAG_Z6 = 0x00000400;
+	public static final int FLAG_MASK_TYPE = 0x0000f000;
+	public static final int FLAG_TYPE_SHAMT = 12;
 	
 	private static final char SEP = File.separatorChar;
 	
@@ -60,7 +66,7 @@ public class ZeqerSeqTable {
 		private ZonedDateTime time_created;
 		private ZonedDateTime time_modified;
 		
-		private int bank_uid;
+		private int bank_uid = 0;
 		private List<Integer> banks; //Only used if multi bank
 		
 		private String name;
@@ -141,6 +147,8 @@ public class ZeqerSeqTable {
 		public byte getMedium(){return medium;}
 		public byte getCache(){return cache;}
 		public boolean hasTag(String tag){return tags.contains(tag);}
+		public ZonedDateTime getTimeCreated(){return this.time_created;}
+		public ZonedDateTime getTimeModified(){return this.time_modified;}
 		
 		public Collection<String> getTags(){
 			List<String> list = new ArrayList<String>(tags.size());
@@ -153,8 +161,17 @@ public class ZeqerSeqTable {
 		}
 			
 		public int getBankCount(){
-			if(banks == null) return 0;
+			if(banks == null && bank_uid == 0) return 0;
+			if(bank_uid != 0) return 1;
 			return banks.size();
+		}
+		
+		public int getSeqType(){
+			return (flags >>> FLAG_TYPE_SHAMT) & 0xf;
+		}
+		
+		public int getPrimaryBankUID(){
+			return bank_uid;
 		}
 		
 		public List<Integer> getLinkedBankUIDs(){
@@ -185,6 +202,14 @@ public class ZeqerSeqTable {
 			time_modified = ZonedDateTime.now();
 		}
 		
+		public void setFlags(int mask){
+			flags |= mask;
+		}
+		
+		public void clearFlags(int mask){
+			flags &= ~mask;
+		}
+		
 		public void setSingleBank(int bank_uid){
 			flags &= ~FLAG_MULTIBANK;
 			if(banks != null){
@@ -202,6 +227,11 @@ public class ZeqerSeqTable {
 			time_modified = ZonedDateTime.now();
 		}
 		
+		public void clearBanks(){
+			banks.clear();
+			bank_uid = 0;
+		}
+		
 		public void addTag(String tag){
 			tags.add(tag);
 		}
@@ -215,6 +245,14 @@ public class ZeqerSeqTable {
 			if(newmd5.length != 16) return;
 			md5 = newmd5;
 			time_modified = ZonedDateTime.now();
+		}
+		
+		public void setSeqType(int val){
+			val &= 0xf;
+			val <<= FLAG_TYPE_SHAMT;
+			
+			flags &= ~(0xf << FLAG_TYPE_SHAMT);
+			flags |= val;
 		}
 		
 		/*----- Serialization -----*/
@@ -467,6 +505,15 @@ public class ZeqerSeqTable {
 				
 				value = tsv.getValue("ENUM");
 				if(value != null) entry.setEnumString(value);
+				
+				value = tsv.getValue("SEQTYPE");
+				if(value != null) {
+					int type = 0;
+					try{type = Integer.parseInt(value);}
+					catch(NumberFormatException ex){}
+					entry.clearFlags(FLAG_MASK_TYPE);
+					entry.setFlags((type & 0xf) << FLAG_TYPE_SHAMT);
+				}
 				
 				value = tsv.getValue("TAGS");
 				if(value != null && !value.isEmpty()){

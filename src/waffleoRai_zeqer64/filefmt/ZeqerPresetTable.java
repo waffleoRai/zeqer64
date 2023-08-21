@@ -25,6 +25,7 @@ import waffleoRai_Utils.SerializedString;
 import waffleoRai_soundbank.nintendo.z64.Z64Drum;
 import waffleoRai_soundbank.nintendo.z64.Z64Envelope;
 import waffleoRai_soundbank.nintendo.z64.Z64Instrument;
+import waffleoRai_zeqer64.ZeqerCore;
 import waffleoRai_zeqer64.ZeqerPreset;
 import waffleoRai_zeqer64.presets.ZeqerDrumPreset;
 import waffleoRai_zeqer64.presets.ZeqerDummyPreset;
@@ -35,7 +36,7 @@ import waffleoRai_zeqer64.presets.ZeqerSFXPreset;
 public class ZeqerPresetTable {
 	
 	public static final String TBL_MAGIC = "zeqrINSt";
-	public static final int TBL_CURRENT_VERSION = 5;
+	public static final int TBL_CURRENT_VERSION = 6;
 	
 	private static final int HEADER_SIZE = 16+8;
 	
@@ -120,14 +121,22 @@ public class ZeqerPresetTable {
 			}
 			//Read name
 			mpos = data.getCurrentPosition();
-			SerializedString ss = data.readVariableLengthString("UTF8", mpos, BinFieldSize.WORD, 2);
+			SerializedString ss = data.readVariableLengthString(ZeqerCore.ENCODING, mpos, BinFieldSize.WORD, 2);
 			preset.setName(ss.getString());
 			data.skipBytes(ss.getSizeOnDisk());
+			
+			//Read enum label
+			if(version >= 6){
+				mpos = data.getCurrentPosition();
+				ss = data.readVariableLengthString(ZeqerCore.ENCODING, mpos, BinFieldSize.WORD, 2);
+				preset.setEnumLabel(ss.getString());
+				data.skipBytes(ss.getSizeOnDisk());
+			}
 			
 			//Read tags
 			if(version >= 2){
 				mpos = data.getCurrentPosition();
-				ss = data.readVariableLengthString("UTF8", mpos, BinFieldSize.WORD, 2);
+				ss = data.readVariableLengthString(ZeqerCore.ENCODING, mpos, BinFieldSize.WORD, 2);
 				String tagstr = ss.getString();
 				data.skipBytes(ss.getSizeOnDisk());
 				
@@ -362,7 +371,10 @@ public class ZeqerPresetTable {
 			String pname = preset.getName();
 			int nlen = 0;
 			if(pname != null) nlen = pname.length();
-			buff = new FileBuffer(16 + nlen + tagstr.length(), true);
+			String enlbl = preset.getEnumLabel();
+			if(enlbl != null) nlen += enlbl.length();
+			
+			buff = new FileBuffer(32 + nlen + tagstr.length(), true);
 			buff.addToFile(preset.getUID());
 			int flags = 0x0;
 			switch(preset.getType()){
@@ -372,11 +384,16 @@ public class ZeqerPresetTable {
 			case ZeqerPreset.PRESET_TYPE_SFX:
 				flags |= 0x2;
 				break;
+			case ZeqerPreset.PRESET_TYPE_DRUM:
+				flags |= 0x3;
+				break;
 			}
 			buff.addToFile(flags);
 			
-			buff.addVariableLengthString("UTF8", pname, BinFieldSize.WORD, 2);
-			buff.addVariableLengthString("UTF8", tagstr, BinFieldSize.WORD, 2);
+			buff.addVariableLengthString(ZeqerCore.ENCODING, pname, BinFieldSize.WORD, 2);
+			if (enlbl != null) buff.addVariableLengthString(ZeqerCore.ENCODING, enlbl, BinFieldSize.WORD, 2);
+			else buff.addToFile((short)0);
+			buff.addVariableLengthString(ZeqerCore.ENCODING, tagstr, BinFieldSize.WORD, 2);
 			
 			buff.writeToStream(bos);
 		}
@@ -384,6 +401,10 @@ public class ZeqerPresetTable {
 	}
 	
 	/*----- Getters -----*/
+	
+	public boolean hasPreset(int uid){
+		return presets.containsKey(uid);
+	}
 	
 	public ZeqerPreset getPreset(int uid){
 		return presets.get(uid);

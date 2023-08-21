@@ -149,7 +149,7 @@ public class RecompFiles {
 		//Load bank information
 		if(sf == null) return false;
 		int buid = sf.getBankUID();
-		Z64Bank mybank = ZeqerCore.getActiveCore().loadBank(buid);
+		Z64Bank mybank = ZeqerCore.getActiveCore().loadBankData(buid);
 		if(mybank == null) return false;
 		BankTableEntry bankmeta = ZeqerCore.getActiveCore().getBankInfo(buid);
 		if(bankmeta == null) return false;

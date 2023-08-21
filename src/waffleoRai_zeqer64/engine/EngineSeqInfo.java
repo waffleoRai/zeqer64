@@ -14,6 +14,7 @@ public class EngineSeqInfo {
 	private ArrayList<Integer> banks;
 	private int cachePolicy;
 	private int medium = Z64Sound.MEDIUM_CART;
+	private int subslot = -1;
 	
 	/*----- Initialization -----*/
 	
@@ -27,12 +28,14 @@ public class EngineSeqInfo {
 	public int getCachePolicy() {return cachePolicy;}
 	public int getMedium() {return medium;}
 	public List<Integer> getBankList(){return banks;}
+	public int getSubSlot(){return subslot;}
 	
 	/*----- Setters -----*/
 	
 	public void setSeqUID(int val) {uid = val;}
 	public void setCachePolicy(int val) {cachePolicy = val;}
 	public void setMedium(int val) {medium = val;}
+	public void setSubSlot(int val){subslot = val;}
 	
 	public void setBanks(int[] vals){
 		banks.clear();
@@ -44,7 +47,8 @@ public class EngineSeqInfo {
 	
 	public FileBuffer serializeMe(){
 		int bcount = banks.size();
-		FileBuffer buff = new FileBuffer(8+(bcount<<2), true);
+		FileBuffer buff = new FileBuffer(12+(bcount<<2), true);
+		if(subslot >= 0) buff.addToFile(subslot);
 		buff.addToFile(uid);
 		buff.addToFile((byte)medium);
 		buff.addToFile((byte)cachePolicy);

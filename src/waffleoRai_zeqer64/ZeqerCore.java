@@ -18,10 +18,12 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import waffleoRai_Files.FileBufferInputStream;
 import waffleoRai_Sound.nintendo.Z64Wave;
@@ -54,6 +56,8 @@ public class ZeqerCore {
 	
 	//Does the same stuff that I usually put in XYZProgramFiles
 	
+	//TODO Updater breaks all sample links
+	
 	/*----- Misc Constants -----*/
 	
 	public static final String ENCODING = "UTF8";
@@ -85,9 +89,9 @@ public class ZeqerCore {
 	public static final String FN_USRROMS = "myroms.csv.jdfl";
 	
 	public static final String IKEY_VERSION = "VERSION";
-	public static final String CURRENT_VERSION = "0.4.0";
+	public static final String CURRENT_VERSION = "0.5.0";
 	public static final String IKEY_BUILDTAG = "BUILDTAG";
-	public static final int CURRENT_BUILDTAG = 2023070400;
+	public static final int CURRENT_BUILDTAG = 2023080500;
 	
 	public static final String IKEY_PREFLAN = "LANGUAGE";
 	
@@ -557,7 +561,6 @@ public class ZeqerCore {
 	}
 	
 	public boolean updateToThisVersion(ZeqerInstallListener l) throws IOException{
-		//TODO
 		//Updates sys files.
 		//Many can just be overwritten...
 		//But preset table and buseqs that have been filled with data need to
@@ -576,7 +579,9 @@ public class ZeqerCore {
 		for(Path child : dirstr){
 			String fn = child.getFileName().toString();
 			if(Files.isDirectory(child)){
-				Files.move(child, Paths.get(update_dir + SEP + fn));
+				if(!fn.equals("_update")){
+					Files.move(child, Paths.get(update_dir + SEP + fn));
+				}
 			}
 			else{
 				if(!fn.endsWith(".ini")){
@@ -601,7 +606,11 @@ public class ZeqerCore {
 		}
 		
 		//Call updaters for each manager...
+		if(l != null) l.onUpdateFileProcessStart();
 		boolean good = true;
+		if(wavManager != null){
+			good = good && wavManager.updateVersion(update_dir + SEP + DIRNAME_WAVE);
+		}
 		if(bnkManager != null){
 			try{
 				good = good && bnkManager.updateVersion(update_dir + SEP + DIRNAME_BANK);	
@@ -611,8 +620,10 @@ public class ZeqerCore {
 				good = false;
 			}
 		}
-		//TODO Seq
-		//TODO Wav
+		if(seqManager != null){
+			good = good && seqManager.updateVersion(update_dir + SEP + DIRNAME_SEQ);
+		}
+		
 		
 		//Delete the temp dir
 		FileUtils.deleteRecursive(update_dir);
@@ -623,7 +634,17 @@ public class ZeqerCore {
 			init_values.put(IKEY_BUILDTAG, Integer.toString(CURRENT_BUILDTAG));
 		}
 		
-		//TODO Reboot core?
+		//Partially reboot core from current files
+		saveSettingsFile(prog_dir + File.separator + SETTINGS_FILE_NAME);
+		if(wavManager != null){
+			good = good && wavManager.hardReset();
+		}
+		if(bnkManager != null){
+			good = good && bnkManager.hardReset();
+		}
+		if(seqManager != null){
+			good = good && seqManager.hardReset();
+		}
 		
 		return good;
 	}
@@ -662,7 +683,7 @@ public class ZeqerCore {
 	
 	private RomDetector romdetector; //Mapped by md5sum string
 	private ZeqerRom last_rom;
-	private Map<String, ZeqerRom> userRoms;
+	private Map<String, ZeqerRom> userRoms; //Each rom mapped to both md5 string AND zeqerID
 	
  	private boolean loadRomInfoMap_fs() throws IOException{
 		String rootdir = getProgramDirectory();
@@ -824,6 +845,8 @@ public class ZeqerCore {
 					rom.setInfoXMLPath(fields[2]);
 				}
 				userRoms.put(fields[0], rom);
+				String zid = rominfo.getZeqerID();
+				if(zid != null && !zid.isEmpty()) userRoms.put(zid, rom);
 			}
 		}
 		br.close();
@@ -837,15 +860,20 @@ public class ZeqerCore {
 		//Easier to just write to disk then I don't have to allocate :)
 		String temppath = userroms_path + ".tmp";
 		BufferedWriter bw = new BufferedWriter(new FileWriter(temppath));
+		Set<String> okay = new HashSet<String>();
 		for(Entry<String, ZeqerRom> entry : userRoms.entrySet()){
-			bw.write(entry.getValue().getRomInfo().getMD5String());
+			ZeqerRom rom = entry.getValue();
+			String md5str = rom.getRomInfo().getMD5String();
+			if(okay.contains(md5str)) continue;
+			bw.write(md5str);
 			bw.write(",");
-			bw.write(entry.getValue().getRomPath());
+			bw.write(rom.getRomPath());
 			String xml_path = entry.getValue().getInfoXMLPath();
 			if(xml_path != null){
 				bw.write("," + xml_path);
 			}
 			bw.write("\n");
+			okay.add(md5str);
 		}
 		bw.close();
 		
@@ -865,7 +893,22 @@ public class ZeqerCore {
 	public List<ZeqerRom> getAllUserRoms(){
 		List<ZeqerRom> list = new LinkedList<ZeqerRom>();
 		if(userRoms != null){
-			list.addAll(userRoms.values());
+			for(Entry<String, ZeqerRom> entry : userRoms.entrySet()){
+				//Only add if entry key looks like an md5 string
+				String key = entry.getKey();
+				if(key.length() != 32) continue;
+				if(key.contains("_")) continue;
+				if(key.contains("-")) continue;
+				
+				boolean flag = false;
+				for(char c = 'g'; c <= 'z'; c++){
+					if(key.contains(c + "")){
+						flag = true;
+						break;
+					}
+				}
+				if(!flag) list.add(entry.getValue());
+			}
 		}
 		return list;
 	}
@@ -926,6 +969,10 @@ public class ZeqerCore {
 			ZeqerRom rom = new ZeqerRom(file_path, info);
 			rom.setInfoXMLPath(xml_path);
 			userRoms.put(md5str, rom);
+			
+			String zid = info.getZeqerID();
+			if(zid != null && !zid.isEmpty()) userRoms.put(zid, rom);
+			
 			if(listener != null) listener.onRomRecordAdded(rom);
 			if(do_extraction){
 				RomExtractionSummary exerr = extractSoundDataFromRom(rom, listener, true);
@@ -987,7 +1034,7 @@ public class ZeqerCore {
 	public ZeqerBankTable getUserBankTable(){return bnkManager != null ? bnkManager.getUserBankTable():null;}
 	public ZeqerPresetTable getUserPresetTable(){return bnkManager != null ? bnkManager.getUserPresetTable():null;}
 	
-	/*----- Data Loading -----*/
+	/*----- Ablds -----*/
 	
 	public AbldFile loadSysBuild(String rom_id) throws UnsupportedFileTypeException, IOException{
 		String dirpath = getProgramDirectory();
@@ -995,8 +1042,56 @@ public class ZeqerCore {
 		dirpath += SEP + DIRNAME_ABLD + SEP + DIRNAME_ZBLD;
 		String filepath = dirpath + SEP + rom_id + ".abld";
 		AbldFile abld = AbldFile.readABLD(FileBuffer.createBuffer(filepath, true));
+		abld.flagSysBuild(true);
 		return abld;
 	}
+	
+	public List<AbldFile> loadAllAblds() throws UnsupportedFileTypeException, IOException{
+		List<AbldFile> list = new LinkedList<AbldFile>();
+		
+		String dirpath = getProgramDirectory();
+		if(dirpath == null) return list;
+		
+		//User files
+		dirpath += SEP + DIRNAME_ABLD;
+		DirectoryStream<Path> dstr = Files.newDirectoryStream(Paths.get(dirpath));
+		for(Path child : dstr){
+			if(Files.isDirectory(child)) continue;
+			String fname = child.toAbsolutePath().toString();
+			
+			if(fname.endsWith(".abld")){
+				//Load
+				AbldFile abld = AbldFile.readABLD(FileBuffer.createBuffer(fname, true));
+				if(abld != null){
+					abld.flagSysBuild(false);
+					list.add(abld);
+				}
+			}
+		}
+		dstr.close();
+		
+		//System files
+		dirpath += SEP + DIRNAME_ZBLD;
+		dstr = Files.newDirectoryStream(Paths.get(dirpath));
+		for(Path child : dstr){
+			if(Files.isDirectory(child)) continue;
+			String fname = child.toAbsolutePath().toString();
+			
+			if(fname.endsWith(".abld")){
+				//Load
+				AbldFile abld = AbldFile.readABLD(FileBuffer.createBuffer(fname, true));
+				if(abld != null){
+					abld.flagSysBuild(true);
+					list.add(abld);
+				}
+			}
+		}
+		dstr.close();
+		
+		return list;
+	}
+	
+	/*----- Data Loading -----*/
 	
 	public Z64WaveInfo getWaveByName(String wave_name){
 		if(wavManager == null) return null;
@@ -1023,9 +1118,14 @@ public class ZeqerCore {
 		return bnkManager.getBankInfo(bank_uid);
 	}
 	
-	public Z64Bank loadBank(int bank_uid){
+	public Z64Bank loadBankData(int bank_uid){
 		if(bnkManager == null) return null;
 		return bnkManager.loadBank(bank_uid);
+	}
+	
+	public ZeqerBank loadZeqerBank(int bank_uid){
+		if(bnkManager == null) return null;
+		return bnkManager.loadZeqerBank(bank_uid);
 	}
 	
 	public Z64Instrument getPresetInstrumentByName(String preset_name){
@@ -1073,6 +1173,31 @@ public class ZeqerCore {
 	public List<ZeqerPreset> getAllValidPresets(){
 		if(bnkManager == null) return new LinkedList<ZeqerPreset>();
 		return bnkManager.getAllValidPresets();
+	}
+	
+	public List<ZeqerBank> getAllValidBanks(){
+		if(bnkManager == null) return new LinkedList<ZeqerBank>();
+		return bnkManager.getAllValidBanks();
+	}
+	
+	public List<ZeqerSeq> getAllValidSeqs(){
+		if(seqManager == null) return new LinkedList<ZeqerSeq>();
+		try {
+			return seqManager.getAllValidSeqs();
+		} catch (IOException | UnsupportedFileTypeException e) {
+			e.printStackTrace();
+			return new LinkedList<ZeqerSeq>();
+		}
+	}
+	
+	public boolean isSystemPreset(int uid){
+		if(bnkManager == null) return false;
+		return bnkManager.isSysPreset(uid);
+	}
+	
+	public boolean isSystemBank(int uid){
+		if(bnkManager == null) return false;
+		return bnkManager.isSysBank(uid);
 	}
 	
 	/*----- Data Saving -----*/

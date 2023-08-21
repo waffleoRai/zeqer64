@@ -33,8 +33,19 @@ public class ZeqerBank {
 	/*----- Getters -----*/
 	
 	public BankTableEntry getTableEntry(){return metaEntry;}
-	public Z64Bank getBankData(){return data;}
 	public boolean isBankDataLoaded(){return data != null;}
+	
+	public Z64Bank getBankData(){
+		if(data == null){
+			try{
+				loadBankData();
+			}
+			catch(Exception ex){
+				ex.printStackTrace();
+			}	
+		}
+		return data;
+	}
 	
 	/*----- Setters -----*/
 	

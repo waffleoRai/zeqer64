@@ -217,7 +217,8 @@ public class ZeqerPanelSamples extends JPanel{
 			pnlCtrl.add(btnImport, gbc_btnImport);
 			btnImport.addActionListener(new ActionListener(){
 				public void actionPerformed(ActionEvent e) {
-					onButton_import();
+					//onButton_import();
+					dummyCallback();
 				}
 			});
 			
@@ -229,7 +230,8 @@ public class ZeqerPanelSamples extends JPanel{
 			pnlCtrl.add(btnExport, gbc_btnExport);
 			btnExport.addActionListener(new ActionListener(){
 				public void actionPerformed(ActionEvent e) {
-					onButton_export();
+					//onButton_export();
+					dummyCallback();
 				}
 			});
 			btnExport.setEnabled(false);
@@ -243,7 +245,8 @@ public class ZeqerPanelSamples extends JPanel{
 		pnlCtrl.add(btnPlay, gbc_btnPlay);
 		btnPlay.addActionListener(new ActionListener(){
 			public void actionPerformed(ActionEvent e) {
-				onButton_play();
+				//onButton_play();
+				dummyCallback();
 			}
 		});
 		btnPlay.setEnabled(false);
@@ -415,23 +418,31 @@ public class ZeqerPanelSamples extends JPanel{
 	
 	/*----- Draw -----*/
 	
-	public void setWait(){
+	public void disableAll(){
 		pnlInfo.setEnabled(false);
 		pnlFilt.disableAll();
 		list.setEnabled(false);
-		btnImport.setEnabled(false); 
-		btnExport.setEnabled(false);
+		if(btnImport != null) btnImport.setEnabled(false); 
+		if(btnExport != null) btnExport.setEnabled(false);
 		btnPlay.setEnabled(false);
+	}
+	
+	public void reenable(){
+		pnlInfo.setEnabled(true);
+		pnlFilt.enableAll();
+		list.setEnabled(true);
+		if(btnImport != null) btnImport.setEnabled(true); 
+		if(btnExport != null) btnExport.setEnabled(!list.isSelectionEmpty());
+		btnPlay.setEnabled(!list.isSelectionEmpty());
+	}
+	
+	public void setWait(){
+		disableAll();
 		setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
 	}
 	
 	public void unsetWait(){
-		pnlInfo.setEnabled(true);
-		pnlFilt.enableAll();
-		list.setEnabled(true);
-		btnImport.setEnabled(true); 
-		btnExport.setEnabled(!list.isSelectionEmpty());
-		btnPlay.setEnabled(!list.isSelectionEmpty());
+		reenable();
 		setCursor(null);
 	}
 	
@@ -526,6 +537,10 @@ public class ZeqerPanelSamples extends JPanel{
 	
 	/*----- Actions -----*/
 	
+	private void dummyCallback(){
+		showInfo("Sorry, this component doesn't work yet!");
+	}
+	
 	public void refreshSamplePool(){
 		setWait();
 		if(core != null){
@@ -540,7 +555,7 @@ public class ZeqerPanelSamples extends JPanel{
 	
 	private void onChangeListSelection(){
 		SampleNode selnode = list.getSelectedValue();
-		btnExport.setEnabled(!list.isSelectionEmpty());
+		if(btnExport != null) btnExport.setEnabled(!list.isSelectionEmpty());
 		btnPlay.setEnabled(!list.isSelectionEmpty());
 		drawToInfoPanel(selnode);
 	}
@@ -619,6 +634,9 @@ public class ZeqerPanelSamples extends JPanel{
 		IndefProgressDialog dialog = new IndefProgressDialog(parent, "Please Wait");
 		dialog.setPrimaryString("Import Sample");
 		dialog.setSecondaryString("Importing " + inpath);
+		
+		//TODO File type filters
+		//Also strings
 	
 		SwingWorker<Void, Void> task = new SwingWorker<Void, Void>(){
 			protected Void doInBackground() throws Exception{

@@ -55,7 +55,10 @@ class CoreWaveManager implements SoundSampleSource{
 				Files.createDirectories(Paths.get(zdir));
 			}
 		}
-		
+		loadTables();
+	}
+	
+	private void loadTables() throws UnsupportedFileTypeException, IOException{
 		String tblpath = getSysTablePath();
 		if(FileBuffer.fileExists(tblpath)){
 			wav_table_sys = ZeqerWaveTable.readTable(FileBuffer.createBuffer(tblpath, true));
@@ -73,6 +76,19 @@ class CoreWaveManager implements SoundSampleSource{
 				wav_table_user = ZeqerWaveTable.createTable();	
 			}
 		}
+	}
+	
+	protected boolean hardReset(){
+		wav_table_sys = null;
+		wav_table_user = null;
+		
+		try{loadTables();}
+		catch(Exception ex){
+			ex.printStackTrace();
+			return false;
+		}
+		
+		return true;
 	}
 	
 	/*----- Install -----*/

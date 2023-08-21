@@ -3,17 +3,24 @@ package waffleoRai_zeqer64.GUI;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
 import waffleoRai_Sound.nintendo.Z64WaveInfo;
+import waffleoRai_Utils.FileBuffer.UnsupportedFileTypeException;
 import waffleoRai_soundbank.nintendo.z64.Z64Envelope;
+import waffleoRai_zeqer64.ZeqerBank;
 import waffleoRai_zeqer64.ZeqerCore;
 import waffleoRai_zeqer64.ZeqerPreset;
 import waffleoRai_zeqer64.ZeqerRom;
+import waffleoRai_zeqer64.ZeqerSeq;
 import waffleoRai_zeqer64.ZeqerStringManager;
 import waffleoRai_zeqer64.GUI.dialogs.progress.IndefProgressDialog;
+import waffleoRai_zeqer64.ZeqerInstaller.ZeqerInstallListener;
+import waffleoRai_zeqer64.filefmt.AbldFile;
 import waffleoRai_zeqer64.filefmt.NusRomInfo;
+import waffleoRai_zeqer64.filefmt.ZeqerBankTable.BankTableEntry;
 import waffleoRai_zeqer64.filefmt.ZeqerWaveTable.WaveTableEntry;
 import waffleoRai_zeqer64.iface.ZeqerCoreInterface;
 import waffleoRai_zeqer64.listeners.RomImportProgDiaListener;
@@ -123,6 +130,21 @@ public class CoreGUIInterface implements ZeqerCoreInterface{
 		}
 		core = null;
 		return true;
+	}
+	
+	/*----- Updates -----*/
+	public boolean updateAvailable(){
+		if(core == null) return false;
+		return core.needsUpdate();
+	}
+	
+	public boolean performUpdate(ZeqerInstallListener l){
+		if(core == null) return false;
+		try{return core.updateToThisVersion(l);}
+		catch(IOException ex){
+			ex.printStackTrace();
+			return false;
+		}
 	}
 	
 	/*----- Getters -----*/
@@ -242,6 +264,11 @@ public class CoreGUIInterface implements ZeqerCoreInterface{
 		return null;
 	}
 	
+	public ZeqerRom getRom(String romid){
+		if(core == null) return null;
+		return core.getUserRom(romid); //The map uses BOTH md5 string and zeqerid as keys.
+	}
+	
 	/*----- Sample Management -----*/
 
 	@Override
@@ -286,6 +313,11 @@ public class CoreGUIInterface implements ZeqerCoreInterface{
 	
 	/*----- Preset Management -----*/
 	
+	public boolean isEditablePreset(int uid){
+		if(core == null) return false;
+		return !core.isSystemPreset(uid);
+	}
+	
 	public List<ZeqerPreset> getAllInstPresets(){
 		if(core == null) return null;
 		return core.getAllValidPresets();
@@ -301,4 +333,48 @@ public class CoreGUIInterface implements ZeqerCoreInterface{
 		return core.removeUserPreset(uid);
 	}
 
+	/*----- Bank Management -----*/
+	
+	public List<ZeqerBank> getAllValidBanks(){
+		if(core == null) return new LinkedList<ZeqerBank>();
+		return core.getAllValidBanks();
+	}
+	
+	public boolean isEditableBank(int uid){
+		if(core == null) return true;
+		return !core.isSystemBank(uid);
+	}
+	
+	public BankTableEntry getBankInfo(int uid){
+		if(core == null) return null;
+		return core.getBankInfo(uid);
+	}
+	
+	public ZeqerBank getBank(int uid){
+		if(core == null) return null;
+		return core.loadZeqerBank(uid);
+	}
+	
+	/*----- Seq Management -----*/
+	
+	public List<ZeqerSeq> getAllValidSeqs(){
+		if(core == null) return new LinkedList<ZeqerSeq>();
+		return core.getAllValidSeqs();
+	}
+	
+	/*----- Abld Management -----*/
+	
+	public List<AbldFile> getAllAblds(){
+		if(core == null) return new LinkedList<AbldFile>();
+		try {
+			return core.loadAllAblds();
+		} catch (UnsupportedFileTypeException e) {
+			e.printStackTrace();
+			return new LinkedList<AbldFile>();
+		} catch (IOException e) {
+			e.printStackTrace();
+			return new LinkedList<AbldFile>();
+		}
+	}
+	
 }

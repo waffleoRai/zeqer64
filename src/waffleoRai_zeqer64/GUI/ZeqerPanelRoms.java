@@ -38,6 +38,7 @@ import javax.swing.event.ListSelectionListener;
 import javax.swing.filechooser.FileFilter;
 
 import waffleoRai_Containers.nintendo.nus.N64ROMImage;
+import waffleoRai_GUITools.ComponentGroup;
 import waffleoRai_GUITools.WriterPanel;
 import waffleoRai_Utils.VoidCallbackMethod;
 
@@ -81,6 +82,8 @@ public class ZeqerPanelRoms extends JPanel{
 	private ZeqerCoreInterface core;
 	private VoidCallbackMethod romImportCallback;
 		
+	private ComponentGroup globalEnable;
+	
 	private JFrame parent;
 	private WriterPanel pnlInfo;
 	private JList<GuiRomNode> lstRoms;
@@ -93,6 +96,8 @@ public class ZeqerPanelRoms extends JPanel{
 		core = corelink;
 		parent = parent_frame;
 		roms = new LinkedList<ZeqerRom>();
+		globalEnable = new ComponentGroup();
+		
 		initGUI();
 		refreshRomList();
 	}
@@ -127,6 +132,7 @@ public class ZeqerPanelRoms extends JPanel{
 		gbc_spLeft.gridx = 0;
 		gbc_spLeft.gridy = 0;
 		pnlLeft.add(spLeft, gbc_spLeft);
+		globalEnable.addComponent("spLeft", spLeft);
 		
 		lstRoms = new JList<GuiRomNode>();
 		spLeft.setViewportView(lstRoms);
@@ -142,6 +148,7 @@ public class ZeqerPanelRoms extends JPanel{
 				}
 			}
 		});
+		globalEnable.addComponent("lstRoms", lstRoms);
 		
 		JPanel pnlBtns = new JPanel();
 		GridBagConstraints gbc_pnlBtns = new GridBagConstraints();
@@ -167,6 +174,7 @@ public class ZeqerPanelRoms extends JPanel{
 				onClickAddButton();
 			}
 		});
+		globalEnable.addComponent("btnAdd", btnAdd);
 		
 		pnlInfo = new WriterPanel();
 		GridBagConstraints gbc_spRight = new GridBagConstraints();
@@ -174,6 +182,7 @@ public class ZeqerPanelRoms extends JPanel{
 		gbc_spRight.gridx = 1;
 		gbc_spRight.gridy = 0;
 		add(pnlInfo, gbc_spRight);
+		globalEnable.addComponent("pnlInfo", pnlInfo);
 	}
 	
 	/*----- Getters -----*/
@@ -304,6 +313,16 @@ public class ZeqerPanelRoms extends JPanel{
 		lstRoms.clearSelection();
 		lstRoms.repaint();
 		writeInfoToRightpane(null);
+	}
+	
+	public void disableAll(){
+		globalEnable.setEnabling(false);
+		globalEnable.repaint();
+	}
+	
+	public void reenable(){
+		globalEnable.setEnabling(true);
+		globalEnable.repaint();
 	}
 	
 	/*----- Actions -----*/
