@@ -1103,6 +1103,11 @@ public class ZeqerCore {
 		return wavManager.getWaveInfo(wave_uid);
 	}
 	
+	public WaveTableEntry getWaveTableEntry(int wave_uid){
+		if(wavManager == null) return null;
+		return wavManager.getWaveTableEntry(wave_uid);
+	}
+	
 	public Z64Wave loadWave(int wave_uid){
 		if(wavManager == null) return null;
 		return wavManager.loadWave(wave_uid);

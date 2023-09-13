@@ -21,6 +21,7 @@ import waffleoRai_zeqer64.ZeqerInstaller.ZeqerInstallListener;
 import waffleoRai_zeqer64.filefmt.AbldFile;
 import waffleoRai_zeqer64.filefmt.NusRomInfo;
 import waffleoRai_zeqer64.filefmt.ZeqerBankTable.BankTableEntry;
+import waffleoRai_zeqer64.filefmt.ZeqerSeqTable.SeqTableEntry;
 import waffleoRai_zeqer64.filefmt.ZeqerWaveTable.WaveTableEntry;
 import waffleoRai_zeqer64.iface.ZeqerCoreInterface;
 import waffleoRai_zeqer64.listeners.RomImportProgDiaListener;
@@ -299,6 +300,11 @@ public class CoreGUIInterface implements ZeqerCoreInterface{
 		return core.getAllValidWaveTableEntries();
 	}
 	
+	public WaveTableEntry getWaveTableEntry(int uid){
+		if(core == null) return null;
+		return core.getWaveTableEntry(uid);
+	}
+	
 	/*----- Envelope Management -----*/
 	
 	public Map<String, Z64Envelope> getAllEnvelopePresets(){
@@ -356,6 +362,11 @@ public class CoreGUIInterface implements ZeqerCoreInterface{
 	}
 	
 	/*----- Seq Management -----*/
+	
+	public SeqTableEntry getSeqInfo(int uid){
+		if(core == null) return null;
+		return core.getSeqInfo(uid);
+	}
 	
 	public List<ZeqerSeq> getAllValidSeqs(){
 		if(core == null) return new LinkedList<ZeqerSeq>();

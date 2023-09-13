@@ -4,7 +4,6 @@ import java.awt.GridBagLayout;
 import javax.swing.JComboBox;
 
 import java.awt.Component;
-import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.GridBagConstraints;
 import javax.swing.JLabel;
@@ -25,7 +24,9 @@ import waffleoRai_GUITools.WRFrame;
 import waffleoRai_Sound.nintendo.Z64Sound;
 import waffleoRai_zeqer64.ZeqerSeq;
 import waffleoRai_zeqer64.ZeqerUtils;
-import waffleoRai_zeqer64.GUI.ZeqerGUIUtils;
+import waffleoRai_zeqer64.GUI.ZeqerGUIUtils.CacheType;
+import waffleoRai_zeqer64.GUI.ZeqerGUIUtils.MediumType;
+import waffleoRai_zeqer64.GUI.ZeqerGUIUtils.SeqType;
 import waffleoRai_zeqer64.GUI.dialogs.ZeqerSeqHubDialog;
 import waffleoRai_zeqer64.GUI.dialogs.ZeqerTagEditDialog;
 import waffleoRai_zeqer64.filefmt.ZeqerSeqTable.SeqTableEntry;
@@ -44,63 +45,6 @@ public class SeqMetaEditDialog extends WRFrame{
 	
 	public static final int MIN_WIDTH = 320;
 	public static final int MIN_HEIGHT = 250;
-	
-	/*--- Inner Classes ---*/
-	
-	private static enum MediumType{
-		RAM(Z64Sound.MEDIUM_RAM),
-		UNKNOWN(Z64Sound.MEDIUM_UNK),
-		CART(Z64Sound.MEDIUM_CART),
-		DD(Z64Sound.MEDIUM_DISK_DRIVE);
-		
-		private int value;
-		
-		private MediumType(int val){value = val;}
-		public int getValue(){return value;}
-		
-		public String toString(){
-			return ZeqerGUIUtils.getMediumString(value);
-		}
-	}
-	
-	private static enum CacheType{
-		PERMANENT(Z64Sound.CACHE_PERMANENT),
-		PERSISTENT(Z64Sound.CACHE_PERSISTENT),
-		TEMPORARY(Z64Sound.CACHE_TEMPORARY),
-		ANY(Z64Sound.CACHE_ANY),
-		ANY_NOSYNC(Z64Sound.CACHE_ANYNOSYNCLOAD);
-		
-		private int value;
-		
-		private CacheType(int val){value = val;}
-		public int getValue(){return value;}
-		
-		public String toString(){
-			return ZeqerGUIUtils.getCacheString(value);
-		}
-	}
-	
-	private static enum SeqType{
-		NONE(ZeqerSeq.SEQTYPE_UNKNOWN),
-		BGM(ZeqerSeq.SEQTYPE_BGM),
-		BGM_PROG(ZeqerSeq.SEQTYPE_BGM_PROG),
-		BGM_PIECE(ZeqerSeq.SEQTYPE_BGM_PIECE),
-		JINGLE(ZeqerSeq.SEQTYPE_JINGLE),
-		OCARINA(ZeqerSeq.SEQTYPE_OCARINA),
-		CUTSCENE(ZeqerSeq.SEQTYPE_CUTSCENE),
-		AMBIENT(ZeqerSeq.SEQTYPE_AMBIENT),
-		SFX(ZeqerSeq.SEQTYPE_SFX),
-		INTRMUS(ZeqerSeq.SEQTYPE_INTRMUS);
-		
-		private int value;
-		
-		private SeqType(int val){value = val;}
-		public int getValue(){return value;}
-		
-		public String toString(){
-			return ZeqerGUIUtils.getSeqTypeString(value);
-		}
-	}
 	
 	/*--- Instance Variables ---*/
 	

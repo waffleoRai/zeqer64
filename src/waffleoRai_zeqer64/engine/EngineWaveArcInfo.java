@@ -61,6 +61,24 @@ public class EngineWaveArcInfo {
 		samples.ensureCapacity(capacity);
 	}
 
+	/*----- Misc. -----*/
+	
+	public EngineWaveArcInfo copy(){
+		int cap = 16;
+		if(samples != null){
+			cap = samples.size()+16;
+		}
+		
+		EngineWaveArcInfo copy = new EngineWaveArcInfo(cap);
+		copy.ref_idx = this.ref_idx;
+		copy.cachePolicy = this.cachePolicy;
+		copy.medium = this.medium;
+		copy.name = this.name;
+		copy.enm_str = this.enm_str;
+		copy.samples.addAll(this.samples);
+		return copy;
+	}
+	
 	/*----- Serialize -----*/
 	
 	public FileBuffer serializeMe(){

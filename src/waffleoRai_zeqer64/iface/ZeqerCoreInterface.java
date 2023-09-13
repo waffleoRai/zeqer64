@@ -14,6 +14,7 @@ import waffleoRai_zeqer64.ZeqerBank;
 import waffleoRai_zeqer64.ZeqerInstaller.ZeqerInstallListener;
 import waffleoRai_zeqer64.filefmt.AbldFile;
 import waffleoRai_zeqer64.filefmt.ZeqerBankTable.BankTableEntry;
+import waffleoRai_zeqer64.filefmt.ZeqerSeqTable.SeqTableEntry;
 import waffleoRai_zeqer64.filefmt.ZeqerWaveTable.WaveTableEntry;
 
 public interface ZeqerCoreInterface {
@@ -44,6 +45,7 @@ public interface ZeqerCoreInterface {
 	public boolean exportSample(WaveTableEntry wave, String path);
 	public Z64WaveInfo getDefaultPercussionSample();
 	public List<WaveTableEntry> getAllRegisteredSamples();
+	public WaveTableEntry getWaveTableEntry(int uid);
 	
 	/*----- Envelope Management -----*/
 	
@@ -66,6 +68,7 @@ public interface ZeqerCoreInterface {
 	
 	/*----- Seq Management -----*/
 	
+	public SeqTableEntry getSeqInfo(int uid);
 	public List<ZeqerSeq> getAllValidSeqs();
 	
 	/*----- Abld Management -----*/
