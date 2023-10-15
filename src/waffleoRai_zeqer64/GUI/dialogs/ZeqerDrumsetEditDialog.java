@@ -3,7 +3,6 @@ package waffleoRai_zeqer64.GUI.dialogs;
 import java.awt.Component;
 import java.awt.Cursor;
 import java.awt.Dimension;
-import java.awt.Frame;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
@@ -17,6 +16,7 @@ import java.util.List;
 import javax.swing.DefaultListModel;
 import javax.swing.JButton;
 import javax.swing.JDialog;
+import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JOptionPane;
@@ -132,7 +132,7 @@ private static final long serialVersionUID = 6232066596448455202L;
 	
 	/*----- Instance Variables -----*/
 	
-	private Frame parent;
+	private JFrame parent;
 	private ZeqerCoreInterface core;
 	private boolean exitSelection = false;
 	private boolean editable = true;
@@ -172,7 +172,7 @@ private static final long serialVersionUID = 6232066596448455202L;
 	
 	/*----- Init -----*/
 	
-	public ZeqerDrumsetEditDialog(Frame parent_frame, ZeqerCoreInterface core_link){
+	public ZeqerDrumsetEditDialog(JFrame parent_frame, ZeqerCoreInterface core_link){
 		super(parent_frame, true);
 		core = core_link;
 		parent = parent_frame;

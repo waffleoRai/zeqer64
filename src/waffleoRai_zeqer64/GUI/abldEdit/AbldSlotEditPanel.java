@@ -244,6 +244,7 @@ public abstract class AbldSlotEditPanel<T> extends WRPanel {
 	/*----- Setters -----*/
 	
 	public void setRefList(List<T> list){
+		onRefListSet();
 		if(refList != null){
 			refList.clear();
 		}
@@ -288,6 +289,7 @@ public abstract class AbldSlotEditPanel<T> extends WRPanel {
 	}
 	
 	public void setMyList(List<T> list){
+		onMyListSet();
 		if(myList != null){
 			myList.clear();
 		}
@@ -332,6 +334,9 @@ public abstract class AbldSlotEditPanel<T> extends WRPanel {
 	}
 	
 	/*----- Internal -----*/
+	
+	protected void onMyListSet(){}
+	protected void onRefListSet(){}
 	
 	protected abstract Component getRefListable(T listItem);
 	protected abstract Component getMyListable(T listItem);

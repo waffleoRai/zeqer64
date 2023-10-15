@@ -10,7 +10,9 @@ import javax.swing.SwingWorker;
 
 import waffleoRai_GUITools.ComponentGroup;
 import waffleoRai_GUITools.GUITools;
+import waffleoRai_GUITools.RadioButtonGroup;
 import waffleoRai_Utils.VoidCallbackMethod;
+import waffleoRai_zeqer64.ZeqerConstants;
 import waffleoRai_zeqer64.ZeqerCore;
 import waffleoRai_zeqer64.ZeqerInstaller.ZeqerInstallListener;
 import waffleoRai_zeqer64.GUI.dialogs.progress.IndefProgressDialog;
@@ -25,6 +27,7 @@ import javax.swing.JMenuBar;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
+import javax.swing.JRadioButtonMenuItem;
 
 public class ZeqerManagerForm extends JFrame{
 
@@ -70,6 +73,12 @@ public class ZeqerManagerForm extends JFrame{
 	private static final String STRKEY_UPDPROG_FAIL_M = "MAINFORM_DIA_UPDPROG_FAIL_M";
 	private static final String STRKEY_UPDPROG_FAIL_T = "MAINFORM_DIA_UPDPROG_FAIL_T";
 	
+	public static final int RBIDX_SMPLFMT_WAV = 0;
+	public static final int RBIDX_SMPLFMT_AIFF = 1;
+	public static final int RBIDX_SMPLFMT_AIFC = 2;
+	private static final int RB_SMPLFMT_COUNT = 3;
+	
+	
 	/*----- Instance Variables -----*/
 	
 	private ZeqerCoreInterface core;
@@ -78,6 +87,7 @@ public class ZeqerManagerForm extends JFrame{
 	private JMenuItem mntmUpdate = null;
 	
 	private ComponentGroup globalEnable;
+	private RadioButtonGroup rbgSampleEx;
 	
 	private ZeqerPanelRoms pnlRoms;
 	private ZeqerPanelAblds pnlAbld;
@@ -91,8 +101,19 @@ public class ZeqerManagerForm extends JFrame{
 	public ZeqerManagerForm(ZeqerCoreInterface core_link){
 		core = core_link;
 		globalEnable = new ComponentGroup();
+		rbgSampleEx = new RadioButtonGroup(RB_SMPLFMT_COUNT);
+		
 		initGUI();
 		checkForUpdate();
+		
+		//Check export sample format...
+		if(core != null){
+			String s = core.getSetting(ZeqerConstants.INIKEY_SMPLEX_FMT_RBIDX);
+			if(s != null){
+				try{rbgSampleEx.select(Integer.parseInt(s));}
+				catch(NumberFormatException ex){}
+			}
+		}
 	}
 	
 	private void initGUI(){
@@ -149,6 +170,34 @@ public class ZeqerManagerForm extends JFrame{
 			public void actionPerformed(ActionEvent e) {
 				mntmFileSaveCallback();
 			}});
+		
+		JMenu mnSampleExportFormat = new JMenu("Sample Export Format");
+		mnFile.add(mnSampleExportFormat);
+		
+		JRadioButtonMenuItem mrbSmplExWav = new JRadioButtonMenuItem("WAV (16 Bit PCM)");
+		mnSampleExportFormat.add(mrbSmplExWav);
+		rbgSampleEx.addButton(mrbSmplExWav, RBIDX_SMPLFMT_WAV);
+		mrbSmplExWav.addActionListener(new ActionListener(){
+			public void actionPerformed(ActionEvent e) {
+				mrbSampleExportFormatCallback(RBIDX_SMPLFMT_WAV);
+			}});
+		
+		JRadioButtonMenuItem mrbSmplExAiff = new JRadioButtonMenuItem("AIFF (16 Bit PCM)");
+		mnSampleExportFormat.add(mrbSmplExAiff);
+		rbgSampleEx.addButton(mrbSmplExAiff, RBIDX_SMPLFMT_AIFF);
+		mrbSmplExAiff.addActionListener(new ActionListener(){
+			public void actionPerformed(ActionEvent e) {
+				mrbSampleExportFormatCallback(RBIDX_SMPLFMT_AIFF);
+			}});
+		
+		JRadioButtonMenuItem mrbSmplExAifc = new JRadioButtonMenuItem("AIFC (V-ADPCM)");
+		mnSampleExportFormat.add(mrbSmplExAifc);
+		rbgSampleEx.addButton(mrbSmplExAifc, RBIDX_SMPLFMT_AIFC);
+		mrbSmplExAifc.addActionListener(new ActionListener(){
+			public void actionPerformed(ActionEvent e) {
+				mrbSampleExportFormatCallback(RBIDX_SMPLFMT_AIFC);
+			}});
+		rbgSampleEx.select(RBIDX_SMPLFMT_WAV);
 		
 		JMenuItem mntmUninstallZeqer = new JMenuItem(getString(STRKEY_MITEM_F_UNINST));
 		mnFile.add(mntmUninstallZeqer);
@@ -273,6 +322,14 @@ public class ZeqerManagerForm extends JFrame{
 	private void dummyCallback(){
 		JOptionPane.showMessageDialog(this, "Sorry, this component doesn't work yet!", 
 				"Notice", JOptionPane.INFORMATION_MESSAGE);
+	}
+	
+	private void mrbSampleExportFormatCallback(int index){
+		rbgSampleEx.select(index);
+		rbgSampleEx.repaintAll();
+		if(core != null){
+			core.setSetting(ZeqerConstants.INIKEY_SMPLEX_FMT_RBIDX, Integer.toString(index));
+		}
 	}
 	
 	private void mntmFileSaveCallback(){

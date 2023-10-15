@@ -10,11 +10,13 @@ import waffleoRai_zeqer64.ZeqerPreset;
 import waffleoRai_zeqer64.ZeqerRom;
 import waffleoRai_zeqer64.ZeqerSeq;
 import waffleoRai_zeqer64.GUI.dialogs.progress.IndefProgressDialog;
+import waffleoRai_zeqer64.ErrorCode;
 import waffleoRai_zeqer64.ZeqerBank;
 import waffleoRai_zeqer64.ZeqerInstaller.ZeqerInstallListener;
 import waffleoRai_zeqer64.filefmt.AbldFile;
 import waffleoRai_zeqer64.filefmt.ZeqerBankTable.BankTableEntry;
 import waffleoRai_zeqer64.filefmt.ZeqerSeqTable.SeqTableEntry;
+import waffleoRai_zeqer64.filefmt.ZeqerWaveIO.SampleImportOptions;
 import waffleoRai_zeqer64.filefmt.ZeqerWaveTable.WaveTableEntry;
 
 public interface ZeqerCoreInterface {
@@ -41,11 +43,15 @@ public interface ZeqerCoreInterface {
 	
 	/*----- Sample Management -----*/
 	public boolean playSample(WaveTableEntry wave);
-	public WaveTableEntry importSample(String path);
-	public boolean exportSample(WaveTableEntry wave, String path);
+	public WaveTableEntry importSample(String path, SampleImportOptions options, ErrorCode error);
+	public boolean exportSample(WaveTableEntry wave, String pathstem);
 	public Z64WaveInfo getDefaultPercussionSample();
 	public List<WaveTableEntry> getAllRegisteredSamples();
 	public WaveTableEntry getWaveTableEntry(int uid);
+	
+	public int getSampleExportFormat();
+	public String getSampleExportFormatExtention();
+	public String getSampleExportFormatDescription();
 	
 	/*----- Envelope Management -----*/
 	
@@ -73,6 +79,7 @@ public interface ZeqerCoreInterface {
 	
 	/*----- Abld Management -----*/
 	
+	public AbldFile getSysAbldFile(String romId);
 	public List<AbldFile> getAllAblds();
 	
 }

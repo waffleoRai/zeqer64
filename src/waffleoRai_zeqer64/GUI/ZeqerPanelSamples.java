@@ -24,20 +24,26 @@ import javax.swing.JOptionPane;
 import javax.swing.DefaultListModel;
 import javax.swing.JButton;
 import javax.swing.JFileChooser;
+import javax.swing.JFrame;
 import javax.swing.border.BevelBorder;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
+import javax.swing.filechooser.FileFilter;
 
 import waffleoRai_GUITools.WriterPanel;
 import waffleoRai_Sound.nintendo.Z64Sound;
 import waffleoRai_Sound.nintendo.Z64WaveInfo;
 import waffleoRai_Utils.FileUtils;
 import waffleoRai_Utils.VoidCallbackMethod;
+import waffleoRai_zeqer64.ErrorCode;
+import waffleoRai_zeqer64.GUI.dialogs.WaveImportDialog;
 import waffleoRai_zeqer64.GUI.dialogs.progress.IndefProgressDialog;
 import waffleoRai_zeqer64.GUI.filters.FlagFilterPanel;
 import waffleoRai_zeqer64.GUI.filters.TagFilterPanel;
 import waffleoRai_zeqer64.GUI.filters.TextFilterPanel;
 import waffleoRai_zeqer64.GUI.filters.ZeqerFilter;
+import waffleoRai_zeqer64.filefmt.ZeqerWaveIO;
+import waffleoRai_zeqer64.filefmt.ZeqerWaveIO.SampleImportOptions;
 import waffleoRai_zeqer64.filefmt.ZeqerWaveTable;
 import waffleoRai_zeqer64.filefmt.ZeqerWaveTable.WaveTableEntry;
 import waffleoRai_zeqer64.iface.ZeqerCoreInterface;
@@ -110,7 +116,7 @@ public class ZeqerPanelSamples extends JPanel{
 	
 	private ZeqerCoreInterface core;
 	
-	private Frame parent;
+	private JFrame parent;
 	
 	private FilterListPanel<SampleNode> pnlFilt;
 	private TagFilterPanel<SampleNode> pnlTags; //For refreshing/adding tags
@@ -129,13 +135,13 @@ public class ZeqerPanelSamples extends JPanel{
 	/**
 	 * @wbp.parser.constructor
 	 */
-	public ZeqerPanelSamples(Frame parent_frame, ZeqerCoreInterface core_iface){
+	public ZeqerPanelSamples(JFrame parent_frame, ZeqerCoreInterface core_iface){
 		parent = parent_frame;
 		core = core_iface;
 		initGUI(true);
 	}
 	
-	public ZeqerPanelSamples(Frame parent_frame, ZeqerCoreInterface core_iface, boolean editable_mode){
+	public ZeqerPanelSamples(JFrame parent_frame, ZeqerCoreInterface core_iface, boolean editable_mode){
 		parent = parent_frame;
 		core = core_iface;
 		initGUI(editable_mode);
@@ -217,8 +223,7 @@ public class ZeqerPanelSamples extends JPanel{
 			pnlCtrl.add(btnImport, gbc_btnImport);
 			btnImport.addActionListener(new ActionListener(){
 				public void actionPerformed(ActionEvent e) {
-					//onButton_import();
-					dummyCallback();
+					onButton_import();
 				}
 			});
 			
@@ -230,8 +235,7 @@ public class ZeqerPanelSamples extends JPanel{
 			pnlCtrl.add(btnExport, gbc_btnExport);
 			btnExport.addActionListener(new ActionListener(){
 				public void actionPerformed(ActionEvent e) {
-					//onButton_export();
-					dummyCallback();
+					onButton_export();
 				}
 			});
 			btnExport.setEnabled(false);
@@ -584,27 +588,62 @@ public class ZeqerPanelSamples extends JPanel{
 	}
 	
 	private void onButton_export(){
+		
+		//If only one selected, allow user to name file. Otherwise, only pick target dir.
+		if(core == null) return;
+		if(list.isSelectionEmpty()) return;
+		List<SampleNode> sel = list.getSelectedValuesList();
+		if(sel == null) return; //Safety check only.
+		
+		boolean multi = sel.size() > 1;
+		String nameStem = null;
 		JFileChooser fc = new JFileChooser(core.getSetting(SAMPLEPNL_LAST_EXPORT_PATH));
-		fc.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+		if(multi){
+			fc.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+		}
+		else{
+			String ext = core.getSampleExportFormatExtention();
+			String desc = core.getSampleExportFormatDescription();
+			
+			if(ext != null && desc != null){
+				fc.addChoosableFileFilter(new FileFilter(){
+					public boolean accept(File f) {
+						String name = f.getAbsolutePath();
+						if(name == null) return false;
+						return name.endsWith("." + ext);
+					}
+
+					public String getDescription() {
+						return desc + " (." + ext + ")";
+					}});	
+			}
+			fc.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
+		}
+		
 		int op = fc.showSaveDialog(this);
 		if(op != JFileChooser.APPROVE_OPTION) return;
-		String exdir = fc.getSelectedFile().getAbsolutePath();
-		core.setSetting(SAMPLEPNL_LAST_EXPORT_PATH, exdir);
+		nameStem = fc.getSelectedFile().getAbsolutePath();
+		core.setSetting(SAMPLEPNL_LAST_EXPORT_PATH, nameStem);
 		
 		IndefProgressDialog dialog = new IndefProgressDialog(parent, "Please Wait");
 		dialog.setPrimaryString("Export Sample");
-		dialog.setSecondaryString("Exporting to " + exdir);
+		dialog.setSecondaryString("Exporting to " + nameStem);
 	
+		final String FNAME = nameStem;
 		SwingWorker<Void, Void> task = new SwingWorker<Void, Void>(){
 			protected Void doInBackground() throws Exception{
 				try{
-					if(core != null){
+					if(multi){
 						List<SampleNode> sel = list.getSelectedValuesList();
 						if(sel != null){
 							for(SampleNode samp : sel){
-								core.exportSample(samp.sample, exdir + File.separator + samp.sample.getName() + ".wav");		
+								core.exportSample(samp.sample, FNAME + File.separator + samp.sample.getName());		
 							}
 						}
+					}
+					else{
+						SampleNode samp = list.getSelectedValue();
+						core.exportSample(samp.sample, FNAME);
 					}
 				}
 				catch(Exception ex){
@@ -624,32 +663,94 @@ public class ZeqerPanelSamples extends JPanel{
 	
 	private void onButton_import(){
 		if(core == null) return;
-		JFileChooser fc = new JFileChooser(core.getSetting(SAMPLEPNL_LAST_IMPORT_PATH));
-		fc.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
-		int op = fc.showOpenDialog(this);
-		if(op != JFileChooser.APPROVE_OPTION) return;
-		String inpath = fc.getSelectedFile().getAbsolutePath();
-		core.setSetting(SAMPLEPNL_LAST_IMPORT_PATH, inpath);
+		
+		WaveImportDialog waveimport = new WaveImportDialog(parent, core);
+		waveimport.showMe(this);
+		
+		if(!waveimport.getExitSelection()) return;
+		SampleImportOptions ops = new SampleImportOptions();
+		waveimport.getSettings(ops);
+		
+		if(ops.loopCount < -1) ops.loopCount = -1;
+		final Set<String> tags = waveimport.getTags();
+		final List<String> paths = waveimport.getFilePaths();
 		
 		IndefProgressDialog dialog = new IndefProgressDialog(parent, "Please Wait");
-		dialog.setPrimaryString("Import Sample");
-		dialog.setSecondaryString("Importing " + inpath);
+		dialog.setPrimaryString("Import Samples");
+		dialog.setSecondaryString("Initializing import");
 		
-		//TODO File type filters
-		//Also strings
-	
 		SwingWorker<Void, Void> task = new SwingWorker<Void, Void>(){
 			protected Void doInBackground() throws Exception{
 				try{
 					if(core != null){
-						WaveTableEntry imprt = core.importSample(inpath);
-						if(imprt == null){
-							showError("File could not be imported!");
-							return null;
+						ErrorCode err = new ErrorCode();
+						for(String path : paths){
+							if(path == null || path.isEmpty()) continue;
+							dialog.setSecondaryString("Importing " + path);
+							
+							boolean noname = (ops.namestem == null) || (ops.namestem.isEmpty());
+							if(noname){
+								//Name from file
+								ops.namestem = path;
+								int i = ops.namestem.lastIndexOf(File.separatorChar);
+								if(i >= 0) ops.namestem = ops.namestem.substring(i+1);
+								i = ops.namestem.lastIndexOf('.');
+								if(i >= 0) ops.namestem = ops.namestem.substring(0, i);
+							}
+							
+							WaveTableEntry imprt = core.importSample(path, ops, err);
+							if(imprt == null || err.value != ZeqerWaveIO.ERROR_CODE_NONE){
+								String errmsg = "Import of \"" + path + "\" failed! Reason: ";
+								switch(err.value){
+								case ZeqerWaveIO.ERROR_CODE_UNKNOWN:
+									errmsg += " Unknown";
+									break;
+								case ZeqerWaveIO.ERROR_CODE_IO:
+									errmsg += " I/O Error";
+									break;
+								case ZeqerWaveIO.ERROR_CODE_INPARSE:
+									errmsg += " Input file parsing error";
+									break;
+								case ZeqerWaveIO.ERROR_CODE_DOWNSAMPLE_FAIL:
+									errmsg += " Input could not be downsampled";
+									break;
+								case ZeqerWaveIO.ERROR_CODE_TBLGEN_FAIL:
+									errmsg += " ADPCM table generation failed";
+									break;
+								case ZeqerWaveIO.ERROR_CODE_ENCODE_FAIL:
+									errmsg += " ADPCM encoding failed";
+									break;
+								case ZeqerWaveIO.ERROR_CODE_AIFF_COMPRESSION_UNKNOWN:
+									errmsg += " AIFF/AIFC compression codec not recognized";
+									break;
+								case ZeqerWaveIO.ERROR_CODE_INPUT_FMT_UNKNOWN:
+									errmsg += " Input format unknown";
+									break;
+								case ZeqerWaveIO.ERROR_CODE_TABLE_IMPORT_FAILED:
+									errmsg += " Import to Zeqer user table failed";
+									break;
+								case ZeqerWaveIO.ERROR_CODE_MULTICHAN_NOT_SUPPORTED:
+									errmsg += " Multi-channel support error";
+									break;
+								}
+								
+								showError(errmsg);
+								break;
+							}
+							
+							//Add tags
+							for(String tag : tags){
+								imprt.addTag(tag);
+							}
+							
+							//Add node
+							SampleNode node = new SampleNode();
+							node.sample = imprt;
+							source.add(node);
+							
+							if(noname) ops.namestem = null;
 						}
-						SampleNode node = new SampleNode();
-						node.sample = imprt;
-						source.add(node);
+
 						Collections.sort(source);
 						updateTagPool();
 						updateList();

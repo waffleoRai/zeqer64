@@ -7,10 +7,13 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import waffleoRai_Sound.nintendo.Z64Wave;
 import waffleoRai_Sound.nintendo.Z64WaveInfo;
 import waffleoRai_Utils.FileBuffer.UnsupportedFileTypeException;
 import waffleoRai_soundbank.nintendo.z64.Z64Envelope;
+import waffleoRai_zeqer64.ErrorCode;
 import waffleoRai_zeqer64.ZeqerBank;
+import waffleoRai_zeqer64.ZeqerConstants;
 import waffleoRai_zeqer64.ZeqerCore;
 import waffleoRai_zeqer64.ZeqerPreset;
 import waffleoRai_zeqer64.ZeqerRom;
@@ -22,6 +25,10 @@ import waffleoRai_zeqer64.filefmt.AbldFile;
 import waffleoRai_zeqer64.filefmt.NusRomInfo;
 import waffleoRai_zeqer64.filefmt.ZeqerBankTable.BankTableEntry;
 import waffleoRai_zeqer64.filefmt.ZeqerSeqTable.SeqTableEntry;
+import waffleoRai_zeqer64.filefmt.ZeqerWaveIO.SampleImportOptions;
+import waffleoRai_zeqer64.filefmt.ZeqerWaveIO.SampleImportResult;
+import waffleoRai_zeqer64.filefmt.ZeqerWaveTable;
+import waffleoRai_zeqer64.filefmt.ZeqerWaveIO;
 import waffleoRai_zeqer64.filefmt.ZeqerWaveTable.WaveTableEntry;
 import waffleoRai_zeqer64.iface.ZeqerCoreInterface;
 import waffleoRai_zeqer64.listeners.RomImportProgDiaListener;
@@ -278,15 +285,77 @@ public class CoreGUIInterface implements ZeqerCoreInterface{
 		return false;
 	}
 
-	@Override
-	public WaveTableEntry importSample(String path) {
-		// TODO Auto-generated method stub
-		return null;
+	public WaveTableEntry importSample(String path, SampleImportOptions options, ErrorCode error) {
+		if(core == null) return null;
+		if(path == null) return null;
+		if(options == null) options = new SampleImportOptions();
+		
+		if(error != null) error.value = ZeqerWaveIO.ERROR_CODE_NONE;
+		
+		//Try to detect type from extension
+		SampleImportResult res = null;
+		if(path.endsWith(".wav") || path.endsWith(".wave")){
+			res = ZeqerWaveIO.importWAV(path, options);
+		}
+		else if(path.endsWith(".aif") || path.endsWith(".aiff")){
+			res = ZeqerWaveIO.importAIFF(path, options);
+			if(res.error == ZeqerWaveIO.ERROR_CODE_AIFF_COMPRESSION_UNKNOWN){
+				//Try AIFC
+				res = ZeqerWaveIO.importAIFC(path, options);
+			}
+		}
+		else if(path.endsWith(".aifc")){
+			res = ZeqerWaveIO.importAIFC(path, options);
+		}
+		else{
+			if(error != null) error.value = ZeqerWaveIO.ERROR_CODE_INPUT_FMT_UNKNOWN;
+			return null;
+		}
+		
+		if(res == null){
+			if(error != null) error.value = ZeqerWaveIO.ERROR_CODE_UNKNOWN;
+			return null;
+		}
+		
+		if(error != null) error.value = res.error;
+		if(res.error != ZeqerWaveIO.ERROR_CODE_NONE) return null;
+		
+		//Add to core.
+		WaveTableEntry e = core.addUserWaveSample(res.info, res.data);
+		if(e == null){
+			if(error != null) error.value = ZeqerWaveIO.ERROR_CODE_TABLE_IMPORT_FAILED;
+			return null;
+		}
+		
+		//Additional flags for the entry.
+		if(options.flagActor) e.setFlags(ZeqerWaveTable.FLAG_ISACTOR);
+		if(options.flagEnv) e.setFlags(ZeqerWaveTable.FLAG_ISENV);
+		if(options.flagMusic) e.setFlags(ZeqerWaveTable.FLAG_ISMUSIC);
+		if(options.flagSFX) e.setFlags(ZeqerWaveTable.FLAG_ISSFX);
+		if(options.flagVox) e.setFlags(ZeqerWaveTable.FLAG_ISVOX);
+		e.setFlags(ZeqerWaveTable.FLAG_ISCUSTOM);
+		e.addTag("Custom");
+		
+		return e;
 	}
 
-	@Override
-	public boolean exportSample(WaveTableEntry wave, String path) {
-		// TODO Auto-generated method stub
+	public boolean exportSample(WaveTableEntry wave, String pathstem) {
+		if(wave == null || pathstem == null) return false;
+		if(core == null) return false;
+		
+		//Fetch wave data.
+		Z64Wave data = core.loadWave(wave.getUID());
+		if(data == null) return false;
+		
+		switch(core.getSampleExportFormat()){
+		case ZeqerConstants.AUDIOFILE_FMT_WAV:
+			return ZeqerWaveIO.exportWAV(pathstem + ".wav", data);
+		case ZeqerConstants.AUDIOFILE_FMT_AIFF:
+			return ZeqerWaveIO.exportAIFF(pathstem + ".aiff", data);
+		case ZeqerConstants.AUDIOFILE_FMT_AIFC:
+			return ZeqerWaveIO.exportAIFC(pathstem + ".aifc", data);
+		}
+		
 		return false;
 	}
 	
@@ -303,6 +372,31 @@ public class CoreGUIInterface implements ZeqerCoreInterface{
 	public WaveTableEntry getWaveTableEntry(int uid){
 		if(core == null) return null;
 		return core.getWaveTableEntry(uid);
+	}
+	
+	public int getSampleExportFormat(){
+		if(core == null) return ZeqerConstants.AUDIOFILE_FMT_WAV;
+		return core.getSampleExportFormat();
+	}
+	
+	public String getSampleExportFormatExtention(){
+		if(core == null) return null;
+		switch(core.getSampleExportFormat()){
+		case ZeqerConstants.AUDIOFILE_FMT_WAV: return "wav";
+		case ZeqerConstants.AUDIOFILE_FMT_AIFF: return "aiff";
+		case ZeqerConstants.AUDIOFILE_FMT_AIFC: return "aifc";
+		}
+		return null;
+	}
+	
+	public String getSampleExportFormatDescription(){
+		if(core == null) return null;
+		switch(core.getSampleExportFormat()){
+		case ZeqerConstants.AUDIOFILE_FMT_WAV: return "RIFF Wave Audio File";
+		case ZeqerConstants.AUDIOFILE_FMT_AIFF: return "Audio Interchange File Format";
+		case ZeqerConstants.AUDIOFILE_FMT_AIFC: return "Compressed Audio Interchange File";
+		}
+		return null;
 	}
 	
 	/*----- Envelope Management -----*/
@@ -374,6 +468,20 @@ public class CoreGUIInterface implements ZeqerCoreInterface{
 	}
 	
 	/*----- Abld Management -----*/
+	
+	public AbldFile getSysAbldFile(String romId){
+		if(core == null) return null;
+		try {
+			return core.loadSysBuild(romId);
+		}
+		catch (UnsupportedFileTypeException e) {
+			e.printStackTrace();
+		} 
+		catch (IOException e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
 	
 	public List<AbldFile> getAllAblds(){
 		if(core == null) return new LinkedList<AbldFile>();

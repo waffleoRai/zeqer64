@@ -137,7 +137,7 @@ public class RecompFiles {
 			
 			winfo.setName(cleanWaveName(winfo.getName()));
 			String outpath = outstem + winfo.getName() + ".aifc";
-			AiffFile.exportAIFC(mywave, outpath);
+			ZRetAifcFile.exportAIFC(mywave, outpath);
 			
 			i++;
 		}

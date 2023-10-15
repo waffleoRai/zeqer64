@@ -232,6 +232,7 @@ public class ScrollableCompListPanel extends JPanel{
 	/*----- Draw -----*/
 	
 	public void repaint(){
+		updateSize();
 		super.repaint();
 		if(parentScroller != null) parentScroller.repaint();
 	}

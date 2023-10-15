@@ -12,9 +12,9 @@ import waffleoRai_Utils.FileBuffer;
 
 class AiffPCM implements RandomAccessSound{
 
-	private AiffFile source;
+	private ZRetAifcFile source;
 	
-	public AiffPCM(AiffFile src){
+	public AiffPCM(ZRetAifcFile src){
 		source = src;
 	}
 

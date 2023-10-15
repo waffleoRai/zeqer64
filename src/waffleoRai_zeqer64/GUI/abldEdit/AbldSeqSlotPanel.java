@@ -28,6 +28,8 @@ import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import javax.swing.border.EtchedBorder;
+import java.awt.Color;
+import javax.swing.border.LineBorder;
 
 public class AbldSeqSlotPanel extends WRPanel{
 
@@ -36,7 +38,7 @@ public class AbldSeqSlotPanel extends WRPanel{
 	private static final int MIN_WIDTH = 300;
 	private static final int MIN_HEIGHT_A = 35; //Name row only
 	private static final int MIN_HEIGHT_B = 50; //Name and type rows only
-	private static final int MIN_HEIGHT_C = 120; //Full, no edit buttons
+	private static final int MIN_HEIGHT_C = 140; //Full, no edit buttons
 	private static final int MIN_HEIGHT_D = 155; //With all rows
 	
 	public static final int EXPAND_LEVEL_A = 0;
@@ -59,6 +61,7 @@ public class AbldSeqSlotPanel extends WRPanel{
 	private boolean readOnly = false;
 	private VoidCallbackMethod updateButtonCallback; //External listener. We do NOT want to modify the table entry!
 	private VoidCallbackMethod deleteButtonCallback;
+	private VoidCallbackMethod sizeUpdateCallback;
 	
 	private ComponentGroup cgA;
 	private ComponentGroup cgB;
@@ -80,6 +83,7 @@ public class AbldSeqSlotPanel extends WRPanel{
 	/*----- Init -----*/
 	
 	public AbldSeqSlotPanel(ZeqerCoreInterface coreIFace, boolean readOnly){
+		setBorder(new LineBorder(new Color(0, 0, 0), 1, true));
 		core = coreIFace;
 		this.readOnly = readOnly;
 		
@@ -92,7 +96,10 @@ public class AbldSeqSlotPanel extends WRPanel{
 		cgRODisable = new ComponentGroup();
 		
 		initGUI();
+		
+		if(this.readOnly) expandMode = EXPAND_LEVEL_C;
 		updateGUIInfo();
+
 	}
 	
 	private void initGUI(){
@@ -134,7 +141,7 @@ public class AbldSeqSlotPanel extends WRPanel{
 		btnExpand = new JButton("-");
 		btnExpand.setToolTipText("Contract");
 		GridBagConstraints gbc_btnExpand = new GridBagConstraints();
-		gbc_btnExpand.insets = new Insets(0, 0, 5, 0);
+		gbc_btnExpand.insets = new Insets(5, 0, 5, 0);
 		gbc_btnExpand.gridx = 5;
 		gbc_btnExpand.gridy = 0;
 		add(btnExpand, gbc_btnExpand);
@@ -236,7 +243,7 @@ public class AbldSeqSlotPanel extends WRPanel{
 		pnlEditBtn.setBorder(new EtchedBorder(EtchedBorder.LOWERED, null, null));
 		GridBagConstraints gbc_pnlEditBtn = new GridBagConstraints();
 		gbc_pnlEditBtn.gridwidth = 4;
-		gbc_pnlEditBtn.insets = new Insets(0, 0, 0, 5);
+		gbc_pnlEditBtn.insets = new Insets(0, 0, 5, 5);
 		gbc_pnlEditBtn.fill = GridBagConstraints.BOTH;
 		gbc_pnlEditBtn.gridx = 1;
 		gbc_pnlEditBtn.gridy = 5;
@@ -247,6 +254,7 @@ public class AbldSeqSlotPanel extends WRPanel{
 		gbl_pnlEditBtn.columnWeights = new double[]{0.0, 0.0, 1.0, 0.0, Double.MIN_VALUE};
 		gbl_pnlEditBtn.rowWeights = new double[]{0.0, Double.MIN_VALUE};
 		pnlEditBtn.setLayout(gbl_pnlEditBtn);
+		cgD.addComponent("pnlEditBtn", pnlEditBtn); //To hide it.
 		
 		JButton btnSet = new JButton("S");
 		btnSet.setToolTipText("Set sequence");
@@ -305,6 +313,7 @@ public class AbldSeqSlotPanel extends WRPanel{
 
 	public void setUpdateButtonCallback(VoidCallbackMethod func){updateButtonCallback = func;}
 	public void setDeleteButtonCallback(VoidCallbackMethod func){deleteButtonCallback = func;}
+	public void setSizeUpdateCallback(VoidCallbackMethod func){sizeUpdateCallback = func;}
 	
 	public void setCacheOverride(int val){
 		cacheOverride = cmbxCache.getItemAt(CacheTypeCombobox.CACHE_CMBX_IDXS[val]);
@@ -508,6 +517,8 @@ public class AbldSeqSlotPanel extends WRPanel{
 		else setStateD();
 		btnExpand.setText("-");
 		btnExpand.repaint();
+		
+		if(sizeUpdateCallback != null) sizeUpdateCallback.doMethod();
 	}
 	
 	public void contract(){
@@ -515,6 +526,8 @@ public class AbldSeqSlotPanel extends WRPanel{
 		else setStateB();
 		btnExpand.setText("+");
 		btnExpand.repaint();
+		
+		if(sizeUpdateCallback != null) sizeUpdateCallback.doMethod();
 	}
 	
 	/*----- Callbacks -----*/

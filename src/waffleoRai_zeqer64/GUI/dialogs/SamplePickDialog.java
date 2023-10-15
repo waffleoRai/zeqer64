@@ -1,12 +1,12 @@
 package waffleoRai_zeqer64.GUI.dialogs;
 
 import javax.swing.JDialog;
+import javax.swing.JFrame;
 
 import java.awt.GridBagLayout;
 import javax.swing.JPanel;
 
 import java.awt.Component;
-import java.awt.Frame;
 import java.awt.GridBagConstraints;
 import java.awt.Insets;
 import java.awt.event.ActionEvent;
@@ -24,7 +24,7 @@ public class SamplePickDialog extends JDialog{
 
 	private static final long serialVersionUID = -7904299455161598831L;
 	
-	private Frame parent;
+	private JFrame parent;
 	private ZeqerCoreInterface core;
 	
 	private ZeqerPanelSamples pnlSamples;
@@ -32,7 +32,7 @@ public class SamplePickDialog extends JDialog{
 	private WaveTableEntry selection = null;
 	private boolean exitOkay = false;
 	
-	public SamplePickDialog(Frame parent_frame, ZeqerCoreInterface core_iface){
+	public SamplePickDialog(JFrame parent_frame, ZeqerCoreInterface core_iface){
 		super(parent_frame, true);
 		parent = parent_frame;
 		core = core_iface;

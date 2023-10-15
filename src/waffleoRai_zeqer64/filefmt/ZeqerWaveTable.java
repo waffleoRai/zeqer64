@@ -174,6 +174,8 @@ public class ZeqerWaveTable {
 			return (flags & flagMask) != 0; 
 		}
 		
+		public void addTag(String tag){tags.add(tag);}
+		
 		public Set<String> getTagSet(){
 			return tags;
 		}

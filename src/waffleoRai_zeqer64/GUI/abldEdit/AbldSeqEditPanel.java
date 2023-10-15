@@ -12,6 +12,8 @@ import java.util.List;
 
 import javax.swing.JFrame;
 
+import waffleoRai_Utils.VoidCallbackMethod;
+
 public class AbldSeqEditPanel extends AbldSlotEditPanel<SeqSlotEntry> {
 
 	private static final long serialVersionUID = -923663792419337845L;
@@ -34,6 +36,8 @@ public class AbldSeqEditPanel extends AbldSlotEditPanel<SeqSlotEntry> {
 	}
 	
 	/*----- Getters -----*/
+	
+	public JFrame getParentFrame(){return parent;}
 	
 	public boolean isRefLoaded(){
 		return refBuild != null;
@@ -68,23 +72,43 @@ public class AbldSeqEditPanel extends AbldSlotEditPanel<SeqSlotEntry> {
 		
 		if(abld != null){
 			super.isInjection = abld.isInjectionBuild();
-			
 			List<EngineSeqInfo> seqs = abld.getSeqs();
 			if(seqs == null){
-				super.setMyList(null);
+				setMyList(null);
 				return;
 			}
 			
-			List<SeqSlotEntry> elist = new LinkedList<SeqSlotEntry>();
-			if(slotPanels == null) slotPanels = new ArrayList<AbldSeqSlotPanel>(seqs.size());
-			else slotPanels.ensureCapacity(seqs.size());
-			
-			int i = 0;
-			for(EngineSeqInfo seq : seqs){
-				SeqSlotEntry e = info2Entry(seq, i++);
-				if(e != null) elist.add(e);
+			List<SeqSlotEntry> elist;
+			if(isInjection){
+				if(refList == null || refList.isEmpty()){
+					setMyList(null);
+					return;
+				}
+
+				elist = new ArrayList<SeqSlotEntry>(refList.size());
+				if(slotPanels == null) slotPanels = new ArrayList<AbldSeqSlotPanel>(refList.size());
+				else slotPanels.ensureCapacity(refList.size());
+				
+				elist.addAll(refList);
+				for(EngineSeqInfo seq : seqs){
+					int i = seq.getSubSlot();
+					SeqSlotEntry e = info2Entry(seq, i);
+					if(e != null) elist.set(i, e);
+				}
 			}
-			super.setMyList(elist);
+			else{
+				if(slotPanels == null) slotPanels = new ArrayList<AbldSeqSlotPanel>(seqs.size());
+				else slotPanels.ensureCapacity(seqs.size());
+				
+				elist = new LinkedList<SeqSlotEntry>();
+				
+				int i = 0;
+				for(EngineSeqInfo seq : seqs){
+					SeqSlotEntry e = info2Entry(seq, i++);
+					if(e != null) elist.add(e);
+				}
+				super.setMyList(elist);
+			}
 		}
 		else{
 			super.isInjection = false;
@@ -94,6 +118,10 @@ public class AbldSeqEditPanel extends AbldSlotEditPanel<SeqSlotEntry> {
 	
 	/*----- Internal -----*/
 	
+	protected void onMyListSet(){
+		if(slotPanels != null) slotPanels.clear();
+	}
+		
 	private SeqSlotEntry info2Entry(EngineSeqInfo info, int i){
 		SeqSlotEntry entry = new SeqSlotEntry();
 		entry.index = i;
@@ -117,9 +145,14 @@ public class AbldSeqEditPanel extends AbldSlotEditPanel<SeqSlotEntry> {
 	
 	protected Component getRefListable(SeqSlotEntry listItem){
 		AbldSeqSlotPanel pnl = new AbldSeqSlotPanel(core, true);
+		pnl.contract();
 		if(listItem != null){
 			pnl.setSlotId(listItem.index);
 			pnl.setSeq(listItem.entry);
+			pnl.setSizeUpdateCallback(new VoidCallbackMethod(){
+				public void doMethod() {
+					pnlListRef.repaint();
+				}});
 			
 			if(listItem.cacheOverride >= 0) pnl.setCacheOverride(listItem.cacheOverride);
 			if(listItem.medOverride >= 0) pnl.setMediumOverride(listItem.medOverride);
@@ -137,10 +170,14 @@ public class AbldSeqEditPanel extends AbldSlotEditPanel<SeqSlotEntry> {
 			}
 		}
 		
-		
 		AbldSeqSlotPanel pnl = new AbldSeqSlotPanel(core, readOnly);
+		pnl.contract();
 		pnl.setSlotId(listItem.index);
 		pnl.setSeq(listItem.entry);
+		pnl.setSizeUpdateCallback(new VoidCallbackMethod(){
+			public void doMethod() {
+				pnlListMine.repaint();
+			}});
 		
 		if(listItem.cacheOverride >= 0) pnl.setCacheOverride(listItem.cacheOverride);
 		if(listItem.medOverride >= 0) pnl.setMediumOverride(listItem.medOverride);

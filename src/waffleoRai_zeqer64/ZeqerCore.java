@@ -1299,6 +1299,19 @@ public class ZeqerCore {
 		return bnkManager.deletePreset(uid);
 	}
 	
+	public WaveTableEntry addUserWaveSample(Z64WaveInfo info, FileBuffer soundData){
+		if(this.wavManager == null) return null;
+		try {
+			int uid = this.wavManager.addUserWave(info, soundData);
+			WaveTableEntry e = wavManager.getWaveTableEntry(uid);
+			return e;
+		} 
+		catch (IOException e) {
+			e.printStackTrace();
+			return null;
+		}
+	}
+	
 	/*----- Sys Table Building -----*/
 	
 	public void saveScrubbedCopies() throws IOException{
@@ -1328,5 +1341,12 @@ public class ZeqerCore {
 		if(seqManager == null) return 0;
 		return seqManager.importSeqIOAliasTSV(tsv_path);
 	}
+	
+	/*----- Misc. State -----*/
+	
+	private int sampleExportFormat = ZeqerConstants.AUDIOFILE_FMT_WAV;
+	
+	public int getSampleExportFormat(){return sampleExportFormat;}
+	public void setSampleExportFormat(int value){sampleExportFormat = value;}
 	
 }

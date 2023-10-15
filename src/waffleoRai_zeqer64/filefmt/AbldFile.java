@@ -242,6 +242,7 @@ public class AbldFile {
 	/*----- Setters -----*/
 	
 	public void flagSysBuild(boolean b){sys_build = b;}
+	public void setBuildName(String val){name = val;}
 	
 	public void timestamp(){
 		date_modified = ZonedDateTime.now();

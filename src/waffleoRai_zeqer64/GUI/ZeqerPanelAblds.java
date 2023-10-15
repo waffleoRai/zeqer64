@@ -30,6 +30,7 @@ import waffleoRai_GUITools.ComponentGroup;
 import waffleoRai_GUITools.WriterPanel;
 import waffleoRai_Utils.VoidCallbackMethod;
 import waffleoRai_zeqer64.ZeqerRom;
+import waffleoRai_zeqer64.GUI.abldEdit.AbldEditDialog;
 import waffleoRai_zeqer64.GUI.filters.FlagFilterPanel;
 import waffleoRai_zeqer64.GUI.filters.TextFilterPanel;
 import waffleoRai_zeqer64.GUI.filters.ZeqerFilter;
@@ -473,8 +474,20 @@ public class ZeqerPanelAblds extends JPanel{
 	}
 	
 	private void btnEditCallback(){
-		//TODO
-		dummyCallback();
+		if(lstAbld.isSelectionEmpty()) return;
+		AbldNode sel = lstAbld.getSelectedValue();
+		if(sel == null) return;
+		if(sel.data == null) return;
+		
+		boolean canedit = editable && !sel.data.isSysBuild();
+		AbldEditDialog dialog = new AbldEditDialog(parent, core, !canedit);
+		dialog.loadAbldToForm(sel.data);
+		dialog.showMe(this);
+		
+		if(canedit && dialog.getExitSelection()){
+			dialog.loadFormInfoToAbld(sel.data);
+			lstAbld.repaint();
+		}
 	}
 	
 	private void btnDupCallback(){
