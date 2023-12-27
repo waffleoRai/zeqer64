@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Random;
 import java.util.Set;
 
 import javax.swing.JScrollPane;
@@ -57,8 +58,6 @@ public class ZeqerPanelInstruments extends JPanel{
 	//TODO need a subpanel class for playing on the piano or playing using a simple seq
 	//	Playback will probably have to involve sending a short command to native code for synthesis
 	
-	//TODO Add a duplicate preset to create new option
-
 	private static final long serialVersionUID = -6390624749239280331L;
 	
 	public static final String SAMPLEPNL_LAST_IMPORT_PATH = "ZINSTPNL_LASTIMPORT";
@@ -252,8 +251,7 @@ public class ZeqerPanelInstruments extends JPanel{
 		}
 		btnNew.addActionListener(new ActionListener(){
 			public void actionPerformed(ActionEvent e) {
-				//btnNewCallback();
-				dummyCallback();
+				btnNewCallback();
 			}});
 		
 		JButton btnDup = new JButton(getString(STRKEY_BTN_DUP));
@@ -658,12 +656,117 @@ public class ZeqerPanelInstruments extends JPanel{
 		setCursor(null);
 	}
 	
-	/*----- Callbacks -----*/
+	/*----- Callbacks Internal -----*/
 	
-	private void dummyCallback(){
-		JOptionPane.showMessageDialog(this, "Sorry, this component doesn't work yet!", 
-				"Notice", JOptionPane.INFORMATION_MESSAGE);
+	private InstNode newInstAction(ZeqerInstPreset template){
+		ZeqerInstPreset instp = null;
+		if(template != null){
+			//Duplicate
+			instp = template.copy();
+		}
+		else{
+			//New
+			instp = new ZeqerInstPreset();
+			instp.generateRandomSpecs();
+			instp.setName(String.format("Instrument %08x", instp.getUID()));
+		}
+		
+		ZeqerInstEditDialog dialog = new ZeqerInstEditDialog(parent, core);
+		dialog.loadInstrument(instp);
+		dialog.showMe(this);
+		//Disposes itself in closeMe()
+		
+		InstNode inode = null;
+		if(dialog.getExitSelection()){
+			int result = dialog.loadDataToInstrument(instp);
+			
+			if(result == ZeqerInstEditDialog.INSTLOAD_ERR_NONE){
+				if(core != null){
+					core.addUserPreset(instp);
+				}
+				inode = new InstNode(instp);
+				
+			}
+			else{
+				String errmsg = "Internal Error (Unknown)";
+				switch(result){
+				case ZeqerInstEditDialog.INSTLOAD_NULL_INST:
+					errmsg = "Cannot load to null instrument.";
+					break;
+				case ZeqerInstEditDialog.INSTLOAD_INVALID_SAMPLE:
+					errmsg = "One or more sound samples are invalid.";
+					break;
+				case ZeqerInstEditDialog.INSTLOAD_INVALID_FINETUNE:
+					errmsg = "One or more fine tune values are invalid "
+							+ "(Must be integer between -100 and 100).";
+					break;
+				case ZeqerInstEditDialog.INSTLOAD_INVALID_RELEASE:
+					errmsg = "Release time is invalid.";
+					break;
+				}
+				
+				JOptionPane.showMessageDialog(this, 
+						"ERROR: " + errmsg, 
+						"Preset Creation Failed", JOptionPane.ERROR_MESSAGE);
+			}
+		}
+		
+		return inode;
 	}
+	
+	private InstNode newDrumAction(ZeqerDrumPreset template){
+		ZeqerDrumPreset drump = null;
+		if(template != null){
+			drump = template.copy();
+		}
+		else{
+			drump = new ZeqerDrumPreset();
+		}
+		
+		ZeqerDrumEditDialog dialog = new ZeqerDrumEditDialog(parent, core);
+		dialog.loadDrumData(drump);
+		dialog.showMe(this);
+		
+		InstNode inode = null;
+		if(dialog.getExitSelection()){
+			dialog.loadDataInto(drump);
+			if(core != null){
+				core.addUserPreset(drump);
+			}
+			inode = new InstNode(drump);
+		}
+		
+		return inode;
+	}
+	
+	private InstNode newDrumsetAction(ZeqerPercPreset template){
+		ZeqerPercPreset percp = null;
+		if(template != null){
+			percp = template.copy();
+		}
+		else{
+			Random r = new Random();
+			percp = new ZeqerPercPreset(r.nextInt());
+		}
+		
+		ZeqerDrumsetEditDialog dialog = new ZeqerDrumsetEditDialog(parent, core);
+		dialog.setDrum(percp);
+		dialog.showMe(this);
+		//Disposes itself in closeMe()
+
+		InstNode inode = null;
+		if(dialog.getExitSelection()){
+			dialog.loadDataIntoDrum(percp);
+			if(core != null){
+				core.addUserPreset(percp);
+			}
+			inode = new InstNode(percp);
+		}
+		
+		return inode;
+	}
+	
+	/*----- Callbacks -----*/
 	
 	private void lstPresetsSelectCallback(){
 		setWait();
@@ -675,8 +778,75 @@ public class ZeqerPanelInstruments extends JPanel{
 	}
 	
 	private void btnDuplicateCallback(){
-		//TODO
-		dummyCallback();
+		if(!presetsEditable) return;
+		
+		ZeqerPreset sel = getSelectedPreset();
+		if(sel == null){
+			JOptionPane.showMessageDialog(this, 
+					"Please select a preset to duplicate.", 
+					"Duplicate Preset", JOptionPane.WARNING_MESSAGE);
+			return;
+		}
+		
+		setWait();
+		
+		InstNode inode = null;
+		switch(sel.getType()){
+		case ZeqerPreset.PRESET_TYPE_INST:
+			if(sel instanceof ZeqerInstPreset){
+				inode = newInstAction((ZeqerInstPreset)sel);
+			}
+			else{
+				JOptionPane.showMessageDialog(this, 
+						"Internal Error: Selection is marked as instrument preset,"
+						+ " but is not instrument.", 
+						"Corrupted Preset", JOptionPane.ERROR_MESSAGE);
+			}
+			break;
+		case ZeqerPreset.PRESET_TYPE_DRUM:
+			if(sel instanceof ZeqerDrumPreset){
+				inode = newDrumAction((ZeqerDrumPreset)sel);
+			}
+			else{
+				JOptionPane.showMessageDialog(this, 
+						"Internal Error: Selection is marked as drum preset,"
+						+ " but is not drum.", 
+						"Corrupted Preset", JOptionPane.ERROR_MESSAGE);
+			}
+			break;
+		case ZeqerPreset.PRESET_TYPE_PERC:
+			if(sel instanceof ZeqerPercPreset){
+				inode = newDrumsetAction((ZeqerPercPreset)sel);
+			}
+			else{
+				JOptionPane.showMessageDialog(this, 
+						"Internal Error: Selection is marked as drumset preset,"
+						+ " but is not drumset.", 
+						"Corrupted Preset", JOptionPane.ERROR_MESSAGE);
+			}
+			break;
+		default:
+			JOptionPane.showMessageDialog(this, 
+					"Preset type not recognized. Cannot duplicate.", 
+					"Duplicate Preset", JOptionPane.ERROR_MESSAGE);
+			unsetWait();
+			return;
+		}
+		
+		//Add to GUI
+		if(inode != null){
+			allPresets.add(inode);
+			Collections.sort(allPresets);
+			clearAllFilters();
+			lstPresets.setSelectedValue(inode, true);
+			updateInfoPanel(inode);
+			
+			JOptionPane.showMessageDialog(this, 
+					"User Preset Added: " + inode.toString(), 
+					"Preset Creation Success", JOptionPane.INFORMATION_MESSAGE);
+		}
+		
+		unsetWait();
 	}
 	
 	private void btnNewCallback(){
@@ -688,52 +858,17 @@ public class ZeqerPanelInstruments extends JPanel{
 		InstNode inode = null;
 		int ret = InstTypeMiniDialog.showDialog(parent);
 		if(ret == InstTypeMiniDialog.SELECTION_INST){
-			ZeqerInstEditDialog dialog = new ZeqerInstEditDialog(parent, core);
-			dialog.showMe(this);
-			//Disposes itself in closeMe()
-			
-			if(dialog.getExitSelection()){
-				ZeqerInstPreset instp = new ZeqerInstPreset();
-				int result = dialog.loadDataToInstrument(instp);
-				
-				if(result == ZeqerInstEditDialog.INSTLOAD_ERR_NONE){
-					if(core != null){
-						core.addUserPreset(instp);
-					}
-					inode = new InstNode(instp);
-				}
-				else{
-					//TODO
-				}
-			}
+			inode = newInstAction(null);
 		}
 		else if(ret == InstTypeMiniDialog.SELECTION_PERC){
-			ZeqerDrumsetEditDialog dialog = new ZeqerDrumsetEditDialog(parent, core);
-			dialog.showMe(this);
-			//Disposes itself in closeMe()
-
-			if(dialog.getExitSelection()){
-				ZeqerPercPreset percp = new ZeqerPercPreset(1);
-				dialog.loadDataIntoDrum(percp);
-				if(core != null){
-					core.addUserPreset(percp);
-				}
-				inode = new InstNode(percp);
-			}
+			inode = newDrumsetAction(null);
 		}
 		else if(ret == InstTypeMiniDialog.SELECTION_DRUM){
-			ZeqerDrumEditDialog dialog = new ZeqerDrumEditDialog(parent, core);
-			dialog.showMe(this);
-			
-			if(dialog.getExitSelection()){
-				ZeqerDrumPreset drump = new ZeqerDrumPreset();
-				dialog.loadDataInto(drump);
-				if(core != null){
-					core.addUserPreset(drump);
-				}
-				inode = new InstNode(drump);
-			}
-			
+			inode = newDrumAction(null);
+		}
+		else{
+			unsetWait();
+			return;
 		}
 		
 		if(inode != null){
@@ -742,6 +877,10 @@ public class ZeqerPanelInstruments extends JPanel{
 			clearAllFilters();
 			lstPresets.setSelectedValue(inode, true);
 			updateInfoPanel(inode);
+			
+			JOptionPane.showMessageDialog(this, 
+					"User Preset Added: " + inode.toString(), 
+					"Preset Creation Success", JOptionPane.INFORMATION_MESSAGE);
 		}
 		
 		unsetWait();
@@ -759,8 +898,10 @@ public class ZeqerPanelInstruments extends JPanel{
 		InstNode sel = lstPresets.getSelectedValue();
 		if(sel != null && sel.preset != null){
 			
+			boolean editable = true;
 			if(core != null){
-				if(!core.isEditablePreset(sel.preset.getUID())){
+				editable = core.isEditablePreset(sel.preset.getUID());
+				if(!editable){
 					int ret = JOptionPane.showConfirmDialog(this, 
 							"Edits on selected preset will not be saved. Continue?", 
 							"Edit Preset", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
@@ -774,10 +915,11 @@ public class ZeqerPanelInstruments extends JPanel{
 			if(sel.preset instanceof ZeqerInstPreset){
 				ZeqerInstPreset instp = (ZeqerInstPreset)sel.preset;
 				ZeqerInstEditDialog dialog = new ZeqerInstEditDialog(parent, core, instp);
+				//dialog.setEditable(editable);
 				dialog.showMe(this);
 				//Disposes itself in closeMe()
 				
-				if(dialog.getExitSelection()){
+				if(editable && dialog.getExitSelection()){
 					dialog.loadDataToInstrument(instp);
 					updateInfoPanel(sel);
 				}
@@ -789,7 +931,7 @@ public class ZeqerPanelInstruments extends JPanel{
 				dialog.showMe(this);
 				//Disposes itself in closeMe()
 				
-				if(dialog.getExitSelection()){
+				if(editable && dialog.getExitSelection()){
 					dialog.loadDataIntoDrum(percp);
 					updateInfoPanel(sel);
 				}
@@ -800,7 +942,7 @@ public class ZeqerPanelInstruments extends JPanel{
 				dialog.loadDrumData(drump);
 				dialog.showMe(this);
 				
-				if(dialog.getExitSelection()){
+				if(editable && dialog.getExitSelection()){
 					dialog.loadDataInto(drump);
 					updateInfoPanel(sel);
 				}

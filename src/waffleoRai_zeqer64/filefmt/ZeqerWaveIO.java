@@ -33,6 +33,7 @@ public class ZeqerWaveIO {
 	public static final int ERROR_CODE_INPUT_FMT_UNKNOWN = 7;
 	public static final int ERROR_CODE_TABLE_IMPORT_FAILED = 8;
 	public static final int ERROR_CODE_MULTICHAN_NOT_SUPPORTED = 9;
+	public static final int ERROR_CODE_INVALID_CODEC = 10;
 	
 	public static final int MULTICHAN_IMPORT_SUM = 0;
 	public static final int MULTICHAN_IMPORT_LEFTONLY = 1;
@@ -45,6 +46,7 @@ public class ZeqerWaveIO {
 		public int maxSampleRate = 32000;
 		public int minSampleRate = 1000;
 		public int order = 2;
+		public int npredScale = 2;
 		public int multiChannelBehavior = MULTICHAN_IMPORT_LEFTONLY; //Or channel 0
 		public int loopStart = -1; //Optional to manually enter
 		public int loopEnd = -1; //Optional to manually enter
@@ -150,7 +152,7 @@ public class ZeqerWaveIO {
 			
 			//Handle multichannel
 			if(wave.totalChannels() > 1){
-				System.err.println("ZeqerWaveIO.importWAV || --DEBUG-- Multiple channels detected: " + wave.totalChannels());
+				//System.err.println("ZeqerWaveIO.importWAV || --DEBUG-- Multiple channels detected: " + wave.totalChannels());
 				switch(options.multiChannelBehavior){
 				case MULTICHAN_IMPORT_SUM:
 					options.channel = -1;
@@ -316,14 +318,14 @@ public class ZeqerWaveIO {
 		return res;
 	}
 	
-	private static void importPCMAudio(int[] data, SampleImportOptions options, SampleImportResult res){
+	public static void importPCMAudio(int[] data, SampleImportOptions options, SampleImportResult res){
 		//If multiple channels in file, they will be split into separate samples.
 		//Also will need to downsize or upsize samples to 16 bits if not 16 bits.
 		//Sample rate will also be reduced by an integer factor until it is at or below max sample rate (32k usually)
 		//	So very rough resampling occurs
 		
 		//Find downsample factor
-		System.err.println("ZeqerWaveIO.importPCMAudio || --DEBUG-- Input sample rate: " + options.srcSampleRate);
+		//System.err.println("ZeqerWaveIO.importPCMAudio || --DEBUG-- Input sample rate: " + options.srcSampleRate);
 		float targetSR = options.srcSampleRate;
 		int downSampleFactor = 1;
 		while(targetSR > options.maxSampleRate){
@@ -334,7 +336,7 @@ public class ZeqerWaveIO {
 			res.error = ERROR_CODE_DOWNSAMPLE_FAIL;
 			return; //Couldn't find a good integer factor.
 		}
-		System.err.println("ZeqerWaveIO.importPCMAudio || --DEBUG-- Target sample rate: " + targetSR);
+		//System.err.println("ZeqerWaveIO.importPCMAudio || --DEBUG-- Target sample rate: " + targetSR);
 		
 		//Strip down data
 		int frames = data.length / downSampleFactor;
@@ -364,7 +366,7 @@ public class ZeqerWaveIO {
 		N64ADPCMTable table = N64ADPCMTable.getDefaultTable();
 		if(!options.useDefaultADPCMTable){
 			//generate new table.
-			table = Z64ADPCM.buildTable(edata.createSampleStream(false), frames, options.twoBit);
+			table = Z64ADPCM.buildTable(edata.createSampleStream(false), 0, frames, options.twoBit, options.npredScale);
 		}
 		if(table == null){
 			res.error = ERROR_CODE_TBLGEN_FAIL;
@@ -381,15 +383,6 @@ public class ZeqerWaveIO {
 			int loopst = options.loopStart / downSampleFactor;
 			winfo.setLoopStart(loopst);
 			winfo.setLoopEnd(options.loopEnd / downSampleFactor);
-			
-			//Need 16 samples BEFORE loop (0 fill if not enough)
-			short[] lstate = new short[16];
-			for(int i = 15; i >= 0; i--){
-				int ii = 16 - i;
-				if(loopst - ii < 0) break;
-				lstate[i] = (short)edata.getSample(0, loopst - ii);
-			}
-			winfo.setLoopState(lstate);
 		}
 		else{
 			winfo.setLoopStart(0);
@@ -426,6 +419,23 @@ public class ZeqerWaveIO {
 			uid |= Byte.toUnsignedInt(res.md5[i]);
 		}
 		winfo.setUID(uid);
+		
+		//Loop state
+		if(options.loopCount != 0){
+			//Need 16 samples BEFORE loop (0 fill if not enough)
+			//Need to be redecoded samples, NOT original ones!!
+			Z64Wave decwave = Z64Wave.readZ64Wave(res.data, winfo);
+			int[] ddata = decwave.getSamples_16Signed(0);
+			
+			int loopst = winfo.getLoopStart();
+			short[] lstate = new short[16];
+			for(int i = 15; i >= 0; i--){
+				int ii = 16 - i;
+				if(loopst - ii < 0) break;
+				lstate[i] = (short)ddata[loopst - ii];
+			}
+			winfo.setLoopState(lstate);
+		}
 		
 		return;
 	}

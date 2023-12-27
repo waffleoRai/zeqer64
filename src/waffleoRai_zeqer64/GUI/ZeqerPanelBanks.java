@@ -4,11 +4,16 @@ import javax.swing.JFrame;
 import javax.swing.JPanel;
 
 import waffleoRai_zeqer64.ZeqerBank;
+import waffleoRai_zeqer64.GUI.dialogs.BankImportDialog;
 import waffleoRai_zeqer64.GUI.dialogs.ZeqerBankEditDialog;
+import waffleoRai_zeqer64.GUI.dialogs.progress.IndefProgressDialog;
 import waffleoRai_zeqer64.GUI.filters.FlagFilterPanel;
 import waffleoRai_zeqer64.GUI.filters.TagFilterPanel;
 import waffleoRai_zeqer64.GUI.filters.TextFilterPanel;
 import waffleoRai_zeqer64.GUI.filters.ZeqerFilter;
+import waffleoRai_zeqer64.bankImport.BankImportInfo;
+import waffleoRai_zeqer64.bankImport.BankImporter;
+import waffleoRai_zeqer64.filefmt.ZeqerBankIO;
 import waffleoRai_zeqer64.filefmt.ZeqerBankTable;
 import waffleoRai_zeqer64.filefmt.ZeqerBankTable.BankTableEntry;
 import waffleoRai_zeqer64.iface.ZeqerCoreInterface;
@@ -18,6 +23,8 @@ import java.awt.GridBagConstraints;
 import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.io.IOException;
 import java.io.Writer;
 import java.time.format.DateTimeFormatter;
@@ -27,10 +34,13 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
 
 import javax.swing.DefaultListModel;
 import javax.swing.JButton;
+import javax.swing.JFileChooser;
 import javax.swing.JScrollPane;
+import javax.swing.SwingWorker;
 import javax.swing.border.BevelBorder;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
@@ -45,6 +55,9 @@ import javax.swing.JOptionPane;
 public class ZeqerPanelBanks extends JPanel{
 
 	private static final long serialVersionUID = 95293232098131821L;
+	
+	public static final String BNKPNL_LAST_IMPORT_PATH = "ZBNKPNL_LASTIMPORT";
+	public static final String BNKPNL_LAST_EXPORT_PATH = "ZBNKPNL_LASTEXPORT";
 	
 	/*----- Inner Classes -----*/
 	
@@ -516,6 +529,116 @@ public class ZeqerPanelBanks extends JPanel{
 		pnlInfo.repaint();
 	}
 	
+	/*----- Internal -----*/
+	
+	private void finishImport(BankImporter importer){
+		if(importer == null) return;
+		if(core == null) return;
+		setWait();
+		importer.linkCoreInterface(core);
+		
+		IndefProgressDialog dialog = new IndefProgressDialog(parent, "Please Wait");
+		dialog.setPrimaryString("Import in Progress");
+		dialog.setSecondaryString("Importing requested items from " + importer.getPath());
+		
+		SwingWorker<Void, Void> task = new SwingWorker<Void, Void>(){
+			protected Void doInBackground() throws Exception{
+				try{
+					ZeqerBankIO.finishImport(importer);
+				}
+				catch(Exception ex){
+					ex.printStackTrace();
+					JOptionPane.showMessageDialog(parent, 
+							"Error occurred during import. See stderr for details.", 
+							"Import Failed", JOptionPane.ERROR_MESSAGE);
+				}
+				
+				return null;
+			}
+			
+			public void done(){
+				dialog.closeMe();
+				unsetWait();
+			}
+		};
+		
+		dialog.render();
+		task.execute();
+		
+		//TODO
+		//Refresh sample, inst, and font panels!
+	}
+	
+	private void showImportOptions(BankImporter importer){
+		if(importer == null) return;
+		
+		setWait();
+		BankImportDialog dialog = new BankImportDialog(parent);
+		dialog.loadInfoToGUI(importer.getInfo());
+		dialog.showMe(this);
+		
+		if(dialog.getExitSelection()){
+			dialog.getInfoFromGUI(importer.getInfo());
+			dialog.getSampleImportSettings(importer.getSampleOptions());
+			finishImport(importer);
+		}
+		unsetWait();
+	}
+	
+	private void startImport(String path){
+		setWait();
+		IndefProgressDialog dialog = new IndefProgressDialog(parent, "Please Wait");
+		dialog.setPrimaryString("Reading");
+		dialog.setSecondaryString("Processing contents of " + path);
+	
+		SwingWorker<BankImporter, Void> task = new SwingWorker<BankImporter, Void>(){
+			protected BankImporter doInBackground() throws Exception{
+				try{
+					return ZeqerBankIO.initializeImport(path);
+				}
+				catch(Exception ex){
+					ex.printStackTrace();
+					JOptionPane.showMessageDialog(parent, 
+							"Input file could not be read. See stderr for details.", 
+							"Import Failed", JOptionPane.ERROR_MESSAGE);
+				}
+				
+				return null;
+			}
+			
+			public void done(){
+				dialog.closeMe();
+				unsetWait();
+			}
+		};
+		
+		task.addPropertyChangeListener(new PropertyChangeListener(){
+			public void propertyChange(PropertyChangeEvent evt) {
+				if(task.isDone()){
+					try {
+						BankImporter result = task.get();
+						if(result == null) return;
+						showImportOptions(result);
+					} 
+					catch (InterruptedException e) {
+						e.printStackTrace();
+						JOptionPane.showMessageDialog(parent, 
+								"Internal error: Unexpected interrupt retrieving import info.", 
+								"Import Failed", JOptionPane.ERROR_MESSAGE);
+					} 
+					catch (ExecutionException e) {
+						e.printStackTrace();
+						JOptionPane.showMessageDialog(parent, 
+								"Internal error: Async execution failed when retrieving import info.", 
+								"Import Failed", JOptionPane.ERROR_MESSAGE);
+					}
+				}
+			}});
+		
+		dialog.render();
+		task.execute();
+	}
+	
 	/*----- Callbacks -----*/
 	
 	private void dummyCallback(){
@@ -633,9 +756,25 @@ public class ZeqerPanelBanks extends JPanel{
 	}
 	
 	private void btnImportCallback(){
-		//TODO
 		//Imports from decomp XML, SF2, DLS. Might add other game formats like SBNK
-		dummyCallback();
+		
+		//Ask user for import file.
+		String lastpath = null;
+		if(core != null){
+			lastpath = core.getSetting(BNKPNL_LAST_IMPORT_PATH);
+		}
+		JFileChooser fc = new JFileChooser(lastpath);
+		fc.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
+		ZeqerBankIO.addImportableFileFilters(fc);
+		int res = fc.showOpenDialog(this);
+		if(res != JFileChooser.APPROVE_OPTION) return;
+		
+		String importPath = fc.getSelectedFile().getAbsolutePath();
+		if(core != null){
+			core.setSetting(BNKPNL_LAST_IMPORT_PATH, importPath);
+		}
+		
+		startImport(importPath);
 	}
 
 	

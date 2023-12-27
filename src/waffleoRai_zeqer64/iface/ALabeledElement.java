@@ -76,4 +76,14 @@ public abstract class ALabeledElement implements INameable, ITaggable, IEnumName
 		tags.clear();
 	}
 
+	public void copyTo(ALabeledElement target){
+		if(target == null) return;
+		target.uid = this.uid;
+		target.name = this.name;
+		target.enumLabel = this.enumLabel;
+		
+		target.tags.clear();
+		target.tags.addAll(this.tags);
+	}
+	
 }

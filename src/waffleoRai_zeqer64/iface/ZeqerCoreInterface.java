@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.Map;
 
 import waffleoRai_Sound.nintendo.Z64WaveInfo;
+import waffleoRai_Utils.FileBuffer;
+import waffleoRai_soundbank.nintendo.z64.Z64Bank;
 import waffleoRai_soundbank.nintendo.z64.Z64Envelope;
 import waffleoRai_zeqer64.ZeqerPreset;
 import waffleoRai_zeqer64.ZeqerRom;
@@ -43,6 +45,7 @@ public interface ZeqerCoreInterface {
 	
 	/*----- Sample Management -----*/
 	public boolean playSample(WaveTableEntry wave);
+	public WaveTableEntry addUserWaveSample(Z64WaveInfo info, FileBuffer data, ErrorCode error);
 	public WaveTableEntry importSample(String path, SampleImportOptions options, ErrorCode error);
 	public boolean exportSample(WaveTableEntry wave, String pathstem);
 	public Z64WaveInfo getDefaultPercussionSample();
@@ -71,6 +74,8 @@ public interface ZeqerCoreInterface {
 	public boolean isEditableBank(int uid);
 	public BankTableEntry getBankInfo(int uid);
 	public ZeqerBank getBank(int uid);
+	
+	public ZeqerBank addUserBank(Z64Bank bankdata);
 	
 	/*----- Seq Management -----*/
 	

@@ -33,6 +33,8 @@ public class ZeqerDrumPreset extends ZeqerPreset{
 		if(data == null){
 			data = new Z64Drum();
 		}
+		Z64WaveInfo smpl = data.getSample();
+		if(smpl != null) waveid = smpl.getUID();
 	}
 	
 	public String getName(){return data.getName();}
@@ -93,6 +95,21 @@ public class ZeqerDrumPreset extends ZeqerPreset{
 		
 		data.setRootKey(drum.getRootKey());
 		data.setFineTune(drum.getFineTune());
+	}
+	
+	public ZeqerDrumPreset copy(){
+		ZeqerDrumPreset mycopy = new ZeqerDrumPreset();
+		super.copyTo(mycopy);
+		
+		//Modify identifiers a little
+		mycopy.enumLabel = mycopy.enumLabel + "_COPY";
+		mycopy.name = mycopy.name + " (Copy)";
+		mycopy.uid++;
+		
+		mycopy.waveid = this.waveid;
+		mycopy.loadDrumData(this.data);
+		
+		return mycopy;
 	}
 	
 	public int hashToUID(){

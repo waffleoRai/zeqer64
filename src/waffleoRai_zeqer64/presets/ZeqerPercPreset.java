@@ -241,6 +241,25 @@ public class ZeqerPercPreset extends ZeqerPreset{
 		return index;
 	}
 	
+	public ZeqerPercPreset copy(){
+		consolidateRegions();
+		
+		ZeqerPercPreset mycopy = new ZeqerPercPreset(0);
+		super.copyTo(mycopy);
+		mycopy.enumLabel = mycopy.enumLabel + "_COPY";
+		mycopy.name = mycopy.name + " (Copy)";
+		mycopy.uid++;
+		
+		if(regions != null){
+			mycopy.regions = new ZeqerPercRegion[regions.length];
+			for(int i = 0; i < regions.length; i++){
+				mycopy.setRegion(i, regions[i].copy());
+			}
+		}
+		
+		return mycopy;
+	}
+	
 	public int hashToUID(){
 		FileBuffer buff = new FileBuffer(4+(32*64), true);
 		hashmode = true;

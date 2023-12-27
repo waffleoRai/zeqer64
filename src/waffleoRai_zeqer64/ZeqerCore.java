@@ -1289,6 +1289,25 @@ public class ZeqerCore {
 		return true;
 	}
 	
+	public ZeqerBank addUserBank(Z64Bank bankData){
+		if(bnkManager == null) return null;
+		try{return bnkManager.addUserBank(bankData);}
+		catch(IOException ex){
+			ex.printStackTrace();
+			return null;
+		}
+	}
+	
+	public boolean removeUserBank(int uid){
+		if(bnkManager == null) return false;
+		try {
+			return bnkManager.deleteBank(uid);
+		} catch (IOException e) {
+			e.printStackTrace();
+			return false;
+		}
+	}
+	
 	public boolean addUserPreset(ZeqerPreset preset){
 		if(bnkManager == null) return false;
 		return bnkManager.addUserPreset(preset) != 0;

@@ -10,6 +10,8 @@ import java.awt.event.ActionListener;
 
 import javax.swing.JLabel;
 
+import waffleoRai_GUITools.GUITools;
+
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Frame;
@@ -117,7 +119,12 @@ public class InstTypeMiniDialog extends JDialog {
 	
 	public static int showDialog(Frame parent){
 		InstTypeMiniDialog dialog = new InstTypeMiniDialog(parent);
+		if(parent != null) dialog.setLocationRelativeTo(parent);
+		else{dialog.setLocation(GUITools.getScreenCenteringCoordinates(dialog));}
+		
+		dialog.pack();
 		dialog.setVisible(true);
+		
 		return dialog.getSelection();
 	}
 

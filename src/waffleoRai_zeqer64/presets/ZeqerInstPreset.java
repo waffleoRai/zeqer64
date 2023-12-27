@@ -96,6 +96,26 @@ public class ZeqerInstPreset extends ZeqerPreset{
 		return list;
 	}
 	
+	public ZeqerInstPreset copy(){
+		ZeqerInstPreset mycopy = new ZeqerInstPreset();
+		super.copyTo(mycopy);
+		
+		//Modify identifiers a little
+		mycopy.enumLabel = mycopy.enumLabel + "_COPY";
+		mycopy.uid++;
+		
+		mycopy.waveid_hi = this.waveid_hi;
+		mycopy.waveid_mid = this.waveid_mid;
+		mycopy.waveid_lo = this.waveid_lo;
+		
+		//Uses instrument name
+		mycopy.inst = this.inst.copy();
+		mycopy.inst.setName(this.getName() + " (Copy)");
+		mycopy.name = mycopy.inst.getName();
+		
+		return mycopy;
+	}
+	
 	public void setName(String s){inst.setName(s);}
 	public void setWaveIDLo(int val){waveid_lo = val;}
 	public void setWaveIDMid(int val){waveid_mid = val;}

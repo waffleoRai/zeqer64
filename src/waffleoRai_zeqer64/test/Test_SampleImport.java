@@ -19,6 +19,7 @@ public class Test_SampleImport {
 		int maxsr = 32000;
 		boolean twobit = false;
 		boolean defotbl = false;
+		int pred_scaler = 2;
 		int stereoStrat = ZeqerWaveIO.MULTICHAN_IMPORT_SUM;
 		
 		try{
@@ -27,6 +28,7 @@ public class Test_SampleImport {
 			ops.twoBit = twobit;
 			ops.useDefaultADPCMTable = defotbl;
 			ops.multiChannelBehavior = stereoStrat;
+			ops.npredScale = pred_scaler;
 			
 			DirectoryStream<Path> dirstr = Files.newDirectoryStream(Paths.get(indir));
 			for(Path p : dirstr){
@@ -40,6 +42,7 @@ public class Test_SampleImport {
 				String suffix = "_cap" + maxsr;
 				if(twobit) suffix += "_ADP5";
 				else suffix += "_ADP9";
+				suffix += "_npred" + (1 << pred_scaler);
 				if(defotbl) suffix += "_tbldefo";
 				else suffix += "_tblcustom";
 				switch(stereoStrat){

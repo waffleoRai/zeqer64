@@ -99,6 +99,7 @@ public class SamplePickDialog extends JDialog{
 	public WaveTableEntry getSelectedSample(){return selection;}
 	
 	public void showMe(Component c){
+		pack();
 		if(c != null) setLocationRelativeTo(c);
 		else{
 			if(parent != null) setLocationRelativeTo(parent);
@@ -107,7 +108,6 @@ public class SamplePickDialog extends JDialog{
 			}
 		}
 		
-		pack();
 		setVisible(true);
 	}
 	

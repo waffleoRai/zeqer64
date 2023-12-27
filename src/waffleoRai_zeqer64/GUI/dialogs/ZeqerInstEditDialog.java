@@ -538,6 +538,7 @@ public class ZeqerInstEditDialog extends JDialog{
 		
 		//Middle region
 		sid = ipreset.getWaveIDMid();
+		pnlRegions[1].setRegionIncluded(true);
 		if(sid == 0 || sid == -1){
 			//Blank. This is... not great.
 			pnlRegions[1].clearSample();

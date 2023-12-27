@@ -9,7 +9,9 @@ import java.util.Map;
 
 import waffleoRai_Sound.nintendo.Z64Wave;
 import waffleoRai_Sound.nintendo.Z64WaveInfo;
+import waffleoRai_Utils.FileBuffer;
 import waffleoRai_Utils.FileBuffer.UnsupportedFileTypeException;
+import waffleoRai_soundbank.nintendo.z64.Z64Bank;
 import waffleoRai_soundbank.nintendo.z64.Z64Envelope;
 import waffleoRai_zeqer64.ErrorCode;
 import waffleoRai_zeqer64.ZeqerBank;
@@ -23,6 +25,7 @@ import waffleoRai_zeqer64.GUI.dialogs.progress.IndefProgressDialog;
 import waffleoRai_zeqer64.ZeqerInstaller.ZeqerInstallListener;
 import waffleoRai_zeqer64.filefmt.AbldFile;
 import waffleoRai_zeqer64.filefmt.NusRomInfo;
+import waffleoRai_zeqer64.filefmt.ZeqerBankTable;
 import waffleoRai_zeqer64.filefmt.ZeqerBankTable.BankTableEntry;
 import waffleoRai_zeqer64.filefmt.ZeqerSeqTable.SeqTableEntry;
 import waffleoRai_zeqer64.filefmt.ZeqerWaveIO.SampleImportOptions;
@@ -339,6 +342,21 @@ public class CoreGUIInterface implements ZeqerCoreInterface{
 		return e;
 	}
 
+	public WaveTableEntry addUserWaveSample(Z64WaveInfo info, FileBuffer data, ErrorCode error){
+		if(core == null) return null;
+		
+		WaveTableEntry e = core.addUserWaveSample(info, data);
+		if(e == null){
+			if(error != null) error.value = ZeqerWaveIO.ERROR_CODE_TABLE_IMPORT_FAILED;
+			return null;
+		}
+		
+		e.setFlags(ZeqerWaveTable.FLAG_ISCUSTOM);
+		e.addTag("Custom");
+		
+		return e;
+	}
+	
 	public boolean exportSample(WaveTableEntry wave, String pathstem) {
 		if(wave == null || pathstem == null) return false;
 		if(core == null) return false;
@@ -453,6 +471,16 @@ public class CoreGUIInterface implements ZeqerCoreInterface{
 	public ZeqerBank getBank(int uid){
 		if(core == null) return null;
 		return core.loadZeqerBank(uid);
+	}
+	
+	public ZeqerBank addUserBank(Z64Bank bankdata){
+		if(core == null) return null;
+		ZeqerBank bnk = core.addUserBank(bankdata);
+		if(bnk != null){
+			BankTableEntry meta = bnk.getTableEntry();
+			if(meta != null) meta.setFlags(ZeqerBankTable.FLAG_CUSTOM);
+		}
+		return bnk;
 	}
 	
 	/*----- Seq Management -----*/

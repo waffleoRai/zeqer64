@@ -3,7 +3,6 @@ package waffleoRai_zeqer64.GUI;
 import javax.swing.JPanel;
 import java.awt.GridBagLayout;
 import java.awt.Cursor;
-import java.awt.Frame;
 import java.awt.GridBagConstraints;
 import java.awt.Insets;
 import java.awt.event.ActionEvent;

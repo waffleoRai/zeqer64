@@ -628,6 +628,30 @@ class CoreBankManager {
 		return bank;
 	}
 	
+	public ZeqerBank addUserBank(Z64Bank bankData) throws IOException{
+		if(bnk_table_user == null) return null;
+		if(bankData == null) return null;
+		
+		//Hash and get UID.
+		FileBuffer ser = bankData.serializeMe(
+				Z64Bank.SEROP_REF_WAV_UIDS | Z64Bank.SEROP_ORDERING_UID);
+		byte[] hash = FileUtils.getMD5Sum(ser.getBytes(0, ser.getFileSize()));
+		ser.dispose();
+		
+		int uid = 0;
+		for(int i = 0; i < 4; i++){
+			uid <<= 8;
+			uid |= Byte.toUnsignedInt(hash[i]);
+		}
+		
+		BankTableEntry entry = bnk_table_user.newEntry(uid);
+		ZeqerBank bank = new ZeqerBank(entry, waveManager, true);
+		bank.setDataSaveStem(root_dir + SEP + entry.getDataPathStem());
+		bank.setBankData(bankData);
+		
+		return bank;
+	}
+	
 	public boolean deleteBank(int uid) throws IOException{
 		if(uid == 0 || uid == -1) return false;
 		if(bnk_table_user != null){

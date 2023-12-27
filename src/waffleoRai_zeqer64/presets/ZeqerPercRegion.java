@@ -73,4 +73,18 @@ public class ZeqerPercRegion {
 		maxNote = (byte)(val + PERCREG_MIN_NOTE);
 	}
 
+	public ZeqerPercRegion copy(){
+		ZeqerPercRegion mycopy = new ZeqerPercRegion();
+		mycopy.enumStem = this.enumStem;
+		mycopy.nameStem = this.nameStem;
+		mycopy.minNote = this.minNote;
+		mycopy.maxNote = this.maxNote;
+		
+		if(this.data != null){
+			mycopy.data = this.data.copy();
+		}
+		
+		return mycopy;
+	}
+	
 }
