@@ -32,8 +32,8 @@ import waffleoRai_zeqer64.GUI.seqedit.SeqBinPanel;
 import waffleoRai_zeqer64.GUI.seqedit.SeqMetaEditDialog;
 import waffleoRai_zeqer64.GUI.seqedit.SeqSoundfontEditDialog;
 import waffleoRai_zeqer64.GUI.seqedit.mmlview.MMLScriptPanel;
-import waffleoRai_zeqer64.filefmt.ZeqerBankTable.BankTableEntry;
-import waffleoRai_zeqer64.filefmt.ZeqerSeqTable.SeqTableEntry;
+import waffleoRai_zeqer64.filefmt.bank.BankTableEntry;
+import waffleoRai_zeqer64.filefmt.seq.SeqTableEntry;
 import waffleoRai_zeqer64.iface.ZeqerCoreInterface;
 
 import java.awt.Component;

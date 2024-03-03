@@ -1,6 +1,6 @@
 package waffleoRai_zeqer64.GUI.abldEdit;
 
-import waffleoRai_zeqer64.filefmt.ZeqerBankTable.BankTableEntry;
+import waffleoRai_zeqer64.filefmt.bank.BankTableEntry;
 
 class BnkSlotEntry {
 	public BankTableEntry entry = null;

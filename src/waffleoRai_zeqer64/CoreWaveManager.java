@@ -23,10 +23,10 @@ import waffleoRai_zeqer64.extract.RomExtractionSummary.ExtractionError;
 import waffleoRai_zeqer64.extract.WaveExtractor;
 import waffleoRai_zeqer64.extract.WaveLocIDMap;
 import waffleoRai_zeqer64.filefmt.NusRomInfo;
-import waffleoRai_zeqer64.filefmt.UltraWavFile;
-import waffleoRai_zeqer64.filefmt.VersionWaveTable;
-import waffleoRai_zeqer64.filefmt.ZeqerWaveTable;
-import waffleoRai_zeqer64.filefmt.ZeqerWaveTable.WaveTableEntry;
+import waffleoRai_zeqer64.filefmt.wave.UltraWavFile;
+import waffleoRai_zeqer64.filefmt.wave.VersionWaveTable;
+import waffleoRai_zeqer64.filefmt.wave.ZeqerWaveTable;
+import waffleoRai_zeqer64.filefmt.wave.WaveTableEntry;
 import waffleoRai_zeqer64.iface.SoundSampleSource;
 
 class CoreWaveManager implements SoundSampleSource{
@@ -323,6 +323,30 @@ class CoreWaveManager implements SoundSampleSource{
 			return null;
 		}
 		return sounddat;
+	}
+	
+	public ZeqerWave getWave(int uid){
+		boolean is_sys = false;
+		WaveTableEntry meta = null;
+		if(wav_table_sys != null){
+			meta = wav_table_sys.getEntryWithUID(uid);
+			if(meta != null) is_sys = true;
+		}
+		if(meta == null && wav_table_user != null) {
+			meta = wav_table_user.getEntryWithUID(uid);
+		}
+		
+		if(meta == null) return null;
+		ZeqerWave zwav = new ZeqerWave(meta, true);
+		
+		if(is_sys){
+			zwav.setDataPath(getSysDirPath() + SEP + meta.getDataFileName());
+		}
+		else{
+			zwav.setDataPath(root_dir + SEP + meta.getDataFileName());
+		}
+		
+		return zwav;
 	}
 	
 	public VersionWaveTable loadWaveVersionTable(String rom_id) throws IOException{

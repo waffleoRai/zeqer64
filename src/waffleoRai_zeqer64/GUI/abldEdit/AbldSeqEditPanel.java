@@ -2,7 +2,7 @@ package waffleoRai_zeqer64.GUI.abldEdit;
 
 import waffleoRai_zeqer64.engine.EngineSeqInfo;
 import waffleoRai_zeqer64.filefmt.AbldFile;
-import waffleoRai_zeqer64.filefmt.ZeqerSeqTable.SeqTableEntry;
+import waffleoRai_zeqer64.filefmt.seq.SeqTableEntry;
 import waffleoRai_zeqer64.iface.ZeqerCoreInterface;
 
 import java.awt.Component;

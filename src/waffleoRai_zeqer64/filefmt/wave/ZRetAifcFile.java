@@ -1,4 +1,4 @@
-package waffleoRai_zeqer64.filefmt;
+package waffleoRai_zeqer64.filefmt.wave;
 
 import waffleoRai_Sound.nintendo.N64ADPCMTable;
 import waffleoRai_Sound.nintendo.Z64Sound;

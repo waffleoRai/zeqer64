@@ -15,11 +15,11 @@ import waffleoRai_soundbank.nintendo.z64.Z64Drum;
 import waffleoRai_soundbank.nintendo.z64.Z64Instrument;
 import waffleoRai_zeqer64.ZeqerCore;
 import waffleoRai_zeqer64.ZeqerPreset;
-import waffleoRai_zeqer64.filefmt.ZeqerBankTable;
-import waffleoRai_zeqer64.filefmt.ZeqerPresetTable;
-import waffleoRai_zeqer64.filefmt.ZeqerSeqTable;
-import waffleoRai_zeqer64.filefmt.ZeqerWaveTable;
-import waffleoRai_zeqer64.filefmt.ZeqerBankTable.BankTableEntry;
+import waffleoRai_zeqer64.filefmt.bank.ZeqerBankTable;
+import waffleoRai_zeqer64.filefmt.bank.ZeqerPresetTable;
+import waffleoRai_zeqer64.filefmt.seq.ZeqerSeqTable;
+import waffleoRai_zeqer64.filefmt.wave.ZeqerWaveTable;
+import waffleoRai_zeqer64.filefmt.bank.BankTableEntry;
 import waffleoRai_zeqer64.presets.ZeqerInstPreset;
 import waffleoRai_zeqer64.presets.ZeqerPercPreset;
 

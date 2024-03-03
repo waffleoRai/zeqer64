@@ -6,10 +6,10 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 import waffleoRai_Sound.nintendo.Z64Wave;
-import waffleoRai_zeqer64.filefmt.UltraWavFile;
-import waffleoRai_zeqer64.filefmt.ZeqerWaveIO;
-import waffleoRai_zeqer64.filefmt.ZeqerWaveIO.SampleImportOptions;
-import waffleoRai_zeqer64.filefmt.ZeqerWaveIO.SampleImportResult;
+import waffleoRai_zeqer64.filefmt.wave.UltraWavFile;
+import waffleoRai_zeqer64.filefmt.wave.ZeqerWaveIO;
+import waffleoRai_zeqer64.filefmt.wave.ZeqerWaveIO.SampleImportOptions;
+import waffleoRai_zeqer64.filefmt.wave.ZeqerWaveIO.SampleImportResult;
 
 public class Test_SampleImport {
 

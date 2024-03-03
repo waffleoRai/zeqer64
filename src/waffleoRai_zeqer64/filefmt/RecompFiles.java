@@ -30,8 +30,10 @@ import waffleoRai_zeqer64.engine.EngineBankInfo;
 import waffleoRai_zeqer64.engine.EngineSeqInfo;
 import waffleoRai_zeqer64.engine.EngineTables;
 import waffleoRai_zeqer64.engine.EngineWaveArcInfo;
-import waffleoRai_zeqer64.filefmt.ZeqerBankTable.BankTableEntry;
-import waffleoRai_zeqer64.filefmt.ZeqerSeqTable.SeqTableEntry;
+import waffleoRai_zeqer64.filefmt.bank.SoundfontXML;
+import waffleoRai_zeqer64.filefmt.seq.SeqTableEntry;
+import waffleoRai_zeqer64.filefmt.wave.ZRetAifcFile;
+import waffleoRai_zeqer64.filefmt.bank.BankTableEntry;
 
 public class RecompFiles {
 	

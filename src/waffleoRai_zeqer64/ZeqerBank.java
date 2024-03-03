@@ -7,8 +7,9 @@ import waffleoRai_Utils.FileUtils;
 import waffleoRai_Utils.FileBuffer.UnsupportedFileTypeException;
 import waffleoRai_soundbank.nintendo.z64.UltraBankFile;
 import waffleoRai_soundbank.nintendo.z64.Z64Bank;
-import waffleoRai_zeqer64.filefmt.ZeqerBankTable.BankTableEntry;
+import waffleoRai_zeqer64.filefmt.bank.BankTableEntry;
 import waffleoRai_zeqer64.iface.SoundSampleSource;
+import waffleoRai_zeqer64.iface.ZeqerCoreInterface;
 
 public class ZeqerBank {
 	
@@ -55,6 +56,31 @@ public class ZeqerBank {
 		if(!writePerm) return false;
 		data = bnk;
 		return (saveAll() != null);
+	}
+	
+	public ZeqerBank createUserDuplicate(ZeqerCoreInterface core) {
+		if(core == null) return null;
+		
+		//1. Copy bank data
+		Z64Bank datcopy = data.copy(true);
+		
+		//2. Generate meta record from the core
+		ZeqerBank copy = core.addUserBank(datcopy);
+		
+		//3. Update name and enum
+		if(metaEntry != null) {
+			BankTableEntry otherMeta = copy.getTableEntry();
+			String s = metaEntry.getName();
+			if(s != null) {
+				otherMeta.setName(s + " (" + String.format("%08x)", otherMeta.getUID()));
+			}
+			s = metaEntry.getEnumString();
+			if(s != null) {
+				otherMeta.setEnumString(String.format("%s_%08x", s, otherMeta.getUID()));
+			}
+		}
+		
+		return copy;
 	}
 	
 	/*----- Management -----*/

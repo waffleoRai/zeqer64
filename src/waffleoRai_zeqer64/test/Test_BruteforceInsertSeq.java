@@ -19,10 +19,11 @@ import waffleoRai_Utils.MultiFileBuffer;
 import waffleoRai_soundbank.nintendo.z64.Z64Bank;
 import waffleoRai_zeqer64.ZeqerCore;
 import waffleoRai_zeqer64.ZeqerRom;
+import waffleoRai_zeqer64.GUI.CoreGUIInterface;
 import waffleoRai_zeqer64.filefmt.NusRomInfo;
 import waffleoRai_zeqer64.filefmt.RomInfoNode;
-import waffleoRai_zeqer64.filefmt.SoundfontXML;
-import waffleoRai_zeqer64.filefmt.VersionWaveTable;
+import waffleoRai_zeqer64.filefmt.bank.SoundfontXML;
+import waffleoRai_zeqer64.filefmt.wave.VersionWaveTable;
 
 public class Test_BruteforceInsertSeq {
 	//This just adds seq, font, and any samples to end of ROM
@@ -154,8 +155,9 @@ public class Test_BruteforceInsertSeq {
 		}
 		
 		try{
-			ZeqerCore.getActiveCore().setProgramDirectory(zdir);
-			ZeqerCore.getActiveCore().loadSoundTables();
+			CoreGUIInterface core_iface = new CoreGUIInterface();
+			core_iface.createCoreForPath(zdir);
+			//ZeqerCore core = core_iface.getCore();
 			
 			//1. Read in ROM
 			ZeqerRom rom = loadRom(rompath);
@@ -179,7 +181,7 @@ public class Test_BruteforceInsertSeq {
 			String fontxml_path = argmap.get("fontxml");
 			if(fontxml_path != null){
 				System.err.println("Reading custom font XML...");
-				custom_font = SoundfontXML.readSFXML(fontxml_path);
+				custom_font = SoundfontXML.readSFXML(fontxml_path, core_iface);
 			}
 			//System.exit(2); //DEBUG
 			

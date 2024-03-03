@@ -21,7 +21,7 @@ import waffleoRai_zeqer64.GUI.CacheTypeCombobox;
 import waffleoRai_zeqer64.GUI.MediumTypeCombobox;
 import waffleoRai_zeqer64.engine.EngineWaveArcInfo;
 import waffleoRai_zeqer64.filefmt.AbldFile;
-import waffleoRai_zeqer64.filefmt.ZeqerWaveTable.WaveTableEntry;
+import waffleoRai_zeqer64.filefmt.wave.WaveTableEntry;
 import waffleoRai_zeqer64.iface.ZeqerCoreInterface;
 
 import javax.swing.JScrollPane;

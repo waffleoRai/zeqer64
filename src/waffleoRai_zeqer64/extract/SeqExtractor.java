@@ -18,9 +18,9 @@ import waffleoRai_zeqer64.ZeqerErrorCode;
 import waffleoRai_zeqer64.ZeqerRom;
 import waffleoRai_zeqer64.ZeqerSeq;
 import waffleoRai_zeqer64.filefmt.NusRomInfo;
-import waffleoRai_zeqer64.filefmt.UltraSeqFile;
-import waffleoRai_zeqer64.filefmt.ZeqerSeqTable;
-import waffleoRai_zeqer64.filefmt.ZeqerSeqTable.SeqTableEntry;
+import waffleoRai_zeqer64.filefmt.seq.UltraSeqFile;
+import waffleoRai_zeqer64.filefmt.seq.ZeqerSeqTable;
+import waffleoRai_zeqer64.filefmt.seq.SeqTableEntry;
 
 public class SeqExtractor {
 	

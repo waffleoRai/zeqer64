@@ -6,8 +6,8 @@ import javax.swing.JFrame;
 import waffleoRai_GUITools.ComponentGroup;
 import waffleoRai_GUITools.WRDialog;
 import waffleoRai_zeqer64.GUI.sampleImport.SampleOptionsPanel;
-import waffleoRai_zeqer64.filefmt.ZeqerWaveIO;
-import waffleoRai_zeqer64.filefmt.ZeqerWaveIO.SampleImportOptions;
+import waffleoRai_zeqer64.filefmt.wave.ZeqerWaveIO;
+import waffleoRai_zeqer64.filefmt.wave.ZeqerWaveIO.SampleImportOptions;
 import waffleoRai_zeqer64.iface.ZeqerCoreInterface;
 
 import java.awt.GridBagLayout;

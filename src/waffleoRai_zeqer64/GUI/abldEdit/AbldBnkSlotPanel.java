@@ -7,7 +7,7 @@ import waffleoRai_zeqer64.GUI.CacheTypeCombobox;
 import waffleoRai_zeqer64.GUI.MediumTypeCombobox;
 import waffleoRai_zeqer64.GUI.ZeqerGUIUtils.CacheType;
 import waffleoRai_zeqer64.GUI.ZeqerGUIUtils.MediumType;
-import waffleoRai_zeqer64.filefmt.ZeqerBankTable.BankTableEntry;
+import waffleoRai_zeqer64.filefmt.bank.BankTableEntry;
 import waffleoRai_zeqer64.iface.ZeqerCoreInterface;
 import java.awt.GridBagLayout;
 

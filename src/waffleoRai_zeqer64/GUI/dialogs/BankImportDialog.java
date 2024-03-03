@@ -35,7 +35,7 @@ import waffleoRai_zeqer64.bankImport.BankImportInfo;
 import waffleoRai_zeqer64.bankImport.BankImportInfo.PresetInfo;
 import waffleoRai_zeqer64.bankImport.BankImportInfo.SampleInfo;
 import waffleoRai_zeqer64.bankImport.BankImportInfo.SubBank;
-import waffleoRai_zeqer64.filefmt.ZeqerWaveIO.SampleImportOptions;
+import waffleoRai_zeqer64.filefmt.wave.ZeqerWaveIO.SampleImportOptions;
 
 import javax.swing.JTextField;
 import javax.swing.JScrollPane;

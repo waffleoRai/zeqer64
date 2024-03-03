@@ -33,7 +33,6 @@ import waffleoRai_Utils.FileBuffer.UnsupportedFileTypeException;
 import waffleoRai_Utils.FileUtils;
 import waffleoRai_soundbank.nintendo.z64.Z64Bank;
 import waffleoRai_soundbank.nintendo.z64.Z64Envelope;
-import waffleoRai_soundbank.nintendo.z64.Z64Instrument;
 import waffleoRai_zeqer64.ZeqerInstaller.ZeqerInstallListener;
 import waffleoRai_zeqer64.engine.ZeqerPlaybackEngine;
 import waffleoRai_zeqer64.extract.RomExtractionSummary;
@@ -41,16 +40,19 @@ import waffleoRai_zeqer64.extract.WaveLocIDMap;
 import waffleoRai_zeqer64.filefmt.AbldFile;
 import waffleoRai_zeqer64.filefmt.NusRomInfo;
 import waffleoRai_zeqer64.filefmt.RomInfoNode;
-import waffleoRai_zeqer64.filefmt.VersionWaveTable;
-import waffleoRai_zeqer64.filefmt.ZeqerBankTable;
-import waffleoRai_zeqer64.filefmt.ZeqerBankTable.BankTableEntry;
-import waffleoRai_zeqer64.filefmt.ZeqerPresetTable;
 import waffleoRai_zeqer64.filefmt.ZeqerRomInfo;
-import waffleoRai_zeqer64.filefmt.ZeqerSeqTable;
-import waffleoRai_zeqer64.filefmt.ZeqerSeqTable.SeqTableEntry;
-import waffleoRai_zeqer64.filefmt.ZeqerWaveTable.WaveTableEntry;
-import waffleoRai_zeqer64.filefmt.ZeqerWaveTable;
+import waffleoRai_zeqer64.filefmt.bank.BankTableEntry;
+import waffleoRai_zeqer64.filefmt.bank.ZeqerBankTable;
+import waffleoRai_zeqer64.filefmt.bank.ZeqerPresetTable;
+import waffleoRai_zeqer64.filefmt.seq.ZeqerSeqTable;
+import waffleoRai_zeqer64.filefmt.wave.VersionWaveTable;
+import waffleoRai_zeqer64.filefmt.wave.ZeqerWaveTable;
+import waffleoRai_zeqer64.filefmt.wave.WaveTableEntry;
+import waffleoRai_zeqer64.filefmt.seq.SeqTableEntry;
 import waffleoRai_zeqer64.listeners.RomImportListener;
+import waffleoRai_zeqer64.presets.ZeqerDrumPreset;
+import waffleoRai_zeqer64.presets.ZeqerInstPreset;
+import waffleoRai_zeqer64.presets.ZeqerPercPreset;
 
 public class ZeqerCore {
 	
@@ -1093,6 +1095,8 @@ public class ZeqerCore {
 	
 	/*----- Data Loading -----*/
 	
+	//--- Samples
+	
 	public Z64WaveInfo getWaveByName(String wave_name){
 		if(wavManager == null) return null;
 		return wavManager.getWaveByName(wave_name);
@@ -1118,6 +1122,89 @@ public class ZeqerCore {
 		return wavManager.loadWaveData(wave_uid);
 	}
 	
+	public ZeqerWave getWave(int wave_uid){
+		if(wavManager == null) return null;
+		return wavManager.getWave(wave_uid);
+	}
+	
+	public List<WaveTableEntry> getAllValidWaveTableEntries(){
+		if(wavManager == null) return null;
+		return wavManager.getAllValidTableEntries();
+	}
+	
+	//--- Presets
+	
+	public ZeqerPreset getPreset(int uid){
+		if(bnkManager == null) return null;
+		return bnkManager.getPreset(uid);
+	}
+	
+	public ZeqerInstPreset getInstrumentPreset(int uid){
+		if(bnkManager == null) return null;
+		ZeqerPreset p = bnkManager.getPreset(uid);
+		if(!(p instanceof ZeqerInstPreset)) return null;
+		return (ZeqerInstPreset)p;
+	}
+	
+	public ZeqerPercPreset getPercussionPreset(int uid){
+		if(bnkManager == null) return null;
+		ZeqerPreset p = bnkManager.getPreset(uid);
+		if(!(p instanceof ZeqerPercPreset)) return null;
+		return (ZeqerPercPreset)p;
+	}
+	
+	public ZeqerDrumPreset getDrumPreset(int uid){
+		if(bnkManager == null) return null;
+		ZeqerPreset p = bnkManager.getPreset(uid);
+		if(!(p instanceof ZeqerDrumPreset)) return null;
+		return (ZeqerDrumPreset)p;
+	}
+	
+	public ZeqerPreset getPresetByName(String name){
+		if(bnkManager == null) return null;
+		return bnkManager.getPresetByName(name);
+	}
+	
+	public ZeqerInstPreset getInstrumentPresetByName(String name){
+		if(bnkManager == null) return null;
+		ZeqerPreset p = bnkManager.getPresetByName(name);
+		if(!(p instanceof ZeqerInstPreset)) return null;
+		return (ZeqerInstPreset)p;
+	}
+	
+	public ZeqerPercPreset getPercussionPresetByName(String name){
+		if(bnkManager == null) return null;
+		ZeqerPreset p = bnkManager.getPresetByName(name);
+		if(!(p instanceof ZeqerPercPreset)) return null;
+		return (ZeqerPercPreset)p;
+	}
+	
+	public ZeqerDrumPreset getDrumPresetByName(String name){
+		if(bnkManager == null) return null;
+		ZeqerPreset p = bnkManager.getPresetByName(name);
+		if(!(p instanceof ZeqerDrumPreset)) return null;
+		return (ZeqerDrumPreset)p;
+	}
+	
+	public List<ZeqerPreset> getAllValidPresets(){
+		if(bnkManager == null) return new LinkedList<ZeqerPreset>();
+		return bnkManager.getAllValidPresets();
+	}
+	
+	public boolean isSystemPreset(int uid){
+		if(bnkManager == null) return false;
+		return bnkManager.isSysPreset(uid);
+	}
+	
+	//--- Banks
+	
+	public Map<String, Z64Envelope> getSavedEnvPresets(){
+		if(bnkManager != null){
+			return bnkManager.getAllEnvelopePresets();
+		}
+		return new HashMap<String, Z64Envelope>();
+	}
+	
 	public BankTableEntry getBankInfo(int bank_uid){
 		if(bnkManager == null) return null;
 		return bnkManager.getBankInfo(bank_uid);
@@ -1133,10 +1220,17 @@ public class ZeqerCore {
 		return bnkManager.loadZeqerBank(bank_uid);
 	}
 	
-	public Z64Instrument getPresetInstrumentByName(String preset_name){
-		if(bnkManager == null) return null;
-		return bnkManager.getPresetInstrumentByName(preset_name);
+	public List<ZeqerBank> getAllValidBanks(){
+		if(bnkManager == null) return new LinkedList<ZeqerBank>();
+		return bnkManager.getAllValidBanks();
 	}
+	
+	public boolean isSystemBank(int uid){
+		if(bnkManager == null) return false;
+		return bnkManager.isSysBank(uid);
+	}
+	
+	//--- Seqs
 	
 	public SeqTableEntry getSeqInfo(int seq_uid){
 		if(seqManager == null) return null;
@@ -1153,38 +1247,6 @@ public class ZeqerCore {
 		return seqManager.loadSeqData(seq_uid);
 	}
 	
-	public VersionWaveTable loadWaveVersionTable(String rom_id) throws IOException{
-		if(wavManager == null) return null;
-		return wavManager.loadWaveVersionTable(rom_id);
-	}
-	
-	public WaveLocIDMap loadVersionWaveOffsetIDMap(String rom_id) throws IOException{
-		if(wavManager == null) return null;
-		return wavManager.loadVersionWaveOffsetIDMap(rom_id);
-	}
-		
-	public List<WaveTableEntry> getAllValidWaveTableEntries(){
-		if(wavManager == null) return null;
-		return wavManager.getAllValidTableEntries();
-	}
-	
-	public Map<String, Z64Envelope> getSavedEnvPresets(){
-		if(bnkManager != null){
-			return bnkManager.getAllEnvelopePresets();
-		}
-		return new HashMap<String, Z64Envelope>();
-	}
-	
-	public List<ZeqerPreset> getAllValidPresets(){
-		if(bnkManager == null) return new LinkedList<ZeqerPreset>();
-		return bnkManager.getAllValidPresets();
-	}
-	
-	public List<ZeqerBank> getAllValidBanks(){
-		if(bnkManager == null) return new LinkedList<ZeqerBank>();
-		return bnkManager.getAllValidBanks();
-	}
-	
 	public List<ZeqerSeq> getAllValidSeqs(){
 		if(seqManager == null) return new LinkedList<ZeqerSeq>();
 		try {
@@ -1195,14 +1257,16 @@ public class ZeqerCore {
 		}
 	}
 	
-	public boolean isSystemPreset(int uid){
-		if(bnkManager == null) return false;
-		return bnkManager.isSysPreset(uid);
+	//--- Other
+
+	public VersionWaveTable loadWaveVersionTable(String rom_id) throws IOException{
+		if(wavManager == null) return null;
+		return wavManager.loadWaveVersionTable(rom_id);
 	}
 	
-	public boolean isSystemBank(int uid){
-		if(bnkManager == null) return false;
-		return bnkManager.isSysBank(uid);
+	public WaveLocIDMap loadVersionWaveOffsetIDMap(String rom_id) throws IOException{
+		if(wavManager == null) return null;
+		return wavManager.loadVersionWaveOffsetIDMap(rom_id);
 	}
 	
 	/*----- Data Saving -----*/

@@ -41,10 +41,10 @@ import waffleoRai_zeqer64.GUI.filters.FlagFilterPanel;
 import waffleoRai_zeqer64.GUI.filters.TagFilterPanel;
 import waffleoRai_zeqer64.GUI.filters.TextFilterPanel;
 import waffleoRai_zeqer64.GUI.filters.ZeqerFilter;
-import waffleoRai_zeqer64.filefmt.ZeqerWaveIO;
-import waffleoRai_zeqer64.filefmt.ZeqerWaveIO.SampleImportOptions;
-import waffleoRai_zeqer64.filefmt.ZeqerWaveTable;
-import waffleoRai_zeqer64.filefmt.ZeqerWaveTable.WaveTableEntry;
+import waffleoRai_zeqer64.filefmt.wave.ZeqerWaveIO;
+import waffleoRai_zeqer64.filefmt.wave.ZeqerWaveTable;
+import waffleoRai_zeqer64.filefmt.wave.ZeqerWaveIO.SampleImportOptions;
+import waffleoRai_zeqer64.filefmt.wave.WaveTableEntry;
 import waffleoRai_zeqer64.iface.ZeqerCoreInterface;
 
 public class ZeqerPanelSamples extends JPanel{

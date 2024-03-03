@@ -28,9 +28,9 @@ import waffleoRai_zeqer64.SoundTables.BankInfoEntry;
 import waffleoRai_zeqer64.SoundTables.WaveArcInfoEntry;
 import waffleoRai_zeqer64.filefmt.NusRomInfo;
 import waffleoRai_zeqer64.filefmt.RomInfoNode;
-import waffleoRai_zeqer64.filefmt.UltraWavFile;
-import waffleoRai_zeqer64.filefmt.ZeqerWaveTable;
-import waffleoRai_zeqer64.filefmt.ZeqerWaveTable.WaveTableEntry;
+import waffleoRai_zeqer64.filefmt.wave.UltraWavFile;
+import waffleoRai_zeqer64.filefmt.wave.ZeqerWaveTable;
+import waffleoRai_zeqer64.filefmt.wave.WaveTableEntry;
 
 public class WaveExtractor {
 	

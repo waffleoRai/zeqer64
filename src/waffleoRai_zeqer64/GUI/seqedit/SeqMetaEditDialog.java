@@ -29,7 +29,7 @@ import waffleoRai_zeqer64.GUI.ZeqerGUIUtils.MediumType;
 import waffleoRai_zeqer64.GUI.ZeqerGUIUtils.SeqType;
 import waffleoRai_zeqer64.GUI.dialogs.ZeqerSeqHubDialog;
 import waffleoRai_zeqer64.GUI.dialogs.ZeqerTagEditDialog;
-import waffleoRai_zeqer64.filefmt.ZeqerSeqTable.SeqTableEntry;
+import waffleoRai_zeqer64.filefmt.seq.SeqTableEntry;
 import waffleoRai_zeqer64.iface.ZeqerCoreInterface;
 
 import javax.swing.JPanel;

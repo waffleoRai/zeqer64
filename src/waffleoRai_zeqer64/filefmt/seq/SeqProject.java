@@ -1,4 +1,4 @@
-package waffleoRai_zeqer64.filefmt;
+package waffleoRai_zeqer64.filefmt.seq;
 
 import waffleoRai_zeqer64.ZeqerSeq;
 

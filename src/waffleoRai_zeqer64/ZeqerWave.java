@@ -6,8 +6,8 @@ import waffleoRai_Sound.nintendo.Z64Wave;
 import waffleoRai_Utils.FileBuffer;
 import waffleoRai_Utils.FileUtils;
 import waffleoRai_Utils.FileBuffer.UnsupportedFileTypeException;
-import waffleoRai_zeqer64.filefmt.UltraWavFile;
-import waffleoRai_zeqer64.filefmt.ZeqerWaveTable.WaveTableEntry;
+import waffleoRai_zeqer64.filefmt.wave.UltraWavFile;
+import waffleoRai_zeqer64.filefmt.wave.WaveTableEntry;
 
 public class ZeqerWave {
 	

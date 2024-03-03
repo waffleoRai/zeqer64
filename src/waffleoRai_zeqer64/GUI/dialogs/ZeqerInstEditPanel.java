@@ -20,7 +20,7 @@ import javax.swing.event.ChangeListener;
 import waffleoRai_GUITools.ComponentGroup;
 import waffleoRai_Sound.nintendo.Z64WaveInfo;
 import waffleoRai_Utils.VoidCallbackMethod;
-import waffleoRai_zeqer64.filefmt.ZeqerWaveTable.WaveTableEntry;
+import waffleoRai_zeqer64.filefmt.wave.WaveTableEntry;
 import waffleoRai_zeqer64.iface.ZeqerCoreInterface;
 
 import javax.swing.JButton;

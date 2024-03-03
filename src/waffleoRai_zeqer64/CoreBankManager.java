@@ -36,9 +36,9 @@ import waffleoRai_zeqer64.extract.RomExtractionSummary;
 import waffleoRai_zeqer64.extract.WaveLocIDMap;
 import waffleoRai_zeqer64.extract.RomExtractionSummary.ExtractionError;
 import waffleoRai_zeqer64.filefmt.NusRomInfo;
-import waffleoRai_zeqer64.filefmt.ZeqerBankTable;
-import waffleoRai_zeqer64.filefmt.ZeqerPresetTable;
-import waffleoRai_zeqer64.filefmt.ZeqerBankTable.BankTableEntry;
+import waffleoRai_zeqer64.filefmt.bank.ZeqerBankTable;
+import waffleoRai_zeqer64.filefmt.bank.ZeqerPresetTable;
+import waffleoRai_zeqer64.filefmt.bank.BankTableEntry;
 import waffleoRai_zeqer64.presets.ZeqerDrumPreset;
 import waffleoRai_zeqer64.presets.ZeqerDummyPreset;
 import waffleoRai_zeqer64.presets.ZeqerInstPreset;
@@ -517,6 +517,24 @@ class CoreBankManager {
 		return inst;
 	}
 	
+	public ZeqerPreset getPreset(int uid){
+		ZeqerPreset preset = null;
+		if(preset_table_sys != null) preset = preset_table_sys.getPreset(uid);
+		if(preset == null && preset_table_user != null) {
+			preset = preset_table_user.getPreset(uid);
+		}
+		return preset;
+	}
+	
+	public ZeqerPreset getPresetByName(String name){
+		ZeqerPreset preset = null;
+		if(preset_table_sys != null) preset = preset_table_sys.getPresetByName(name);
+		if(preset == null && preset_table_user != null) {
+			preset = preset_table_user.getPresetByName(name);
+		}
+		return preset;
+	}
+	
 	public List<ZeqerPreset> getAllPresets(){
 		List<ZeqerPreset> list = new LinkedList<ZeqerPreset>();
 		if(preset_table_sys != null){
@@ -610,7 +628,7 @@ class CoreBankManager {
 		}
 		return uids;
 	}
-	
+
 	/*----- Setters -----*/
 	
 	public ZeqerBank newUserBank(int sfx_alloc) throws IOException{

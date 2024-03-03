@@ -3,6 +3,7 @@ package waffleoRai_zeqer64.GUI;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 
+import waffleoRai_zeqer64.ErrorCode;
 import waffleoRai_zeqer64.ZeqerBank;
 import waffleoRai_zeqer64.GUI.dialogs.BankImportDialog;
 import waffleoRai_zeqer64.GUI.dialogs.ZeqerBankEditDialog;
@@ -11,11 +12,10 @@ import waffleoRai_zeqer64.GUI.filters.FlagFilterPanel;
 import waffleoRai_zeqer64.GUI.filters.TagFilterPanel;
 import waffleoRai_zeqer64.GUI.filters.TextFilterPanel;
 import waffleoRai_zeqer64.GUI.filters.ZeqerFilter;
-import waffleoRai_zeqer64.bankImport.BankImportInfo;
 import waffleoRai_zeqer64.bankImport.BankImporter;
-import waffleoRai_zeqer64.filefmt.ZeqerBankIO;
-import waffleoRai_zeqer64.filefmt.ZeqerBankTable;
-import waffleoRai_zeqer64.filefmt.ZeqerBankTable.BankTableEntry;
+import waffleoRai_zeqer64.filefmt.bank.ZeqerBankIO;
+import waffleoRai_zeqer64.filefmt.bank.ZeqerBankTable;
+import waffleoRai_zeqer64.filefmt.bank.BankTableEntry;
 import waffleoRai_zeqer64.iface.ZeqerCoreInterface;
 import java.awt.GridBagLayout;
 import java.awt.Cursor;
@@ -25,6 +25,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.io.File;
 import java.io.IOException;
 import java.io.Writer;
 import java.time.format.DateTimeFormatter;
@@ -48,6 +49,7 @@ import javax.swing.event.ListSelectionListener;
 import waffleoRai_GUITools.ComponentGroup;
 import waffleoRai_GUITools.WriterPanel;
 import waffleoRai_Utils.VoidCallbackMethod;
+import waffleoRai_soundbank.nintendo.z64.Z64Bank;
 
 import javax.swing.JList;
 import javax.swing.JOptionPane;
@@ -59,8 +61,11 @@ public class ZeqerPanelBanks extends JPanel{
 	public static final String BNKPNL_LAST_IMPORT_PATH = "ZBNKPNL_LASTIMPORT";
 	public static final String BNKPNL_LAST_EXPORT_PATH = "ZBNKPNL_LASTEXPORT";
 	
-	/*----- Inner Classes -----*/
+	//private static final int EXPORT_OP_XML = 0;
+	//private static final int EXPORT_OP_SF2 = 1;
 	
+	/*----- Inner Classes -----*/
+
 	private static class BankNode implements Comparable<BankNode>{
 		public ZeqerBank data;
 		
@@ -391,6 +396,27 @@ public class ZeqerPanelBanks extends JPanel{
 	
 	/*----- Setters -----*/
 	
+	public void selectBankByUID(int uid) {
+		if(source == null || lstBanks == null) return;
+		lstBanks.setSelectedIndex(-1);
+		if(uid == 0) return;
+		if(uid == -1) return;
+		
+		int i = 0;
+		for(BankNode node : source) {
+			if(node.data != null) {
+				BankTableEntry meta = node.data.getTableEntry();
+				if(meta != null) {
+					if(meta.getUID() == uid) {
+						lstBanks.setSelectedIndex(i);
+						return;
+					}
+				}
+			}
+			i++;
+		}
+	}
+	
 	/*----- Core Pull -----*/
 	
 	public void updateBankPool(){
@@ -543,8 +569,19 @@ public class ZeqerPanelBanks extends JPanel{
 		
 		SwingWorker<Void, Void> task = new SwingWorker<Void, Void>(){
 			protected Void doInBackground() throws Exception{
+				ErrorCode err = new ErrorCode();
 				try{
-					ZeqerBankIO.finishImport(importer);
+					ZeqerBankIO.finishImport(importer, err);
+					if(err.value != ZeqerBankIO.ERR_NONE){
+						JOptionPane.showMessageDialog(parent, 
+								"Error caught during import: " + ZeqerBankIO.getErrorCodeString(err.value), 
+								"Import Failed", JOptionPane.ERROR_MESSAGE);
+					}
+					else{
+						JOptionPane.showMessageDialog(parent, 
+								"Import complete. No error caught.", 
+								"Import Succeeded", JOptionPane.INFORMATION_MESSAGE);
+					}
 				}
 				catch(Exception ex){
 					ex.printStackTrace();
@@ -558,15 +595,13 @@ public class ZeqerPanelBanks extends JPanel{
 			
 			public void done(){
 				dialog.closeMe();
+				updateBankPool();
 				unsetWait();
 			}
 		};
 		
 		dialog.render();
 		task.execute();
-		
-		//TODO
-		//Refresh sample, inst, and font panels!
 	}
 	
 	private void showImportOptions(BankImporter importer){
@@ -593,8 +628,16 @@ public class ZeqerPanelBanks extends JPanel{
 	
 		SwingWorker<BankImporter, Void> task = new SwingWorker<BankImporter, Void>(){
 			protected BankImporter doInBackground() throws Exception{
+				ErrorCode err = new ErrorCode();
 				try{
-					return ZeqerBankIO.initializeImport(path);
+					BankImporter imp = ZeqerBankIO.initializeImport(path, err);
+					if(imp == null || err.value != ZeqerBankIO.ERR_NONE){
+						JOptionPane.showMessageDialog(parent, 
+								"Error caught during read: " + ZeqerBankIO.getErrorCodeString(err.value), 
+								"Import Failed", JOptionPane.ERROR_MESSAGE);
+						return null;
+					}
+					return imp;
 				}
 				catch(Exception ex){
 					ex.printStackTrace();
@@ -641,11 +684,6 @@ public class ZeqerPanelBanks extends JPanel{
 	
 	/*----- Callbacks -----*/
 	
-	private void dummyCallback(){
-		JOptionPane.showMessageDialog(this, "Sorry, this component doesn't work yet!", 
-				"Notice", JOptionPane.INFORMATION_MESSAGE);
-	}
-	
 	private void refilterCallback(){
 		setWait();
 		DefaultListModel<BankNode> model = new DefaultListModel<BankNode>();
@@ -670,8 +708,48 @@ public class ZeqerPanelBanks extends JPanel{
 	}
 	
 	private void btnNewCallback(){
-		//TODO
-		dummyCallback();
+		if(core == null){
+			JOptionPane.showMessageDialog(this, 
+					"NULL core link!", "New Bank", JOptionPane.ERROR_MESSAGE);
+			return;
+		}
+		
+		setWait();
+		ZeqerBank nbank = core.addUserBank(new Z64Bank());
+		if(nbank != null){
+			ZeqerBankEditDialog dialog = new ZeqerBankEditDialog(parent, core);
+			dialog.setEditable(true);
+			dialog.loadBankToForm(nbank);
+			dialog.showMe(this);
+			
+			if(dialog.getExitSelection()) {
+				if(dialog.loadIntoBankFromForm(nbank)){
+					try{
+						nbank.saveAll();
+					}catch(Exception ex){
+						ex.printStackTrace();
+						JOptionPane.showMessageDialog(this, 
+								"There was an error saving the bank changes!", 
+								"Edit Bank", JOptionPane.ERROR_MESSAGE);
+					}
+					nbank.unloadBankData();
+				}
+				else{
+					JOptionPane.showMessageDialog(this, 
+							"There was an error saving the bank changes!", 
+							"Edit Bank", JOptionPane.ERROR_MESSAGE);
+				}
+			}
+			
+			updateBankPool();
+			selectBankByUID(nbank.getTableEntry().getUID());
+		}
+		else {
+			JOptionPane.showMessageDialog(this, 
+					"Bank spawn failed! See stderr for details!", "New Bank", JOptionPane.ERROR_MESSAGE);
+		}
+		
+		unsetWait();
 	}
 	
 	private void btnEditCallback(){
@@ -739,20 +817,220 @@ public class ZeqerPanelBanks extends JPanel{
 	}
 	
 	private void btnDupCallback(){
-		//TODO
-		dummyCallback();
+		BankNode selected = lstBanks.getSelectedValue();
+		if(selected == null){
+			JOptionPane.showMessageDialog(this, 
+					"Please select a bank to duplicate!", "Duplicate Bank", JOptionPane.WARNING_MESSAGE);
+			return;
+		}
+		
+		if(selected.data == null){
+			JOptionPane.showMessageDialog(this, 
+					"Selected bank has no data!", "Duplicate Bank", JOptionPane.ERROR_MESSAGE);
+			return;
+		}
+		
+		BankTableEntry meta = selected.data.getTableEntry();
+		if(meta == null){
+			JOptionPane.showMessageDialog(this, 
+					"Selected bank is not in table!", "Duplicate Bank", JOptionPane.ERROR_MESSAGE);
+			return;
+		}
+		
+		setWait();
+		ZeqerBank dup = selected.data.createUserDuplicate(core);
+		if(dup != null) {
+			ZeqerBankEditDialog dialog = new ZeqerBankEditDialog(parent, core);
+			dialog.setEditable(true);
+			dialog.loadBankToForm(dup);
+			dialog.showMe(this);
+			
+			if(dialog.getExitSelection()) {
+				if(dialog.loadIntoBankFromForm(dup)){
+					try{
+						dup.saveAll();
+					}catch(Exception ex){
+						ex.printStackTrace();
+						JOptionPane.showMessageDialog(this, 
+								"There was an error saving the bank changes!", 
+								"Edit Bank", JOptionPane.ERROR_MESSAGE);
+					}
+					dup.unloadBankData();
+				}
+				else{
+					JOptionPane.showMessageDialog(this, 
+							"There was an error saving the bank changes!", 
+							"Edit Bank", JOptionPane.ERROR_MESSAGE);
+				}
+			}
+			
+			//After close, update bank list and select the new duplicate
+			updateBankPool();
+			selectBankByUID(dup.getTableEntry().getUID());
+		}
+		else {
+			JOptionPane.showMessageDialog(this, 
+					"Duplication failed! See stderr for details.", "Duplicate Bank", JOptionPane.ERROR_MESSAGE);
+		}
+		
+		unsetWait();
 	}
 	
 	private void btnDeleteCallback(){
-		//TODO
-		dummyCallback();
+		if(lstBanks.isSelectionEmpty()){
+			JOptionPane.showMessageDialog(this, 
+					"No bank selected!", "Delete Bank", JOptionPane.WARNING_MESSAGE);
+			return;
+		}
+		if(core == null){
+			JOptionPane.showMessageDialog(this, 
+					"Core link is null!", "Delete Bank", JOptionPane.ERROR_MESSAGE);
+			return;
+		}
+		
+		List<BankNode> selList = lstBanks.getSelectedValuesList();
+		int sysCount = 0;
+		int selCount = selList.size();
+		boolean[] isSys = new boolean[selCount];
+		int i = 0;
+		for(BankNode n : selList) {
+			if(n.data != null) {
+				BankTableEntry meta = n.data.getTableEntry();
+				if(meta != null) {
+					int uid = meta.getUID();
+					isSys[i] = !core.isEditableBank(uid);
+					if(isSys[i]) sysCount++;
+				}
+			}
+			i++;
+		}
+		
+		if(sysCount >= selCount) {
+			JOptionPane.showMessageDialog(this, 
+					"No editable banks selected!", "Delete Bank", JOptionPane.WARNING_MESSAGE);
+			return;
+		}
+		
+		int ret = 0;
+		int usrCount = selCount - sysCount;
+		String msg = "<null message>";
+		if(sysCount > 0) {
+			msg = "Remove " + usrCount + " user banks from workspace? "
+					+ "(Remaining " + sysCount + " are ROM imports and cannot be edited.)";
+		}
+		else {
+			if(selCount > 1) {
+				msg = "Remove " + usrCount + " user banks from workspace?";
+			}
+			else {
+				BankNode n = lstBanks.getSelectedValue();
+				if(n.data != null) {
+					BankTableEntry meta = n.data.getTableEntry();
+					if(meta != null) {
+						String bname = meta.getName();
+						if(bname != null && !bname.isEmpty()) {
+							msg = "Remove \"" + bname + "\" from workspace?";
+						}
+						else msg = String.format("Remove bank with ID %08x from workspace?", meta.getUID());
+					}
+					else msg = "Remove selected bank from workspace?";
+				}
+				else msg = "Remove selected bank from workspace?";
+			}
+		}
+		
+		ret = JOptionPane.showConfirmDialog(
+				this, msg, "Delete Bank", 
+				JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+		if(ret != JOptionPane.YES_OPTION) return;
+		
+		setWait();
+		i = 0;
+		int okayCount = 0;
+		for(BankNode n : selList) {
+			if(!isSys[i] && n.data != null) {
+				BankTableEntry meta = n.data.getTableEntry();
+				if(meta != null) {
+					if(core.deleteUserBank(meta.getUID())) okayCount++;
+				}
+			}
+			i++;
+		}
+		int notOkayCount = usrCount - okayCount;
+		if(notOkayCount > 0) {
+			JOptionPane.showMessageDialog(this, 
+					notOkayCount + " banks could not be removed! See stderr for details.", 
+					"Delete Bank", JOptionPane.WARNING_MESSAGE);
+		}
+		else {
+			JOptionPane.showMessageDialog(this, 
+					okayCount + " banks successfully removed!", 
+					"Delete Bank", JOptionPane.INFORMATION_MESSAGE);
+		}
+		
+		updateBankPool();
+		unsetWait();
 	}
 	
 	private void btnExportCallback(){
-		//TODO
-		//Only exports to decomp XML because SF2 is a pain
-		//I guess could export bin, but that would be meaningless without the proper wave links.
-		dummyCallback();
+		//Only exports to decomp XML for now.
+		//But if add more, put in an ExportTypeDialog
+		if(lstBanks.isSelectionEmpty()) {
+			JOptionPane.showMessageDialog(parent, 
+					"Please select a bank to export.", 
+					"No Selection", JOptionPane.ERROR_MESSAGE);
+			return;
+		}
+		
+		String lastpath = null;
+		if(core != null){
+			lastpath = core.getSetting(BNKPNL_LAST_EXPORT_PATH);
+		}
+		JFileChooser fc = new JFileChooser(lastpath);
+		fc.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+		int res = fc.showSaveDialog(this);
+		if(res != JFileChooser.APPROVE_OPTION) return;
+		
+		String exportDir = fc.getSelectedFile().getAbsolutePath();
+		if(core != null){
+			core.setSetting(BNKPNL_LAST_EXPORT_PATH, exportDir);
+		}
+		
+		IndefProgressDialog dialog = new IndefProgressDialog(parent, "Please Wait");
+		dialog.setPrimaryString("Export in Progress");
+		dialog.setSecondaryString("Exporting requested items to " + exportDir);
+		
+		SwingWorker<Void, Void> task = new SwingWorker<Void, Void>(){
+			protected Void doInBackground() throws Exception{
+				try{
+					List<BankNode> sel = lstBanks.getSelectedValuesList();
+					for(BankNode node : sel) {
+						ZeqerBank bnk = node.data;
+						if(bnk == null) continue;
+						String bnkname = bnk.getTableEntry().getName();
+						String expath = exportDir + File.separator + bnkname + ".xml";
+						dialog.setSecondaryString("Exporting " + expath);
+						ZeqerBankIO.exportDecompXML(expath, bnk);
+					}
+				}
+				catch(Exception ex){
+					ex.printStackTrace();
+					JOptionPane.showMessageDialog(parent, 
+							"Error occurred during export. See stderr for details.", 
+							"Export Failed", JOptionPane.ERROR_MESSAGE);
+				}
+				
+				return null;
+			}
+			
+			public void done(){
+				dialog.closeMe();
+				unsetWait();
+			}
+		};
+		
+		dialog.render();
+		task.execute();
 	}
 	
 	private void btnImportCallback(){

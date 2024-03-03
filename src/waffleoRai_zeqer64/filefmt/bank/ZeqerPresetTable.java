@@ -1,4 +1,4 @@
-package waffleoRai_zeqer64.filefmt;
+package waffleoRai_zeqer64.filefmt.bank;
 
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;

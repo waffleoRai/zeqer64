@@ -10,7 +10,7 @@ import waffleoRai_soundbank.nintendo.z64.Z64SoundEffect;
 import waffleoRai_zeqer64.ZeqerBank;
 import waffleoRai_zeqer64.ZeqerUtils;
 import waffleoRai_zeqer64.GUI.ZeqerGUIUtils;
-import waffleoRai_zeqer64.filefmt.ZeqerBankTable.BankTableEntry;
+import waffleoRai_zeqer64.filefmt.bank.BankTableEntry;
 import waffleoRai_zeqer64.iface.ZeqerCoreInterface;
 import waffleoRai_zeqer64.presets.ZeqerInstPreset;
 import waffleoRai_zeqer64.presets.ZeqerPercPreset;

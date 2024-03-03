@@ -11,11 +11,11 @@ import waffleoRai_Utils.FileBuffer;
 import waffleoRai_zeqer64.ZeqerCore;
 import waffleoRai_zeqer64.ZeqerRom;
 import waffleoRai_zeqer64.filefmt.AbldFile;
-import waffleoRai_zeqer64.filefmt.VersionWaveTable;
-import waffleoRai_zeqer64.filefmt.ZeqerBankTable;
-import waffleoRai_zeqer64.filefmt.ZeqerPresetTable;
-import waffleoRai_zeqer64.filefmt.ZeqerSeqTable;
-import waffleoRai_zeqer64.filefmt.ZeqerWaveTable;
+import waffleoRai_zeqer64.filefmt.bank.ZeqerBankTable;
+import waffleoRai_zeqer64.filefmt.bank.ZeqerPresetTable;
+import waffleoRai_zeqer64.filefmt.seq.ZeqerSeqTable;
+import waffleoRai_zeqer64.filefmt.wave.VersionWaveTable;
+import waffleoRai_zeqer64.filefmt.wave.ZeqerWaveTable;
 
 public class SoundExtractor {
 	

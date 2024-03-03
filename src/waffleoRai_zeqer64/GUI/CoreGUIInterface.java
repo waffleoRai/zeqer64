@@ -21,20 +21,24 @@ import waffleoRai_zeqer64.ZeqerPreset;
 import waffleoRai_zeqer64.ZeqerRom;
 import waffleoRai_zeqer64.ZeqerSeq;
 import waffleoRai_zeqer64.ZeqerStringManager;
+import waffleoRai_zeqer64.ZeqerWave;
 import waffleoRai_zeqer64.GUI.dialogs.progress.IndefProgressDialog;
 import waffleoRai_zeqer64.ZeqerInstaller.ZeqerInstallListener;
 import waffleoRai_zeqer64.filefmt.AbldFile;
 import waffleoRai_zeqer64.filefmt.NusRomInfo;
-import waffleoRai_zeqer64.filefmt.ZeqerBankTable;
-import waffleoRai_zeqer64.filefmt.ZeqerBankTable.BankTableEntry;
-import waffleoRai_zeqer64.filefmt.ZeqerSeqTable.SeqTableEntry;
-import waffleoRai_zeqer64.filefmt.ZeqerWaveIO.SampleImportOptions;
-import waffleoRai_zeqer64.filefmt.ZeqerWaveIO.SampleImportResult;
-import waffleoRai_zeqer64.filefmt.ZeqerWaveTable;
-import waffleoRai_zeqer64.filefmt.ZeqerWaveIO;
-import waffleoRai_zeqer64.filefmt.ZeqerWaveTable.WaveTableEntry;
+import waffleoRai_zeqer64.filefmt.bank.BankTableEntry;
+import waffleoRai_zeqer64.filefmt.bank.ZeqerBankTable;
+import waffleoRai_zeqer64.filefmt.seq.SeqTableEntry;
+import waffleoRai_zeqer64.filefmt.wave.ZeqerWaveIO;
+import waffleoRai_zeqer64.filefmt.wave.ZeqerWaveTable;
+import waffleoRai_zeqer64.filefmt.wave.ZeqerWaveIO.SampleImportOptions;
+import waffleoRai_zeqer64.filefmt.wave.ZeqerWaveIO.SampleImportResult;
+import waffleoRai_zeqer64.filefmt.wave.WaveTableEntry;
 import waffleoRai_zeqer64.iface.ZeqerCoreInterface;
 import waffleoRai_zeqer64.listeners.RomImportProgDiaListener;
+import waffleoRai_zeqer64.presets.ZeqerDrumPreset;
+import waffleoRai_zeqer64.presets.ZeqerInstPreset;
+import waffleoRai_zeqer64.presets.ZeqerPercPreset;
 
 public class CoreGUIInterface implements ZeqerCoreInterface{
 	
@@ -392,6 +396,28 @@ public class CoreGUIInterface implements ZeqerCoreInterface{
 		return core.getWaveTableEntry(uid);
 	}
 	
+	public Z64WaveInfo getSampleInfo(int uid){
+		if(core == null) return null;
+		return core.getWaveInfo(uid);
+	}
+	
+	public Z64WaveInfo getSampleInfoByName(String name){
+		if(core == null) return null;
+		return core.getWaveByName(name);
+	}
+	
+	public ZeqerWave getSample(int uid){
+		if(core == null) return null;
+		return core.getWave(uid);
+	}
+	
+	public ZeqerWave getSampleByName(String name){
+		if(core == null) return null;
+		Z64WaveInfo winfo = core.getWaveByName(name);
+		if(winfo == null) return null;
+		return core.getWave(winfo.getUID());
+	}
+	
 	public int getSampleExportFormat(){
 		if(core == null) return ZeqerConstants.AUDIOFILE_FMT_WAV;
 		return core.getSampleExportFormat();
@@ -430,6 +456,46 @@ public class CoreGUIInterface implements ZeqerCoreInterface{
 	}
 	
 	/*----- Preset Management -----*/
+	
+	public ZeqerPreset getPreset(int uid){
+		if(core == null) return null;
+		return core.getPreset(uid);
+	}
+	
+	public ZeqerInstPreset getInstrumentPreset(int uid){
+		if(core == null) return null;
+		return core.getInstrumentPreset(uid);
+	}
+	
+	public ZeqerPercPreset getPercussionPreset(int uid){
+		if(core == null) return null;
+		return core.getPercussionPreset(uid);
+	}
+	
+	public ZeqerDrumPreset getDrumPreset(int uid){
+		if(core == null) return null;
+		return core.getDrumPreset(uid);
+	}
+	
+	public ZeqerPreset getPresetByName(String name){
+		if(core == null) return null;
+		return core.getPresetByName(name);
+	}
+	
+	public ZeqerInstPreset getInstrumentPresetByName(String name){
+		if(core == null) return null;
+		return core.getInstrumentPresetByName(name);
+	}
+	
+	public ZeqerPercPreset getPercussionPresetByName(String name){
+		if(core == null) return null;
+		return core.getPercussionPresetByName(name);
+	}
+	
+	public ZeqerDrumPreset getDrumPresetByName(String name){
+		if(core == null) return null;
+		return core.getDrumPresetByName(name);
+	}
 	
 	public boolean isEditablePreset(int uid){
 		if(core == null) return false;
@@ -481,6 +547,11 @@ public class CoreGUIInterface implements ZeqerCoreInterface{
 			if(meta != null) meta.setFlags(ZeqerBankTable.FLAG_CUSTOM);
 		}
 		return bnk;
+	}
+	
+	public boolean deleteUserBank(int uid) {
+		if(core == null) return false;
+		return core.removeUserBank(uid);
 	}
 	
 	/*----- Seq Management -----*/

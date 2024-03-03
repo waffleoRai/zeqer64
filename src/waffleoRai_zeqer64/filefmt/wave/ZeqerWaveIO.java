@@ -1,4 +1,4 @@
-package waffleoRai_zeqer64.filefmt;
+package waffleoRai_zeqer64.filefmt.wave;
 
 import java.io.File;
 import java.io.IOException;

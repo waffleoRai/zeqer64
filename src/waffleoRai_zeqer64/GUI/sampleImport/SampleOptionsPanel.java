@@ -21,8 +21,8 @@ import waffleoRai_GUITools.ComponentGroup;
 import waffleoRai_GUITools.RadioButtonGroup;
 import waffleoRai_GUITools.WRPanel;
 import waffleoRai_zeqer64.GUI.MediumTypeCombobox;
-import waffleoRai_zeqer64.filefmt.ZeqerWaveIO;
-import waffleoRai_zeqer64.filefmt.ZeqerWaveIO.SampleImportOptions;
+import waffleoRai_zeqer64.filefmt.wave.ZeqerWaveIO;
+import waffleoRai_zeqer64.filefmt.wave.ZeqerWaveIO.SampleImportOptions;
 
 public class SampleOptionsPanel extends WRPanel{
 

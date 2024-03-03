@@ -33,13 +33,13 @@ import waffleoRai_zeqer64.ZeqerBank;
 import waffleoRai_zeqer64.bankImport.BankImportInfo.PresetInfo;
 import waffleoRai_zeqer64.bankImport.BankImportInfo.SampleInfo;
 import waffleoRai_zeqer64.bankImport.BankImportInfo.SubBank;
-import waffleoRai_zeqer64.filefmt.ZeqerBankTable.BankTableEntry;
-import waffleoRai_zeqer64.filefmt.ZeqerBankIO;
-import waffleoRai_zeqer64.filefmt.ZeqerWaveIO;
-import waffleoRai_zeqer64.filefmt.ZeqerWaveTable;
-import waffleoRai_zeqer64.filefmt.ZeqerWaveIO.SampleImportOptions;
-import waffleoRai_zeqer64.filefmt.ZeqerWaveIO.SampleImportResult;
-import waffleoRai_zeqer64.filefmt.ZeqerWaveTable.WaveTableEntry;
+import waffleoRai_zeqer64.filefmt.bank.ZeqerBankIO;
+import waffleoRai_zeqer64.filefmt.wave.ZeqerWaveIO;
+import waffleoRai_zeqer64.filefmt.wave.ZeqerWaveTable;
+import waffleoRai_zeqer64.filefmt.wave.ZeqerWaveIO.SampleImportOptions;
+import waffleoRai_zeqer64.filefmt.wave.ZeqerWaveIO.SampleImportResult;
+import waffleoRai_zeqer64.filefmt.wave.WaveTableEntry;
+import waffleoRai_zeqer64.filefmt.bank.BankTableEntry;
 import waffleoRai_zeqer64.presets.ZeqerDrumPreset;
 import waffleoRai_zeqer64.presets.ZeqerInstPreset;
 import waffleoRai_zeqer64.presets.ZeqerPercPreset;
@@ -741,7 +741,8 @@ public class DLSImportHandler extends BankImporter{
 		return (super.info != null);
 	}
 	
-	public boolean importToCore(ErrorCode error){
+	public boolean importToCore(){
+		ErrorCode error = super.bankImportError;
 		setError(error, ZeqerBankIO.ERR_NONE);
 		if(dls == null){
 			setError(error, ZeqerBankIO.ERR_NULL_INPUT_DATA);
@@ -888,6 +889,9 @@ public class DLSImportHandler extends BankImporter{
 								if(drum != null){
 									ZeqerDrumPreset dp = new ZeqerDrumPreset(drum);
 									dp.setEnumLabel(bnk.enumLabel + String.format("_DRUM%02d", r));
+									if(presetTags != null){
+										for(String tag : presetTags) dp.addTag(tag);
+									}
 									if(!core.addUserPreset(dp)){
 										setError(error, ZeqerBankIO.ERR_PRESET_IMPORT_FAILED);
 										return false;
@@ -898,6 +902,9 @@ public class DLSImportHandler extends BankImporter{
 					}
 					if(bnk.saveDrumset){
 						perc.setEnumLabel(bnk.enumLabel + "_PERC");
+						if(presetTags != null){
+							for(String tag : presetTags) perc.addTag(tag);
+						}
 						if(!core.addUserPreset(perc)){
 							setError(error, ZeqerBankIO.ERR_PRESET_IMPORT_FAILED);
 							return false;
@@ -924,6 +931,9 @@ public class DLSImportHandler extends BankImporter{
 				ipre.loadData(zinsts[j]);
 				
 				ipre.setEnumLabel(bnk.enumLabel + String.format("_INST%03d", j));
+				if(presetTags != null){
+					for(String tag : presetTags) ipre.addTag(tag);
+				}
 				if(!core.addUserPreset(ipre)){
 					setError(error, ZeqerBankIO.ERR_PRESET_IMPORT_FAILED);
 					return false;

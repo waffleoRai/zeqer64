@@ -18,6 +18,7 @@ import waffleoRai_zeqer64.ZeqerRom;
 import waffleoRai_zeqer64.engine.EngineBankInfo;
 import waffleoRai_zeqer64.engine.EngineSeqInfo;
 import waffleoRai_zeqer64.engine.EngineWaveArcInfo;
+import waffleoRai_zeqer64.filefmt.wave.VersionWaveTable;
 
 public class AbldFile {
 

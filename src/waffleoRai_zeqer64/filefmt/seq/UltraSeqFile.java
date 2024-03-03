@@ -1,4 +1,4 @@
-package waffleoRai_zeqer64.filefmt;
+package waffleoRai_zeqer64.filefmt.seq;
 
 import java.io.BufferedOutputStream;
 import java.io.FileOutputStream;
@@ -21,7 +21,6 @@ import waffleoRai_zeqer64.ZeqerSeq;
 import waffleoRai_zeqer64.ZeqerSeq.IOAlias;
 import waffleoRai_zeqer64.ZeqerSeq.Label;
 import waffleoRai_zeqer64.ZeqerSeq.Module;
-import waffleoRai_zeqer64.filefmt.ZeqerSeqTable.SeqTableEntry;
 
 public class UltraSeqFile {
 	

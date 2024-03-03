@@ -16,8 +16,8 @@ import waffleoRai_zeqer64.engine.EngineBankInfo;
 import waffleoRai_zeqer64.engine.EngineWaveArcInfo;
 import waffleoRai_zeqer64.extract.RomExtractionSummary;
 import waffleoRai_zeqer64.filefmt.AbldFile;
-import waffleoRai_zeqer64.filefmt.ZeqerWaveTable;
-import waffleoRai_zeqer64.filefmt.ZeqerWaveTable.WaveTableEntry;
+import waffleoRai_zeqer64.filefmt.wave.ZeqerWaveTable;
+import waffleoRai_zeqer64.filefmt.wave.WaveTableEntry;
 
 public class Test_RegenSysdata {
 	

@@ -15,7 +15,7 @@ import waffleoRai_Utils.FileUtils;
 import waffleoRai_soundbank.nintendo.z64.Z64Drum;
 import waffleoRai_soundbank.nintendo.z64.Z64Envelope;
 import waffleoRai_zeqer64.ZeqerPreset;
-import waffleoRai_zeqer64.filefmt.ZeqerPresetTable;
+import waffleoRai_zeqer64.filefmt.bank.ZeqerPresetTable;
 
 public class ZeqerPercPreset extends ZeqerPreset{
 

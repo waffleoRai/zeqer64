@@ -5,8 +5,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
-import waffleoRai_zeqer64.filefmt.VersionWaveTable;
-import waffleoRai_zeqer64.filefmt.ZeqerWaveTable;
+import waffleoRai_zeqer64.filefmt.wave.VersionWaveTable;
+import waffleoRai_zeqer64.filefmt.wave.ZeqerWaveTable;
 
 public class WaveLocIDMap {
 	

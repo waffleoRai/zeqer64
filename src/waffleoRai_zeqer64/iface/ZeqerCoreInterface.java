@@ -11,15 +11,19 @@ import waffleoRai_soundbank.nintendo.z64.Z64Envelope;
 import waffleoRai_zeqer64.ZeqerPreset;
 import waffleoRai_zeqer64.ZeqerRom;
 import waffleoRai_zeqer64.ZeqerSeq;
+import waffleoRai_zeqer64.ZeqerWave;
 import waffleoRai_zeqer64.GUI.dialogs.progress.IndefProgressDialog;
 import waffleoRai_zeqer64.ErrorCode;
 import waffleoRai_zeqer64.ZeqerBank;
 import waffleoRai_zeqer64.ZeqerInstaller.ZeqerInstallListener;
 import waffleoRai_zeqer64.filefmt.AbldFile;
-import waffleoRai_zeqer64.filefmt.ZeqerBankTable.BankTableEntry;
-import waffleoRai_zeqer64.filefmt.ZeqerSeqTable.SeqTableEntry;
-import waffleoRai_zeqer64.filefmt.ZeqerWaveIO.SampleImportOptions;
-import waffleoRai_zeqer64.filefmt.ZeqerWaveTable.WaveTableEntry;
+import waffleoRai_zeqer64.filefmt.bank.BankTableEntry;
+import waffleoRai_zeqer64.filefmt.seq.SeqTableEntry;
+import waffleoRai_zeqer64.filefmt.wave.ZeqerWaveIO.SampleImportOptions;
+import waffleoRai_zeqer64.filefmt.wave.WaveTableEntry;
+import waffleoRai_zeqer64.presets.ZeqerDrumPreset;
+import waffleoRai_zeqer64.presets.ZeqerInstPreset;
+import waffleoRai_zeqer64.presets.ZeqerPercPreset;
 
 public interface ZeqerCoreInterface {
 	
@@ -50,7 +54,12 @@ public interface ZeqerCoreInterface {
 	public boolean exportSample(WaveTableEntry wave, String pathstem);
 	public Z64WaveInfo getDefaultPercussionSample();
 	public List<WaveTableEntry> getAllRegisteredSamples();
+	
 	public WaveTableEntry getWaveTableEntry(int uid);
+	public Z64WaveInfo getSampleInfo(int uid);
+	public Z64WaveInfo getSampleInfoByName(String name);
+	public ZeqerWave getSample(int uid);
+	public ZeqerWave getSampleByName(String name);
 	
 	public int getSampleExportFormat();
 	public String getSampleExportFormatExtention();
@@ -63,8 +72,18 @@ public interface ZeqerCoreInterface {
 	
 	/*----- Preset Management -----*/
 	
+	public ZeqerPreset getPreset(int uid);
+	public ZeqerInstPreset getInstrumentPreset(int uid);
+	public ZeqerPercPreset getPercussionPreset(int uid);
+	public ZeqerDrumPreset getDrumPreset(int uid);
+	public ZeqerPreset getPresetByName(String name);
+	public ZeqerInstPreset getInstrumentPresetByName(String name);
+	public ZeqerPercPreset getPercussionPresetByName(String name);
+	public ZeqerDrumPreset getDrumPresetByName(String name);
+	
 	public List<ZeqerPreset> getAllInstPresets();
 	public boolean isEditablePreset(int uid);
+	
 	public boolean addUserPreset(ZeqerPreset preset);
 	public boolean deletePreset(int uid);
 	
@@ -76,6 +95,7 @@ public interface ZeqerCoreInterface {
 	public ZeqerBank getBank(int uid);
 	
 	public ZeqerBank addUserBank(Z64Bank bankdata);
+	public boolean deleteUserBank(int uid);
 	
 	/*----- Seq Management -----*/
 	

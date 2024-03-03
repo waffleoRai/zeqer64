@@ -22,7 +22,7 @@ import waffleoRai_GUITools.WRFrame;
 import waffleoRai_zeqer64.ZeqerBank;
 import waffleoRai_zeqer64.GUI.dialogs.BankPickDialog;
 import waffleoRai_zeqer64.GUI.dialogs.ZeqerSeqHubDialog;
-import waffleoRai_zeqer64.filefmt.ZeqerBankTable.BankTableEntry;
+import waffleoRai_zeqer64.filefmt.bank.BankTableEntry;
 import waffleoRai_zeqer64.iface.ZeqerCoreInterface;
 
 import java.awt.Color;

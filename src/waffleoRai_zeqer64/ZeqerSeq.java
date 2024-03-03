@@ -8,8 +8,8 @@ import java.util.List;
 import waffleoRai_SeqSound.n64al.NUSALSeq;
 import waffleoRai_Utils.FileBuffer;
 import waffleoRai_Utils.FileUtils;
-import waffleoRai_zeqer64.filefmt.UltraSeqFile;
-import waffleoRai_zeqer64.filefmt.ZeqerSeqTable.SeqTableEntry;
+import waffleoRai_zeqer64.filefmt.seq.UltraSeqFile;
+import waffleoRai_zeqer64.filefmt.seq.SeqTableEntry;
 
 public class ZeqerSeq {
 	
