@@ -257,12 +257,12 @@ public class ZeqerWaveIO {
 				int fcount = aiff.getFrameCount();
 				List<int[]> chlist = new ArrayList<int[]>(chcount);
 				for(int i = 0; i < chcount; i++){
-					chlist.add(aiff.getSamples16(i));
+					chlist.add(aiff.getSamples_16Signed(i));
 				}
 				data = sumPCM16Channels(chlist, fcount);
 			}
 			else{
-				data = aiff.getSamples16(options.channel);
+				data = aiff.getSamples_16Signed(options.channel);
 			}
 			
 			importPCMAudio(data, options, res);

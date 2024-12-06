@@ -26,6 +26,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 import waffleoRai_Files.FileBufferInputStream;
+import waffleoRai_SeqSound.n64al.NUSALSeq;
 import waffleoRai_Sound.nintendo.Z64Wave;
 import waffleoRai_Sound.nintendo.Z64WaveInfo;
 import waffleoRai_Utils.FileBuffer;
@@ -1257,6 +1258,11 @@ public class ZeqerCore {
 		}
 	}
 	
+	public boolean deleteSeq(int uid) {
+		if(seqManager == null) return false;
+		return seqManager.deleteSeq(uid);
+	}
+		
 	//--- Other
 
 	public VersionWaveTable loadWaveVersionTable(String rom_id) throws IOException{
@@ -1393,6 +1399,22 @@ public class ZeqerCore {
 			e.printStackTrace();
 			return null;
 		}
+	}
+	
+	public ZeqerSeq addUserSeq(NUSALSeq seq) {
+		if(seqManager == null) return null;
+		SeqTableEntry entry;
+		try {
+			entry = seqManager.newUserSeq(seq);
+		} catch (IOException e) {
+			e.printStackTrace();
+			return null;
+		}
+		if(entry == null) return null;
+		
+		int uid = entry.getUID();
+		
+		return seqManager.loadSeq(uid);
 	}
 	
 	/*----- Sys Table Building -----*/

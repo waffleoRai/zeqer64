@@ -363,17 +363,17 @@ class TimelineDisplayPanel extends JPanel{
 		if(cmd == null || type == null) return false;
 		switch(type){
 		case PAN:
-			if(cmd.getCommand() == NUSALSeqCmdType.CH_PAN) return true;
+			if(cmd.getFunctionalType() == NUSALSeqCmdType.CH_PAN) return true;
 			break;
 		case PITCH_BEND:
-			if(cmd.getCommand() == NUSALSeqCmdType.CH_PITCHBEND) return true;
+			if(cmd.getFunctionalType() == NUSALSeqCmdType.CH_PITCHBEND) return true;
 			break;
 		case TEMPO:
-			if(cmd.getCommand() == NUSALSeqCmdType.SET_TEMPO) return true;
+			if(cmd.getFunctionalType() == NUSALSeqCmdType.SET_TEMPO) return true;
 			break;
 		case VOLUME:
-			if(cmd.getCommand() == NUSALSeqCmdType.CH_VOLUME) return true;
-			if(cmd.getCommand() == NUSALSeqCmdType.MASTER_VOLUME) return true;
+			if(cmd.getFunctionalType() == NUSALSeqCmdType.CH_VOLUME) return true;
+			if(cmd.getFunctionalType() == NUSALSeqCmdType.MASTER_VOLUME) return true;
 			break;
 		}
 		return false;

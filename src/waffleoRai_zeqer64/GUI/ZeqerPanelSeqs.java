@@ -6,6 +6,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
 
 import javax.swing.JFrame;
 import javax.swing.JList;
@@ -15,17 +16,27 @@ import javax.swing.JPanel;
 import waffleoRai_GUITools.ComponentGroup;
 import waffleoRai_GUITools.WRPanel;
 import waffleoRai_GUITools.WriterPanel;
+import waffleoRai_SeqSound.n64al.NUSALSeq;
 import waffleoRai_Utils.VoidCallbackMethod;
+import waffleoRai_zeqer64.ErrorCode;
 import waffleoRai_zeqer64.ZeqerSeq;
+import waffleoRai_zeqer64.GUI.dialogs.SeqExportDialog;
+import waffleoRai_zeqer64.GUI.dialogs.SeqImportDialog;
+import waffleoRai_zeqer64.GUI.dialogs.SeqImportPreviewDialog;
 import waffleoRai_zeqer64.GUI.dialogs.ZeqerSeqHubDialog;
 import waffleoRai_zeqer64.GUI.dialogs.progress.IndefProgressDialog;
 import waffleoRai_zeqer64.GUI.filters.FlagFilterPanel;
 import waffleoRai_zeqer64.GUI.filters.TagFilterPanel;
 import waffleoRai_zeqer64.GUI.filters.TextFilterPanel;
 import waffleoRai_zeqer64.GUI.filters.ZeqerFilter;
+import waffleoRai_zeqer64.bankImport.BankImporter;
 import waffleoRai_zeqer64.filefmt.bank.BankTableEntry;
+import waffleoRai_zeqer64.filefmt.bank.ZeqerBankIO;
 import waffleoRai_zeqer64.filefmt.seq.ZeqerSeqTable;
 import waffleoRai_zeqer64.filefmt.seq.SeqTableEntry;
+import waffleoRai_zeqer64.filefmt.seq.ZeqerSeqIO;
+import waffleoRai_zeqer64.filefmt.seq.ZeqerSeqIO.SeqImportOptions;
+import waffleoRai_zeqer64.filefmt.seq.ZeqerSeqIO.SeqImportResults;
 import waffleoRai_zeqer64.iface.ZeqerCoreInterface;
 import java.awt.GridBagLayout;
 import java.awt.Cursor;
@@ -35,6 +46,9 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
+import java.io.File;
 import java.io.IOException;
 import java.io.Writer;
 import java.time.ZonedDateTime;
@@ -51,6 +65,9 @@ import javax.swing.JButton;
 public class ZeqerPanelSeqs extends WRPanel{
 
 	private static final long serialVersionUID = -3624927390957947243L;
+	
+	public static final String SEQPNL_LAST_IMPORT_PATH = "ZSEQPNL_LASTIMPORT";
+	public static final String SEQPNL_LAST_EXPORT_PATH = "ZSEQPNL_LASTEXPORT";
 	
 	/*----- Inner Classes -----*/
 	
@@ -612,6 +629,129 @@ public class ZeqerPanelSeqs extends WRPanel{
 		pnlInfo.repaint();
 	}
 	
+	/*----- Import -----*/
+	
+	private void startImport(String filePath, SeqImportOptions op) {
+		setWait(true);
+		IndefProgressDialog dialog = new IndefProgressDialog(parent, "Please Wait");
+		dialog.setPrimaryString("Reading");
+		dialog.setSecondaryString("Processing contents of " + filePath);
+		
+		SwingWorker<SeqImportResults, Void> task = new SwingWorker<SeqImportResults, Void>(){
+			protected SeqImportResults doInBackground() throws Exception{
+				ErrorCode err = new ErrorCode();
+				try{
+					SeqImportResults res = ZeqerSeqIO.importSequence(filePath, op);
+					if(res == null || err.value != ZeqerSeqIO.ERROR_NONE){
+						JOptionPane.showMessageDialog(parent, 
+								"Error caught during read: " + ZeqerSeqIO.getErrorCodeString(err.value), 
+								"Import Failed", JOptionPane.ERROR_MESSAGE);
+						return null;
+					}
+					return res;
+				}
+				catch(Exception ex){
+					ex.printStackTrace();
+					JOptionPane.showMessageDialog(parent, 
+							"Input file could not be read. See stderr for details.", 
+							"Import Failed", JOptionPane.ERROR_MESSAGE);
+				}
+				
+				return null;
+			}
+			
+			public void done(){
+				dialog.closeMe();
+				unsetWait(true);
+			}
+		};
+		
+		task.addPropertyChangeListener(new PropertyChangeListener(){
+			public void propertyChange(PropertyChangeEvent evt) {
+				if(task.isDone()){
+					try {
+						SeqImportResults result = task.get();
+						if(result == null) return;
+						finishImport(result);
+					} 
+					catch (InterruptedException e) {
+						e.printStackTrace();
+						JOptionPane.showMessageDialog(parent, 
+								"Internal error: Unexpected interrupt retrieving import info.", 
+								"Import Failed", JOptionPane.ERROR_MESSAGE);
+					} 
+					catch (ExecutionException e) {
+						e.printStackTrace();
+						JOptionPane.showMessageDialog(parent, 
+								"Internal error: Async execution failed when retrieving import info.", 
+								"Import Failed", JOptionPane.ERROR_MESSAGE);
+					}
+				}
+			}});
+		
+		task.execute();
+		dialog.render();
+	}
+	
+	private void finishImport(SeqImportResults res) {
+		if(res == null || core == null) {
+			JOptionPane.showMessageDialog(parent, 
+					"Internal Error: Can't finish import with null results?", 
+					"Import Failed", JOptionPane.ERROR_MESSAGE);
+			unsetWait(true); 
+			return;
+		}
+		
+		//Dialog to check before finishing import.
+		setWait(true);
+		SeqImportPreviewDialog pdia = new SeqImportPreviewDialog(parent);
+		pdia.loadInSeqImportResults(res);
+		pdia.showMe(this);
+		
+		if(!pdia.getExitSelection()) {
+			unsetWait(true); 
+			return;
+		}
+		
+		IndefProgressDialog dialog = new IndefProgressDialog(parent, "Please Wait");
+		dialog.setPrimaryString("Import in Progress");
+		dialog.setSecondaryString("Completing import from " + res.filepath);
+		
+		SwingWorker<Void, Void> task = new SwingWorker<Void, Void>(){
+			protected Void doInBackground() throws Exception{
+				try{
+					ZeqerSeq zseq = core.addUserSeq(res.seq);
+					if(zseq == null) {
+						JOptionPane.showMessageDialog(parent, 
+								"Failed to import seq to core!", 
+								"Import Failed", JOptionPane.ERROR_MESSAGE);
+						return null;
+					}
+					res.meta = zseq.getTableEntry();
+					ZeqerSeqIO.updateImportMetadata(res);
+					zseq.save();
+				}
+				catch(Exception ex){
+					ex.printStackTrace();
+					JOptionPane.showMessageDialog(parent, 
+							"Error occurred during import. See stderr for details.", 
+							"Import Failed", JOptionPane.ERROR_MESSAGE);
+				}
+				
+				return null;
+			}
+			
+			public void done(){
+				dialog.closeMe();
+				updateSeqPool();
+				unsetWait(true);
+			}
+		};
+		
+		task.execute();
+		dialog.render();
+	}
+	
 	/*----- Callbacks -----*/
 	
 	private void closeEditChildCallback(){
@@ -738,21 +878,203 @@ public class ZeqerPanelSeqs extends WRPanel{
 	}
 	
 	private void btnDeleteCallback(){
-		//TODO
-		dummyCallback();
+		if(!editable) return;
+		if(core == null) return;
+		if(this.lstSeqs.isSelectionEmpty()) return;
+		
+		List<SeqNode> selected = lstSeqs.getSelectedValuesList();
+		int total = selected.size();
+		
+		int ret = JOptionPane.CANCEL_OPTION;
+		if(total > 1) {
+			SeqNode node = lstSeqs.getSelectedValue();
+			if(node.data == null) return;
+			SeqTableEntry entry = node.data.getTableEntry();
+			if(entry == null) return;
+			
+			ret = JOptionPane.showConfirmDialog(this, "Are you sure you want to delete \"" + entry.getName() + "\"?",
+					"Delete Sequence", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+		}
+		else {
+			ret = JOptionPane.showConfirmDialog(this, "Are you sure you want to delete " + total + " sequences?", 
+					"Delete Sequence", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+		}
+		
+		if(ret != JOptionPane.YES_OPTION) return;
+		
+		setWait();
+		int okayCount = 0;
+		for(SeqNode n : selected) {
+			if(n.data == null) continue;
+			SeqTableEntry entry = n.data.getTableEntry();
+			if(entry == null) continue;
+			
+			if(!entry.flagSet(ZeqerSeqTable.FLAG_CUSTOM)) continue;
+			if(core.deleteSeq(entry.getUID())) okayCount++;
+		}
+		
+		String msg = null;
+		if(okayCount < 1) {
+			msg = "ERROR: Sequence deletion failed for all selections!";
+		}
+		else {
+			if(okayCount == total) {
+				if(okayCount > 1) {
+					msg = "Deletion was successful for all selected sequences.";
+				}
+				else {
+					msg = "Deletion was successful for selected sequence.";
+				}
+			}
+			else {
+				msg = "Deletion succeeded for " + okayCount + " of " + total + " sequences.";
+			}
+		}
+		
+		JOptionPane.showMessageDialog(this, msg, "Delete Sequence", JOptionPane.WARNING_MESSAGE);
+		
+		unsetWait();
 	}
 	
 	private void btnExportCallback(){
-		//TODO
+		if(core == null) return;
+		if(this.lstSeqs.isSelectionEmpty()) return;
+		
 		//Can export to MIDI, MML script, or raw binary
-		dummyCallback();
+		SeqExportDialog dialog = new SeqExportDialog(parent);
+		dialog.setLastPath(core.getSetting(SEQPNL_LAST_EXPORT_PATH));
+		dialog.showMe(this);
+		if(!dialog.getExitSelection()) return;
+		
+		setWait();
+		List<SeqNode> selected = lstSeqs.getSelectedValuesList();
+		String dirpath = dialog.getTargetPath();
+		int exType = dialog.getFormatSelection();
+		int synType = dialog.getSyntaxSelection();
+		
+		IndefProgressDialog dd = new IndefProgressDialog(parent, "Please Wait");
+		dd.setPrimaryString("Exporting");
+		dd.setSecondaryString("Preparing export");
+		
+		JPanel me = this;
+		
+		SwingWorker<Integer, Void> task = new SwingWorker<Integer, Void>(){
+			public Integer doInBackground() throws Exception{
+				try{
+					int bad = 0;
+					for(SeqNode node : selected) {
+						ZeqerSeq ndat = node.data;
+						if(ndat == null) {
+							bad++;
+							continue;
+						}
+						
+						SeqTableEntry meta = ndat.getTableEntry();
+						if(meta == null) {
+							bad++;
+							continue;
+						}
+						
+						String sname = meta.getName();
+						dd.setSecondaryString("Working on " + sname);
+						
+						if(!ndat.dataLoaded()) ndat.loadData(true);
+						if(!ndat.dataLoaded()) {
+							bad++;
+							JOptionPane.showMessageDialog(parent, 
+									"\"" + sname + "\" could not be parsed correctly. It will be skipped.", 
+									"Export Failed", JOptionPane.ERROR_MESSAGE);
+							continue;
+						}
+					
+						String outpath = dirpath + File.separator + sname;
+						switch(exType) {
+						case SeqExportDialog.FMT_IDX_BIN:
+							outpath += ".bin";
+							if(!ZeqerSeqIO.exportRaw(ndat.getSequence(), outpath)) bad++;
+							break;
+						case SeqExportDialog.FMT_IDX_MID:
+							outpath += ".mid";
+							if(!ZeqerSeqIO.exportMidi(ndat.getSequence(), outpath)) bad++;
+							break;
+						case SeqExportDialog.FMT_IDX_MUS:
+							outpath += ".mus";
+							int ss = -1;
+							switch(synType) {
+							case SeqExportDialog.SYNTAX_IDX_ZEQER:
+								ss = NUSALSeq.SYNTAX_SET_ZEQER;
+								break;
+							case SeqExportDialog.SYNTAX_IDX_SEQ64:
+								ss = NUSALSeq.SYNTAX_SET_SEQ64;
+								break;
+							case SeqExportDialog.SYNTAX_IDX_ZRET:
+								ss = NUSALSeq.SYNTAX_SET_ZELDARET;
+								break;
+							}
+							if(!ZeqerSeqIO.exportMus(ndat.getSequence(), ss, outpath)) bad++;
+							break;
+						}
+						ndat.clearData();
+					}
+					
+					return bad;
+				}
+				catch(Exception ex){
+					ex.printStackTrace();
+					JOptionPane.showMessageDialog(parent, 
+							"One or more files could not be exported. See stderr for details.", 
+							"Export Failed", JOptionPane.ERROR_MESSAGE);
+				}
+				
+				return -1;
+			}
+			
+			public void done(){
+				dd.closeMe();
+				try {
+					Integer bad = this.get();
+					if(bad > 0) {
+						JOptionPane.showMessageDialog(me, 
+								"Failed to export " + bad + " sequences!", "Export Failed", JOptionPane.ERROR_MESSAGE);
+					}
+					else {
+						JOptionPane.showMessageDialog(me, 
+								"Export of all sequences was successful.", "Export Succeeded", JOptionPane.INFORMATION_MESSAGE);
+					}
+				}
+				catch (Exception ex) {
+					ex.printStackTrace();
+				}
+				
+				unsetWait();
+			}
+		};
+		
+		task.execute();
+		dd.render();
 	}
 	
 	private void btnImportCallback(){
-		//TODO
 		//Can import from MIDI, MML script, or raw binary
 		//Could probably add crazy sequence types like SSEQ etc. too.
-		dummyCallback();
+		if(core == null) {
+			showError("ERROR: Cannot import to null manager!");
+			return;
+		}
+		
+		SeqImportDialog d1 = new SeqImportDialog(parent, core);
+		d1.setLastImportPath(core.getSetting(SEQPNL_LAST_IMPORT_PATH));
+		d1.showMe(this);
+		
+		if(!d1.getExitSelection()) return;
+		
+		core.setSetting(SEQPNL_LAST_IMPORT_PATH, d1.getLastImportPath());
+		//List<String> files = d1.getFilePaths();
+		String filePath = d1.getPath();
+		SeqImportOptions op = new SeqImportOptions();
+		d1.getOptions(op);
+		
+		startImport(filePath, op);
 	}
 
 }

@@ -137,7 +137,10 @@ public class ZRetAifcFile extends AiffFile{
 	protected void readSSND(BufferReference data){
 		if(codec == -1){
 			//Uncompressed. Read frames.
-			super.readSSND(data);
+			AIFFChunk chunk = reader.getFirstTopLevelChunk("SSND");
+			int sz = 8;
+			if(chunk != null) sz = chunk.getDataSize();
+			super.readSSND(data, sz);
 			return;
 		}
 		

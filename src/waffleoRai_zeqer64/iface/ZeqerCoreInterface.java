@@ -4,6 +4,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
+import waffleoRai_SeqSound.n64al.NUSALSeq;
 import waffleoRai_Sound.nintendo.Z64WaveInfo;
 import waffleoRai_Utils.FileBuffer;
 import waffleoRai_soundbank.nintendo.z64.Z64Bank;
@@ -101,6 +102,9 @@ public interface ZeqerCoreInterface {
 	
 	public SeqTableEntry getSeqInfo(int uid);
 	public List<ZeqerSeq> getAllValidSeqs();
+	
+	public ZeqerSeq addUserSeq(NUSALSeq seq);
+	public boolean deleteSeq(int uid);
 	
 	/*----- Abld Management -----*/
 	

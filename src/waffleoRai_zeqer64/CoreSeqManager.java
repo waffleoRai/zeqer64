@@ -350,6 +350,7 @@ class CoreSeqManager {
 		int id = genNewRandomGUID();
 		SeqTableEntry e = seq_table_user.newEntry(id);
 		if(e == null) return null;
+		e.setFlags(ZeqerSeqTable.FLAG_CUSTOM);
 		
 		ZeqerSeq zseq = new ZeqerSeq(e);
 		zseq.setSequence(data);

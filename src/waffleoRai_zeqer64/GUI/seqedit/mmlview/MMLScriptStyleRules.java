@@ -111,12 +111,15 @@ public class MMLScriptStyleRules {
 		//Value manipulation
 		case ADD_IMM_P:
 		case ADD_RAND_IMM_P:
-		case AND_IMM:
+		case AND_IMM_S:
+		case AND_IMM_C:
 		case RANDP:
 		case RAND_C:
 		case RAND_S:
-		case SUBTRACT_IMM:
-		case SUBTRACT_IO:
+		case SUBTRACT_IMM_S:
+		case SUBTRACT_IMM_C:
+		case SUBTRACT_IO_S:
+		case SUBTRACT_IO_C:
 			return mathCmdStyle;
 			
 		//Logic Flow
@@ -187,6 +190,7 @@ public class MMLScriptStyleRules {
 		case CH_VIBRATO_FREQ:
 		case CH_VIBRATO_FREQENV:
 		case CH_VOLUME:
+		case CHORUS:
 		case GATERAND:
 		case LEGATO_OFF:
 		case LEGATO_ON:
@@ -239,11 +243,10 @@ public class MMLScriptStyleRules {
 			return testCmdStyle;
 			
 		//Unknown
-		case C_UNK_BB:
 		case C_UNK_C0:
-		case S_UNK_C4:
-		case S_UNK_C5:
-		case S_UNK_C6:
+		case S_RUNSEQ:
+		case S_SCRIPTCTR:
+		case S_STOP:
 			return unkCmdStyle;
 		
 		//Data
@@ -256,19 +259,22 @@ public class MMLScriptStyleRules {
 		case LOAD_SAMPLE:
 		case LOAD_SAMPLE_P:
 		case LOAD_SEQ:
-		case STORE_TO_SELF:
+		case STORE_TO_SELF_S:
+		case STORE_TO_SELF_C:
 		case STORE_TO_SELF_P:
 			return selfModCmdStyle;
 			
 		//Load/store general
 		case LOAD_CHIO:
-		case LOAD_IMM:
+		case LOAD_IMM_S:
+		case LOAD_IMM_C:
 		case LOAD_IMM_P:
 		case LOAD_IO_C:
 		case LOAD_IO_S:
 		case LOAD_P_TABLE:
 		case STORE_CHIO:
-		case STORE_IO:
+		case STORE_IO_S:
+		case STORE_IO_C:
 			return regCmdStyle;
 			
 		case DYNTABLE_LOAD:

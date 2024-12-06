@@ -7,6 +7,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import waffleoRai_SeqSound.n64al.NUSALSeq;
 import waffleoRai_Sound.nintendo.Z64Wave;
 import waffleoRai_Sound.nintendo.Z64WaveInfo;
 import waffleoRai_Utils.FileBuffer;
@@ -564,6 +565,16 @@ public class CoreGUIInterface implements ZeqerCoreInterface{
 	public List<ZeqerSeq> getAllValidSeqs(){
 		if(core == null) return new LinkedList<ZeqerSeq>();
 		return core.getAllValidSeqs();
+	}
+	
+	public ZeqerSeq addUserSeq(NUSALSeq seq) {
+		if(core == null) return null;
+		return core.addUserSeq(seq);
+	}
+	
+	public boolean deleteSeq(int uid) {
+		if(core == null) return false;
+		return core.deleteSeq(uid);
 	}
 	
 	/*----- Abld Management -----*/

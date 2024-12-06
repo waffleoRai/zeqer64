@@ -290,7 +290,7 @@ class VoiceEventPanel extends AbstractEventPanel{
 				
 				if(node.ticks < 0){
 					//Update
-					if(cmd.getCommand() == NUSALSeqCmdType.PLAY_NOTE_NVG){
+					if(cmd.getFunctionalType() == NUSALSeqCmdType.PLAY_NOTE_NVG){
 						node.ticks = lasttime;
 					}
 					else{
@@ -331,7 +331,7 @@ class VoiceEventPanel extends AbstractEventPanel{
 					insub = true;
 				}
 				else{
-					switch(cmd.getCommand()){
+					switch(cmd.getFunctionalType()){
 					case END_READ:
 					case BREAK:
 						insub = false;

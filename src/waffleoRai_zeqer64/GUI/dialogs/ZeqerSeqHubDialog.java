@@ -31,6 +31,7 @@ import waffleoRai_zeqer64.ZeqerSeq.Module;
 import waffleoRai_zeqer64.GUI.seqedit.SeqBinPanel;
 import waffleoRai_zeqer64.GUI.seqedit.SeqMetaEditDialog;
 import waffleoRai_zeqer64.GUI.seqedit.SeqSoundfontEditDialog;
+import waffleoRai_zeqer64.GUI.seqedit.VoxUseViewDialog;
 import waffleoRai_zeqer64.GUI.seqedit.mmlview.MMLScriptPanel;
 import waffleoRai_zeqer64.filefmt.bank.BankTableEntry;
 import waffleoRai_zeqer64.filefmt.seq.SeqTableEntry;
@@ -72,6 +73,7 @@ public class ZeqerSeqHubDialog extends WRFrame{
 	
 	private SeqMetaEditDialog childMeta;
 	private SeqSoundfontEditDialog childSoundfont;
+	private VoxUseViewDialog childAnalyze;
 	
 	/*--- Initialization ---*/
 	
@@ -323,6 +325,7 @@ public class ZeqerSeqHubDialog extends WRFrame{
 		//TODO
 		childMeta = new SeqMetaEditDialog(this, core, !editable);
 		childSoundfont = new SeqSoundfontEditDialog(this, core, !editable);
+		childAnalyze = new VoxUseViewDialog(this);
 	}
 	
 	/*--- Getters ---*/
@@ -432,6 +435,7 @@ public class ZeqerSeqHubDialog extends WRFrame{
 					}
 				}
 			}
+			childAnalyze.updateFromSeq(seq);
 			
 			setSeqNameLocal(childMeta.getNameField());
 			
@@ -588,8 +592,12 @@ public class ZeqerSeqHubDialog extends WRFrame{
 	}
 	
 	private void btnAnalyzeCallback(){
-		//TODO
-		dummyCallback();
+		if(childAnalyze.isVisible()){
+			childAnalyze.requestFocus();
+		}
+		else{
+			childAnalyze.showMe(this);
+		}
 	}
 	
 	private void btnTimelineCallback(){

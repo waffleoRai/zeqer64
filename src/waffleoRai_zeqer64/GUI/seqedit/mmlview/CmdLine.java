@@ -40,7 +40,7 @@ class CmdLine extends IMMLLine{
 		super.binAddr = source.getAddress();
 		
 		//Extract command text
-		NUSALSeqCmdType type = command.getCommand();
+		NUSALSeqCmdType type = command.getFunctionalType();
 		if(type != null){
 			cmdText = type.toString();
 		}
@@ -98,7 +98,7 @@ class CmdLine extends IMMLLine{
 		if(styleRules != null){
 			attr_lbl = styleRules.getLabelStyle();
 			attr_std = styleRules.getBaseStyle();
-			attr_cmd = styleRules.getStyleForCommand(source.getCommand());
+			attr_cmd = styleRules.getStyleForCommand(source.getFunctionalType());
 		}
 		
 		try{
