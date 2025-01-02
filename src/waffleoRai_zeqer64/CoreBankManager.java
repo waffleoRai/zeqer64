@@ -662,6 +662,11 @@ class CoreBankManager {
 			uid |= Byte.toUnsignedInt(hash[i]);
 		}
 		
+		//Check for collisions...
+		while(bnk_table_user.hasBank(uid) || bnk_table_sys.hasBank(uid)) {
+			uid++;
+		}
+		
 		BankTableEntry entry = bnk_table_user.newEntry(uid);
 		ZeqerBank bank = new ZeqerBank(entry, waveManager, true);
 		bank.setDataSaveStem(root_dir + SEP + entry.getDataPathStem());

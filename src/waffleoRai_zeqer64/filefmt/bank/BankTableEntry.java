@@ -12,6 +12,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import waffleoRai_Sound.nintendo.Z64Sound;
 import waffleoRai_Utils.BinFieldSize;
 import waffleoRai_Utils.FileBuffer;
 import waffleoRai_Utils.SerializedString;
@@ -30,8 +31,8 @@ public class BankTableEntry {
 	protected byte[] md5;
 	
 	protected int[] icounts;
-	protected byte medium;
-	protected byte cache;
+	protected byte medium = Z64Sound.MEDIUM_CART;
+	protected byte cache = Z64Sound.CACHE_TEMPORARY;
 	protected byte warc_idx;
 	protected byte warc2_idx;
 	

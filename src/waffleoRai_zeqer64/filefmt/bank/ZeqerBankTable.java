@@ -58,6 +58,10 @@ public class ZeqerBankTable {
 	
 	/*----- Getters -----*/
 	
+	public boolean hasBank(int UID) {
+		return entries.containsKey(UID);
+	}
+	
 	public BankTableEntry getBank(int UID){
 		return entries.get(UID);
 	}

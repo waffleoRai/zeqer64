@@ -298,6 +298,7 @@ public class CoreGUIInterface implements ZeqerCoreInterface{
 		if(path == null) return null;
 		if(options == null) options = new SampleImportOptions();
 		
+		//TODO Is all metadata like name/enum being saved? Maybe in panel?
 		if(error != null) error.value = ZeqerWaveIO.ERROR_CODE_NONE;
 		
 		//Try to detect type from extension
@@ -369,6 +370,15 @@ public class CoreGUIInterface implements ZeqerCoreInterface{
 		//Fetch wave data.
 		Z64Wave data = core.loadWave(wave.getUID());
 		if(data == null) return false;
+		
+		String fn = pathstem;
+		if(fn.contains(File.separator)) {
+			fn = pathstem.substring(fn.indexOf(File.separator) + 1);
+		}
+		
+		if(fn.contains(".")) {
+			pathstem = pathstem.substring(0, pathstem.lastIndexOf('.'));
+		}
 		
 		switch(core.getSampleExportFormat()){
 		case ZeqerConstants.AUDIOFILE_FMT_WAV:
@@ -442,6 +452,16 @@ public class CoreGUIInterface implements ZeqerCoreInterface{
 		case ZeqerConstants.AUDIOFILE_FMT_AIFC: return "Compressed Audio Interchange File";
 		}
 		return null;
+	}
+	
+	public boolean isEditableSample(int uid) {
+		if(core == null) return false;
+		return !core.isSystemWave(uid);
+	}
+
+	public boolean deleteSample(int uid) {
+		if(core == null) return false;
+		return core.removeUserWave(uid);
 	}
 	
 	/*----- Envelope Management -----*/
@@ -548,6 +568,11 @@ public class CoreGUIInterface implements ZeqerCoreInterface{
 			if(meta != null) meta.setFlags(ZeqerBankTable.FLAG_CUSTOM);
 		}
 		return bnk;
+	}
+	
+	public ZeqerBank newUserBank(int sfx_alloc) {
+		if(core == null) return null;
+		return core.newUserBank(sfx_alloc);
 	}
 	
 	public boolean deleteUserBank(int uid) {

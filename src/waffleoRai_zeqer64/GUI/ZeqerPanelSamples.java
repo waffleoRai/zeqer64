@@ -1,12 +1,16 @@
 package waffleoRai_zeqer64.GUI;
 
 import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
+
 import java.awt.GridBagLayout;
 import java.awt.Cursor;
 import java.awt.GridBagConstraints;
 import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.io.File;
 import java.io.Writer;
 import java.util.ArrayList;
@@ -19,6 +23,7 @@ import java.util.Set;
 import javax.swing.JScrollPane;
 import javax.swing.SwingWorker;
 import javax.swing.JList;
+import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.DefaultListModel;
 import javax.swing.JButton;
@@ -116,6 +121,7 @@ public class ZeqerPanelSamples extends JPanel{
 	private ZeqerCoreInterface core;
 	
 	private JFrame parent;
+	private boolean editable = true;
 	
 	private FilterListPanel<SampleNode> pnlFilt;
 	private TagFilterPanel<SampleNode> pnlTags; //For refreshing/adding tags
@@ -147,6 +153,7 @@ public class ZeqerPanelSamples extends JPanel{
 	}
 	
 	private void initGUI(boolean editable_mode){
+		editable = editable_mode;
 		GridBagLayout gridBagLayout = new GridBagLayout();
 		gridBagLayout.columnWidths = new int[]{0, 0, 0};
 		gridBagLayout.rowHeights = new int[]{0, 0};
@@ -191,6 +198,12 @@ public class ZeqerPanelSamples extends JPanel{
 				onChangeListSelection();
 			}
 		});
+		list.addMouseListener(new MouseAdapter(){
+			public void mouseClicked(MouseEvent e) {
+				if(e.getButton() != MouseEvent.BUTTON1){
+					onListItemRightClick(e.getX(), e.getY());
+				}
+			}});
 		
 		pnlInfo = new WriterPanel();
 		GridBagConstraints gbc_pnlInfo = new GridBagConstraints();
@@ -538,6 +551,46 @@ public class ZeqerPanelSamples extends JPanel{
 		pnlInfo.repaint();
 	}
 	
+	/*----- Right Click Menu -----*/
+	
+	private class RCMenu extends JPopupMenu{
+		
+		private static final long serialVersionUID = -4805616678195512144L;
+
+		private SampleNode target;
+		
+		public RCMenu(SampleNode node){
+			target = node;
+			if(target == null) return;
+			if(target.sample == null) return;
+			boolean tUser = core.isEditableSample(target.sample.getUID());
+			
+			JMenuItem opEdit = new JMenuItem("Edit Loop Points...");
+			add(opEdit);
+			if(editable && tUser){
+				opEdit.addActionListener(new ActionListener(){
+					public void actionPerformed(ActionEvent e) {
+						onMenuItemEditLoop(target);
+					}});
+			}
+			else{
+				opEdit.setEnabled(false);
+			}
+			
+			JMenuItem opDelete = new JMenuItem("Delete...");
+			add(opDelete);
+			if(editable && tUser){
+				opDelete.addActionListener(new ActionListener(){
+					public void actionPerformed(ActionEvent e) {
+						onMenuItemDelete();
+					}});
+			}
+			else{
+				opDelete.setEnabled(false);
+			}
+		}
+	}
+	
 	/*----- Actions -----*/
 	
 	private void dummyCallback(){
@@ -607,6 +660,7 @@ public class ZeqerPanelSamples extends JPanel{
 			if(ext != null && desc != null){
 				fc.addChoosableFileFilter(new FileFilter(){
 					public boolean accept(File f) {
+						if(f.isDirectory()) return true;
 						String name = f.getAbsolutePath();
 						if(name == null) return false;
 						return name.endsWith("." + ext);
@@ -656,8 +710,8 @@ public class ZeqerPanelSamples extends JPanel{
 				dialog.closeMe();
 			}
 		};
-		dialog.render();
 		task.execute();
+		dialog.render();
 	}
 	
 	private void onButton_import(){
@@ -766,8 +820,79 @@ public class ZeqerPanelSamples extends JPanel{
 				dialog.closeMe();
 			}
 		};
-		dialog.render();
 		task.execute();
+		dialog.render();
+	}
+	
+	private void onListItemRightClick(int x, int y) {
+		if(!editable) return;
+		if(list.isSelectionEmpty()) return;
+		RCMenu menu = new RCMenu(list.getSelectedValue());
+		menu.show(list, x, y);
+	}
+	
+	private void onMenuItemDelete() {
+		if(list.isSelectionEmpty()) return;
+		if(core == null) return;
+		
+		//Asks to delete ALL customs that are selected, so menu target doesn't matter
+		int ret = JOptionPane.showConfirmDialog(this, 
+				"Are you sure you want to delete selected sample(s)?", 
+				"Delete Samples", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+		
+		if(ret != JOptionPane.YES_OPTION) return;
+		
+		int reselIdx = list.getSelectedIndex();
+		List<SampleNode> sellist = list.getSelectedValuesList();
+		int selCount = sellist.size();
+		
+		int count = 0;
+		for(SampleNode sel : sellist) {
+			if(sel.sample == null) continue;
+			int id = sel.sample.getUID();
+			if(!core.isEditableSample(id)) continue;
+			if(core.deleteSample(id)) count++;
+		}
+		
+		if(count == selCount) {
+			JOptionPane.showMessageDialog(this, count + " sample(s) successfully removed!", 
+					"Delete Samples", JOptionPane.INFORMATION_MESSAGE);
+		}
+		else {
+			if(count == 0) {
+				JOptionPane.showMessageDialog(this, "Sample deletion failed! See stderr for details.", 
+						"Delete Samples", JOptionPane.ERROR_MESSAGE);
+			}
+			else {
+				int diff = selCount - count;
+				JOptionPane.showMessageDialog(this, diff + " sample(s) could not be removed.", 
+						"Delete Samples", JOptionPane.WARNING_MESSAGE);
+			}
+		}
+	
+		
+		refreshSamplePool();
+		
+		reselIdx--;
+		if(reselIdx < 0) reselIdx = 0;
+		list.setSelectedIndex(reselIdx);
+	}
+	
+	private void onMenuItemEditLoop(SampleNode node) {
+		//TODO
+		if(core == null) return;
+		if(node == null) return;
+		if(node.sample == null) return;
+		
+		int id = node.sample.getUID();
+		if(!core.isEditableSample(id)) {
+			showError("Selected sample cannot be edited!");
+			return;
+		}
+		
+		//TODO
+		//Need a new dialog.....
+		dummyCallback();
 	}
 	
 	/*----- Text Boxes -----*/

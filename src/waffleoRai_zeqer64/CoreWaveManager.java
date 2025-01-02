@@ -561,6 +561,7 @@ class CoreWaveManager implements SoundSampleSource{
 		
 		//Add if not.
 		entry = wav_table_user.addEntryFromInfoBlock(metadata, md5);
+		entry.setFlags(ZeqerWaveTable.FLAG_ISCUSTOM);		
 		String wpath = root_dir + SEP + entry.getDataFileName();
 		UltraWavFile.writeUWAV(wpath, metadata, sounddata);
 		

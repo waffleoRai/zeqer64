@@ -441,6 +441,20 @@ public class ZeqerWaveIO {
 	}
 	
 	public static void addImportableFileFilters(JFileChooser fc){
+		FileFilter defo = new FileFilter() {
+			public boolean accept(File f) {
+				if(f.isDirectory()) return true;
+				String path = f.getAbsolutePath().toString();
+				return path.endsWith(".wav") || path.endsWith(".wave") || 
+						path.endsWith(".aif") || path.endsWith(".aiff") || path.endsWith(".aifc");
+			}
+
+			public String getDescription() {
+				return "Importable audio sample file (.wav, .wave, .aif, .aiff, .aifc)";
+			}
+		};
+		fc.addChoosableFileFilter(defo);
+		
 		fc.addChoosableFileFilter(new FileFilter(){
 			public boolean accept(File f) {
 				if(f.isDirectory()) return true;
@@ -463,6 +477,7 @@ public class ZeqerWaveIO {
 				return "Audio Interchange File Format (.aif, .aiff, .aifc)";
 			}});
 		
+		fc.setFileFilter(defo);
 	}
 	
 }

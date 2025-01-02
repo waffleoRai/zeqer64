@@ -28,7 +28,7 @@ public class SampleOptionsPanel extends WRPanel{
 
 	private static final long serialVersionUID = -4017800039246523276L;
 	
-	public static final int DEFO_WIDTH = 320;
+	public static final int DEFO_WIDTH = 360;
 	public static final int DEFO_HEIGHT = 550;
 	
 	private static final int RBIDX_ADP9 = 0;
@@ -98,7 +98,7 @@ public class SampleOptionsPanel extends WRPanel{
 		pnlMetaFlags.setBorder(new LineBorder(new Color(0, 0, 0)));
 		GridBagConstraints gbc_pnlMetaFlags = new GridBagConstraints();
 		gbc_pnlMetaFlags.gridwidth = 2;
-		gbc_pnlMetaFlags.insets = new Insets(0, 5, 5, 5);
+		gbc_pnlMetaFlags.insets = new Insets(0, 10, 5, 10);
 		gbc_pnlMetaFlags.fill = GridBagConstraints.BOTH;
 		gbc_pnlMetaFlags.gridx = 0;
 		gbc_pnlMetaFlags.gridy = 3;
@@ -166,8 +166,9 @@ public class SampleOptionsPanel extends WRPanel{
 		JLabel lblMetadata = new JLabel("Metadata");
 		lblMetadata.setFont(new Font("Tahoma", Font.BOLD, 13));
 		GridBagConstraints gbc_lblMetadata = new GridBagConstraints();
+		gbc_lblMetadata.fill = GridBagConstraints.HORIZONTAL;
 		gbc_lblMetadata.anchor = GridBagConstraints.WEST;
-		gbc_lblMetadata.insets = new Insets(5, 5, 5, 5);
+		gbc_lblMetadata.insets = new Insets(5, 10, 5, 5);
 		gbc_lblMetadata.gridx = 0;
 		gbc_lblMetadata.gridy = 0;
 		pnlMetadata.add(lblMetadata, gbc_lblMetadata);
@@ -175,14 +176,14 @@ public class SampleOptionsPanel extends WRPanel{
 		JLabel lblNamenameStem = new JLabel("Name/Name Stem:");
 		GridBagConstraints gbc_lblNamenameStem = new GridBagConstraints();
 		gbc_lblNamenameStem.anchor = GridBagConstraints.EAST;
-		gbc_lblNamenameStem.insets = new Insets(0, 5, 5, 5);
+		gbc_lblNamenameStem.insets = new Insets(0, 10, 5, 5);
 		gbc_lblNamenameStem.gridx = 0;
 		gbc_lblNamenameStem.gridy = 1;
 		pnlMetadata.add(lblNamenameStem, gbc_lblNamenameStem);
 		
 		txtName = new JTextField();
 		GridBagConstraints gbc_txtName = new GridBagConstraints();
-		gbc_txtName.insets = new Insets(0, 0, 5, 5);
+		gbc_txtName.insets = new Insets(0, 0, 5, 10);
 		gbc_txtName.fill = GridBagConstraints.HORIZONTAL;
 		gbc_txtName.gridx = 1;
 		gbc_txtName.gridy = 1;
@@ -200,7 +201,7 @@ public class SampleOptionsPanel extends WRPanel{
 		
 		cmbxMedium = new MediumTypeCombobox();
 		GridBagConstraints gbc_cmbxMedium = new GridBagConstraints();
-		gbc_cmbxMedium.insets = new Insets(0, 0, 5, 5);
+		gbc_cmbxMedium.insets = new Insets(0, 0, 5, 10);
 		gbc_cmbxMedium.fill = GridBagConstraints.HORIZONTAL;
 		gbc_cmbxMedium.gridx = 1;
 		gbc_cmbxMedium.gridy = 2;

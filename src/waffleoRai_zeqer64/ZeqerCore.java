@@ -1133,6 +1133,11 @@ public class ZeqerCore {
 		return wavManager.getAllValidTableEntries();
 	}
 	
+	public boolean isSystemWave(int wave_uid) {
+		if(wavManager == null) return false;
+		return wavManager.isWavSys(wave_uid);
+	}
+	
 	//--- Presets
 	
 	public ZeqerPreset getPreset(int uid){
@@ -1368,6 +1373,15 @@ public class ZeqerCore {
 		}
 	}
 	
+	public ZeqerBank newUserBank(int sfx_alloc) {
+		if(bnkManager == null) return null;
+		try {return bnkManager.newUserBank(sfx_alloc);} 
+		catch (IOException e) {
+			e.printStackTrace();
+			return null;
+		}
+	}
+	
 	public boolean removeUserBank(int uid){
 		if(bnkManager == null) return false;
 		try {
@@ -1398,6 +1412,15 @@ public class ZeqerCore {
 		catch (IOException e) {
 			e.printStackTrace();
 			return null;
+		}
+	}
+	
+	public boolean removeUserWave(int uid) {
+		if(wavManager == null) return false;
+		try {return wavManager.deleteWave(uid);} 
+		catch (IOException e) {
+			e.printStackTrace();
+			return false;
 		}
 	}
 	

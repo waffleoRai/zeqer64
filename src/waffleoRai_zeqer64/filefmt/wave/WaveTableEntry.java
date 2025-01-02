@@ -25,7 +25,10 @@ public class WaveTableEntry {
 	
 	private int read_amt = 0; //For parsing.
 	
-	protected WaveTableEntry(){wave_info = new Z64WaveInfo();}
+	protected WaveTableEntry(){
+		wave_info = new Z64WaveInfo();
+		tags = new HashSet<String>();
+	}
 	
 	public static WaveTableEntry read(FileBuffer in, long offset, int version){
 		//System.err.println("DEBUG: Starting entry read at 0x" + Long.toHexString(offset));

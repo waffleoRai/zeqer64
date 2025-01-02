@@ -62,6 +62,13 @@ public class ZeqerBank {
 		if(core == null) return null;
 		
 		//1. Copy bank data
+		if(!isBankDataLoaded()) {
+			try {this.loadBankData();} 
+			catch (Exception ex) {
+				ex.printStackTrace();
+				return null;
+			}
+		}
 		Z64Bank datcopy = data.copy(true);
 		
 		//2. Generate meta record from the core
@@ -70,6 +77,7 @@ public class ZeqerBank {
 		//3. Update name and enum
 		if(metaEntry != null) {
 			BankTableEntry otherMeta = copy.getTableEntry();
+			metaEntry.copyTo(otherMeta);
 			String s = metaEntry.getName();
 			if(s != null) {
 				otherMeta.setName(s + " (" + String.format("%08x)", otherMeta.getUID()));
@@ -80,6 +88,7 @@ public class ZeqerBank {
 			}
 		}
 		
+		unloadBankData();
 		return copy;
 	}
 	

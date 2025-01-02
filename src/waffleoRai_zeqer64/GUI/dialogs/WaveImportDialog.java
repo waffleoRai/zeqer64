@@ -31,6 +31,9 @@ import javax.swing.DefaultListModel;
 import javax.swing.JButton;
 import javax.swing.border.BevelBorder;
 import javax.swing.border.EtchedBorder;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
+
 import java.awt.Dimension;
 
 public class WaveImportDialog extends WRDialog{
@@ -83,9 +86,9 @@ public class WaveImportDialog extends WRDialog{
 		
 		setTitle("Import Sound Sample");
 		GridBagLayout gridBagLayout = new GridBagLayout();
-		gridBagLayout.columnWidths = new int[]{0, 300, 0};
+		gridBagLayout.columnWidths = new int[]{0, 200, 0};
 		gridBagLayout.rowHeights = new int[]{0, 0, 0};
-		gridBagLayout.columnWeights = new double[]{0.0, 1.0, Double.MIN_VALUE};
+		gridBagLayout.columnWeights = new double[]{0.0, 0.9, Double.MIN_VALUE};
 		gridBagLayout.rowWeights = new double[]{1.0, 0.0, Double.MIN_VALUE};
 		getContentPane().setLayout(gridBagLayout);
 		
@@ -124,6 +127,11 @@ public class WaveImportDialog extends WRDialog{
 		
 		lstFiles = new JList<String>();
 		spFiles.setViewportView(lstFiles);
+		lstFiles.addListSelectionListener(new ListSelectionListener() {
+			public void valueChanged(ListSelectionEvent e) {
+				listSelectCallback();
+			}
+		});
 		
 		globalEnable.addComponent("lstFiles", lstFiles);
 		globalEnable.addComponent("spFiles", spFiles);
@@ -266,6 +274,10 @@ public class WaveImportDialog extends WRDialog{
 	}
 	
 	/*----- Callbacks -----*/
+	
+	private void listSelectCallback() {
+		reenable();
+	}
 	
 	private void btnOkayCallback(){
 		int err = checkForError();

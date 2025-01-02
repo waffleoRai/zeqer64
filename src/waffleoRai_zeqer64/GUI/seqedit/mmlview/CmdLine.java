@@ -10,6 +10,7 @@ import javax.swing.text.StyledDocument;
 
 import waffleoRai_SeqSound.n64al.NUSALSeqCmdType;
 import waffleoRai_SeqSound.n64al.NUSALSeqCommand;
+import waffleoRai_SeqSound.n64al.cmd.NUSALSeqCommandDef;
 
 class CmdLine extends IMMLLine{
 	
@@ -40,12 +41,18 @@ class CmdLine extends IMMLLine{
 		super.binAddr = source.getAddress();
 		
 		//Extract command text
-		NUSALSeqCmdType type = command.getFunctionalType();
-		if(type != null){
-			cmdText = type.toString();
+		NUSALSeqCommandDef def = command.getCommandDef();
+		if(def != null) {
+			cmdText = def.getMnemonicZeqer();
 		}
-		else cmdText = "[Unknown]";
-		
+		else {
+			NUSALSeqCmdType type = command.getFunctionalType();
+			if(type != null){
+				cmdText = type.toString();
+			}
+			else cmdText = "[Unknown]";
+		}
+
 		//Extract args
 		String[][] astr = command.getParamStrings();
 		if(astr != null){

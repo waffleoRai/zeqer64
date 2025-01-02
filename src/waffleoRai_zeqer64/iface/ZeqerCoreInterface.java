@@ -50,8 +50,6 @@ public interface ZeqerCoreInterface {
 	
 	/*----- Sample Management -----*/
 	public boolean playSample(WaveTableEntry wave);
-	public WaveTableEntry addUserWaveSample(Z64WaveInfo info, FileBuffer data, ErrorCode error);
-	public WaveTableEntry importSample(String path, SampleImportOptions options, ErrorCode error);
 	public boolean exportSample(WaveTableEntry wave, String pathstem);
 	public Z64WaveInfo getDefaultPercussionSample();
 	public List<WaveTableEntry> getAllRegisteredSamples();
@@ -61,10 +59,15 @@ public interface ZeqerCoreInterface {
 	public Z64WaveInfo getSampleInfoByName(String name);
 	public ZeqerWave getSample(int uid);
 	public ZeqerWave getSampleByName(String name);
+	public boolean isEditableSample(int uid);
 	
 	public int getSampleExportFormat();
 	public String getSampleExportFormatExtention();
 	public String getSampleExportFormatDescription();
+	
+	public WaveTableEntry addUserWaveSample(Z64WaveInfo info, FileBuffer data, ErrorCode error);
+	public WaveTableEntry importSample(String path, SampleImportOptions options, ErrorCode error);
+	public boolean deleteSample(int uid);
 	
 	/*----- Envelope Management -----*/
 	
@@ -95,6 +98,7 @@ public interface ZeqerCoreInterface {
 	public BankTableEntry getBankInfo(int uid);
 	public ZeqerBank getBank(int uid);
 	
+	public ZeqerBank newUserBank(int sfx_alloc);
 	public ZeqerBank addUserBank(Z64Bank bankdata);
 	public boolean deleteUserBank(int uid);
 	

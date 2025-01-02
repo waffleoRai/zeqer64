@@ -130,6 +130,7 @@ public class ZeqerWaveTable {
 				uid |= Byte.toUnsignedInt(entry.md5[i]);
 			}
 		}
+		while(entries.containsKey(uid)) uid++;
 		entry.wave_info.setUID(uid);
 		entry.setFlags(FLAG_ISUNUSED);
 		

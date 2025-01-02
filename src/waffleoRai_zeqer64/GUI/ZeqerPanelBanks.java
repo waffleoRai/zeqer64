@@ -715,7 +715,7 @@ public class ZeqerPanelBanks extends JPanel{
 		}
 		
 		setWait();
-		ZeqerBank nbank = core.addUserBank(new Z64Bank());
+		ZeqerBank nbank = core.newUserBank(0);
 		if(nbank != null){
 			ZeqerBankEditDialog dialog = new ZeqerBankEditDialog(parent, core);
 			dialog.setEditable(true);
