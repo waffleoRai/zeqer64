@@ -38,8 +38,6 @@ import waffleoRai_zeqer64.bankImport.BankImportInfo.SampleInfo;
 import waffleoRai_zeqer64.bankImport.BankImportInfo.SubBank;
 import waffleoRai_zeqer64.bankImport.BankImporter;
 import waffleoRai_zeqer64.filefmt.XMLReader;
-import waffleoRai_zeqer64.filefmt.wave.ZeqerWaveIO;
-import waffleoRai_zeqer64.filefmt.wave.ZeqerWaveTable;
 import waffleoRai_zeqer64.filefmt.wave.ZeqerWaveIO.SampleImportOptions;
 import waffleoRai_zeqer64.filefmt.wave.WaveTableEntry;
 import waffleoRai_zeqer64.iface.ZeqerCoreInterface;

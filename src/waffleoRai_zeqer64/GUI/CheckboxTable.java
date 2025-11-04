@@ -293,6 +293,23 @@ public class CheckboxTable extends JPanel{
 		return rr.rowEnabled;
 	}
 	
+	public boolean cellEnabled(int row, int col) {
+		if(contents == null) return false;
+		if(col < 0 || col >= colTypes.length) return false;
+		if(row < 0 || row >= contents.length) return false;
+		if(colTypes[col] != COLTYPE_CHECKBOX) return false;
+		
+		Row rr = contents[row];
+		if(rr == null || rr.cells == null) return false;
+		if(rr.cells[col] instanceof JCheckBox){
+			//JCheckBox cb = (JCheckBox)rr.cells[col];
+			//return cb.isEnabled();
+			return rr.cellEnabled[col];
+		}
+		
+		return false;
+	}
+	
 	/*----- Setters -----*/
 	
 	public void setColumnName(int index, String name){
@@ -500,8 +517,10 @@ public class CheckboxTable extends JPanel{
 			if(rr.cells[col] == null) continue;
 			if(rr.cells[col] instanceof JCheckBox){
 				cb = (JCheckBox)rr.cells[col];
-				cb.setSelected(b);
-				cb.repaint();
+				if(cb.isEnabled() && rr.cellEnabled[col]) {
+					cb.setSelected(b);
+					cb.repaint();
+				}
 			}
 		}
 	}

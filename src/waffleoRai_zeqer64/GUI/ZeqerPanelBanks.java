@@ -49,7 +49,6 @@ import javax.swing.event.ListSelectionListener;
 import waffleoRai_GUITools.ComponentGroup;
 import waffleoRai_GUITools.WriterPanel;
 import waffleoRai_Utils.VoidCallbackMethod;
-import waffleoRai_soundbank.nintendo.z64.Z64Bank;
 
 import javax.swing.JList;
 import javax.swing.JOptionPane;
@@ -600,8 +599,8 @@ public class ZeqerPanelBanks extends JPanel{
 			}
 		};
 		
-		dialog.render();
 		task.execute();
+		dialog.render();
 	}
 	
 	private void showImportOptions(BankImporter importer){
@@ -678,8 +677,8 @@ public class ZeqerPanelBanks extends JPanel{
 				}
 			}});
 		
-		dialog.render();
 		task.execute();
+		dialog.render();
 	}
 	
 	/*----- Callbacks -----*/
@@ -1029,8 +1028,8 @@ public class ZeqerPanelBanks extends JPanel{
 			}
 		};
 		
-		dialog.render();
 		task.execute();
+		dialog.render();
 	}
 	
 	private void btnImportCallback(){

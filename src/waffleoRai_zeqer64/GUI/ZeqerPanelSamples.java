@@ -41,6 +41,7 @@ import waffleoRai_Utils.FileUtils;
 import waffleoRai_Utils.VoidCallbackMethod;
 import waffleoRai_zeqer64.ErrorCode;
 import waffleoRai_zeqer64.GUI.dialogs.WaveImportDialog;
+import waffleoRai_zeqer64.GUI.dialogs.WaveLoopEditDialog;
 import waffleoRai_zeqer64.GUI.dialogs.progress.IndefProgressDialog;
 import waffleoRai_zeqer64.GUI.filters.FlagFilterPanel;
 import waffleoRai_zeqer64.GUI.filters.TagFilterPanel;
@@ -879,7 +880,6 @@ public class ZeqerPanelSamples extends JPanel{
 	}
 	
 	private void onMenuItemEditLoop(SampleNode node) {
-		//TODO
 		if(core == null) return;
 		if(node == null) return;
 		if(node.sample == null) return;
@@ -890,9 +890,59 @@ public class ZeqerPanelSamples extends JPanel{
 			return;
 		}
 		
-		//TODO
 		//Need a new dialog.....
-		dummyCallback();
+		Z64WaveInfo winfo = node.sample.getWaveInfo();
+		if(winfo == null) return;
+		
+		WaveLoopEditDialog dialog = new WaveLoopEditDialog(parent);
+		dialog.setLoopStart(winfo.getLoopStart());
+		dialog.setLoopEnd(winfo.getLoopEnd());
+		
+		int ct = winfo.getLoopCount();
+		if(ct == 0) {
+			dialog.setLoopCount(0);
+			dialog.setLoopType(WaveLoopEditDialog.LOOP_COUNT_ONESHOT);
+		}
+		else if(ct == -1) {
+			dialog.setLoopCount(0);
+			dialog.setLoopType(WaveLoopEditDialog.LOOP_COUNT_INFINITE);
+		}
+		else {
+			dialog.setLoopCount(ct);
+			dialog.setLoopType(WaveLoopEditDialog.LOOP_COUNT_FINITE);
+		}
+		
+		dialog.showMe(this);
+		if(dialog.getExitSelection()) {
+			int start = 0;
+			int end = 0;
+			int count = 0;
+			int lt = dialog.getLoopType();
+			switch(lt) {
+			case WaveLoopEditDialog.LOOP_COUNT_ONESHOT:
+				count = 0;
+				start = 0;
+				end = -1;
+				break;
+			case WaveLoopEditDialog.LOOP_COUNT_INFINITE:
+				count = -1;
+				start = dialog.getLoopStart();
+				end = dialog.getLoopEnd();
+				break;
+			case WaveLoopEditDialog.LOOP_COUNT_FINITE:
+				count = dialog.getLoopCount();
+				start = dialog.getLoopStart();
+				end = dialog.getLoopEnd();
+				break;
+			}
+			
+			if(core.updateLoop(node.sample, start, end, count)) {
+				showInfo("Loop update successful!");
+			}
+			else {
+				showError("Loop update failed!");
+			}
+		}
 	}
 	
 	/*----- Text Boxes -----*/

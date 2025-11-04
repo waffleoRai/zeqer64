@@ -3,6 +3,7 @@ package waffleoRai_zeqer64;
 import java.io.IOException;
 
 import waffleoRai_Sound.nintendo.Z64Wave;
+import waffleoRai_Sound.nintendo.Z64WaveInfo;
 import waffleoRai_Utils.FileBuffer;
 import waffleoRai_Utils.FileUtils;
 import waffleoRai_Utils.FileBuffer.UnsupportedFileTypeException;
@@ -33,6 +34,46 @@ public class ZeqerWave {
 	public boolean isSoundDataLoaded(){return soundData != null;}
 	
 	/*----- Setters -----*/
+	
+	public WaveTableEntry updateLoop(int start, int end, int count) throws IOException, UnsupportedFileTypeException{
+		if(!writePerm) return null;
+		loadSoundData();
+		if(soundData == null) {
+			throw new IOException("ZeqerWave.updateLoop || Sound data could not be loaded.");
+		}
+		
+		if(start < 0) start = 0;
+		if(end < 0) end = soundData.totalFrames();
+		
+		//Snap to 16
+		start &= ~0xf;
+		
+		Z64WaveInfo winfo = metaEntry.getWaveInfo();
+		winfo.setLoopStart(start);
+		winfo.setLoopEnd(end);
+		winfo.setLoopCount(count);
+		
+		if(count != 0) {
+			//Resample
+			int[] allSamples = soundData.getSamples_16Signed(0);
+			short[] loopSamples = new short[16];
+			
+			int j = start - 1;
+			for(int i = 15; i >= 0; i--) {
+				if(j < 0) break;
+				loopSamples[i] = (short)(allSamples[j--]);
+			}
+			winfo.setLoopState(loopSamples);
+		}
+		else {
+			//TODO idr if null or all zero.
+			winfo.setLoopState(null);
+		}
+		WaveTableEntry ret = saveAll();
+		unloadSoundData();
+		
+		return ret;
+	}
 	
 	public void setDataPath(String val){dataPath = val;}
 	

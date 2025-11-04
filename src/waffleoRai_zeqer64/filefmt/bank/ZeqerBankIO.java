@@ -8,6 +8,7 @@ import java.io.IOException;
 import javax.swing.JFileChooser;
 import javax.swing.filechooser.FileFilter;
 
+import waffleoRai_Utils.FileBuffer.UnsupportedFileTypeException;
 import waffleoRai_zeqer64.ErrorCode;
 import waffleoRai_zeqer64.ZeqerBank;
 import waffleoRai_zeqer64.bankImport.BankImporter;
@@ -50,12 +51,18 @@ public class ZeqerBankIO {
 	public static boolean exportDecompXML(String path, ZeqerBank data){
 		try {
 			boolean okay = true;
+			data.loadBankData();
 			BufferedWriter out = new BufferedWriter(new FileWriter(path));
 			okay = SoundfontXML.writeSFXML(out, data.getBankData());
 			out.close();
+			data.unloadBankData();
 			return okay;
 		}
 		catch(IOException ex) {
+			ex.printStackTrace();
+			return false;
+		} 
+		catch (UnsupportedFileTypeException ex) {
 			ex.printStackTrace();
 			return false;
 		}

@@ -589,9 +589,15 @@ class CoreWaveManager implements SoundSampleSource{
 		return (entry != null);
 	}
 	
+	public WaveTableEntry updateLoop(int uid, int start, int end, int count) throws UnsupportedFileTypeException, IOException{
+		ZeqerWave wav = getWave(uid);
+		if(wav == null) return null;
+		return wav.updateLoop(start, end, count);
+	}
+	
 	/*----- I/O -----*/
 	
-	public int importWaveMetaTSV(String tsv_path) throws IOException{
+ 	public int importWaveMetaTSV(String tsv_path) throws IOException{
 		int records = 0;
 		if(wav_table_user != null) records += wav_table_user.importTSV(tsv_path);
 		if(sys_write_enabled && wav_table_sys != null) records += wav_table_sys.importTSV(tsv_path);

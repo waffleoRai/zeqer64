@@ -1,5 +1,6 @@
 package waffleoRai_zeqer64.bankImport;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -78,10 +79,27 @@ public class DLSImportHandler extends BankImporter{
 	public static BankImportInfo initRead(DLSFile dls){
 		if(dls == null) return null;
 		
-		int bcount = dls.getBankCount();
+		//int bcount = dls.getBankCount();
 		int scount = dls.getSampleCount();
 		
-		BankImportInfo info = new BankImportInfo(bcount, scount);
+		BankImportInfo info = new BankImportInfo(scount);
+		
+		//Allocate banks
+		List<Integer> bankIds = dls.getAllBankIDs();
+		List<Integer> templist = bankIds;
+		bankIds = new ArrayList<Integer>(templist.size()+1);
+		
+		//Clean up bank IDs to get all into 15 bit space
+		for(Integer id : templist) {
+			if(((id & 0x80000000) != 0)) {
+				//Set bit 7 which should be unused in MIDI LSB
+				id |= 0x80;
+				id &= 0xffff;
+			}
+			info.newBank(id);
+			bankIds.add(id);
+		}
+
 		
 		//Samples (ptbl order)
 		DLSSample[] slist = dls.getOrderedSamples();
@@ -91,7 +109,7 @@ public class DLSImportHandler extends BankImporter{
 				SampleInfo sinfo = info.getSample(i);
 				sinfo.id = i;
 				sinfo.importSample = true;
-				sinfo.name = sample.getNameTag();
+				sinfo.name = sample.getNameTag().trim();
 				if(sinfo.name == null){
 					sinfo.name = "Sample " + i;
 				}
@@ -109,18 +127,25 @@ public class DLSImportHandler extends BankImporter{
 		//Instruments
 		List<DLSInstrument> ilist = dls.getAllInstruments();
 		for(DLSInstrument inst : ilist){
-			int bidx = inst.getBankIndex();
+			int bankId = inst.getBankId();
+			if(inst.bankHasDrumFlag()) bankId |= 0x80;
 			int pidx = inst.getInstrumentIndex();
 			
-			SubBank bnk = info.getBank(bidx);
+			SubBank bnk = info.getBank(bankId);
 			PresetInfo preset = bnk.instruments[pidx];
 			
 			preset.emptySlot = false;
 			preset.importToFont = true;
 			preset.savePreset = true;
-			preset.name = inst.getNameTag();
+			preset.name = inst.getNameTag().trim();
 			if(preset.name == null){
-				preset.name = String.format("Preset %05d-%03d", bidx, pidx);
+				preset.name = String.format("Preset %04x-%03d", bankId, pidx);
+			}
+			
+			//Slot/Percussion
+			preset.percInSrc = inst.bankHasDrumFlag();
+			if(pidx < 126) {
+				if(preset.percInSrc) preset.warningFlags |= BankImportInfo.PRESET_WARNING_PERC_AS_INST;
 			}
 			
 			//Flags
@@ -144,6 +169,45 @@ public class DLSImportHandler extends BankImporter{
 					preset.warningFlags |= BankImportInfo.PRESET_WARNING_INCOMP_MODS;
 					break;
 				}
+			}
+		}
+		
+		//Do any 126/127 reassignments
+		bankIds = info.getAllBankIds();
+		for(Integer bankId : bankIds) {
+			SubBank bnk = info.getBank(bankId);
+			if(bnk == null) continue;
+			if(bnk.instruments == null) continue;
+			int icount = bnk.instruments.length;
+			PresetInfo i126 = null;
+			PresetInfo i127 = null;
+			if(icount > 126) {
+				if((bnk.instruments[126] != null) && !bnk.instruments[126].emptySlot) { 
+					i126 = bnk.instruments[126];
+				}
+			}
+			if(icount > 127) {
+				if((bnk.instruments[127] != null) && !bnk.instruments[127].emptySlot) { 
+					i127 = bnk.instruments[127];
+				}
+			}
+			if(icount > 126) icount = 126;
+			for(int i = (icount - 1); i >= 0; i--) {
+				if((bnk.instruments[i] == null) || bnk.instruments[i].emptySlot) {
+					if((i127 != null) && (i127.movedToIndex < 0)) {
+						i127.movedToIndex = i;
+					}
+					else if((i126 != null) && (i126.movedToIndex < 0)) {
+						i126.movedToIndex = i;
+					}
+					else break;
+				}
+			}
+			if((i126 != null) && (i126.movedToIndex < 0)) {
+				i126.warningFlags |= BankImportInfo.PRESET_WARNING_BAD_SLOT;
+			}
+			if((i127 != null) && (i127.movedToIndex < 0)) {
+				i127.warningFlags |= BankImportInfo.PRESET_WARNING_BAD_SLOT;
 			}
 		}
 		
@@ -758,28 +822,35 @@ public class DLSImportHandler extends BankImporter{
 		}
 		
 		Set<Integer> inclSamples = new HashSet<Integer>();
-		int bcount = info.getBankCount();
+		//int bcount = info.getBankCount();
 		
 		//Map instruments by Bank/Preset ID
 		Map<Integer, DLSInstrument> instmap = new HashMap<Integer, DLSInstrument>();
 		List<DLSInstrument> instlist = dls.getAllInstruments();
 		for(DLSInstrument inst : instlist){
-			int id = inst.getBankIndex() << 16;
+			int bid = inst.getBankId();
+			if(inst.bankHasDrumFlag()) bid |= 0x80;
+			int id = bid << 16;
 			id |= inst.getInstrumentIndex();
 			instmap.put(id, inst);
 		}
 		
 		//Figure out which samples need to be imported
-		for(int i = 0; i < bcount; i++){
-			SubBank bnk = info.getBank(i);
+		List<Integer> bankids = info.getAllBankIds();
+		for(Integer bid : bankids){
+			SubBank bnk = info.getBank(bid);
 			if(bnk.instruments == null) continue;
 			for(int j = 0; j < bnk.instruments.length; j++){
 				PresetInfo pinfo = bnk.instruments[j];
 				if(pinfo == null) continue;
 				if(pinfo.emptySlot) continue;
+				if(j > 125) {
+					if(pinfo.movedToIndex < 0) continue;
+				}
 				
+				//TODO Update to include proper perc/ slots 126/127 check
 				if((bnk.importAsFont && pinfo.importToFont) || pinfo.savePreset){
-					int iid = (i << 16) | j;
+					int iid = (bid << 16) | j;
 					DLSInstrument inst = instmap.get(iid);
 					if(inst == null) continue;
 					List<DLSRegion> reglist = inst.getAllRegions();
@@ -813,8 +884,8 @@ public class DLSImportHandler extends BankImporter{
 		}
 		
 		//Import fonts/presets
-		for(int i = 0; i < bcount; i++){
-			SubBank bnk = info.getBank(i);
+		for(Integer bid : bankids){
+			SubBank bnk = info.getBank(bid);
 			if(bnk.instruments == null) continue;
 			Z64Instrument[] zinsts = new Z64Instrument[128];
 			ZeqerPercPreset perc = null;
@@ -823,7 +894,7 @@ public class DLSImportHandler extends BankImporter{
 					if(bnk.instruments[j] == null) continue;
 					
 					PresetInfo pinfo = bnk.instruments[j];
-					DLSInstrument dlsinst = instmap.get((i << 16) | j);
+					DLSInstrument dlsinst = instmap.get((bid << 16) | j);
 					if(dlsinst == null) continue;
 					if(pinfo.emptySlot) continue;
 					if(!pinfo.importToFont) continue;
@@ -832,7 +903,7 @@ public class DLSImportHandler extends BankImporter{
 
 				//Perc
 				if(bnk.importPercToFont && (bnk.percInst >= 0)){
-					DLSInstrument dlsinst = instmap.get((i << 16) | bnk.percInst);
+					DLSInstrument dlsinst = instmap.get((bid << 16) | bnk.percInst);
 					PresetInfo pinfo = bnk.instruments[bnk.percInst];
 					if(dlsinst != null && pinfo != null){
 						perc = DLSImportHandler.dlsInst2Perc64(dlsinst, waveEntries, pinfo.name);
@@ -873,7 +944,7 @@ public class DLSImportHandler extends BankImporter{
 			if(bnk.percInst >= 0){
 				if(perc == null){
 					//Try to create preset.
-					DLSInstrument dlsinst = instmap.get((i << 16) | bnk.percInst);
+					DLSInstrument dlsinst = instmap.get((bid << 16) | bnk.percInst);
 					PresetInfo pinfo = bnk.instruments[bnk.percInst];
 					if(dlsinst != null && pinfo != null){
 						perc = DLSImportHandler.dlsInst2Perc64(dlsinst, waveEntries, pinfo.name);
@@ -921,7 +992,7 @@ public class DLSImportHandler extends BankImporter{
 				if(pinfo.emptySlot) continue;
 				if(!pinfo.savePreset) continue;
 				if(zinsts[j] == null){
-					DLSInstrument dlsinst = instmap.get((i << 16) | j);
+					DLSInstrument dlsinst = instmap.get((bid << 16) | j);
 					if(dlsinst == null) continue;
 					zinsts[j] = DLSImportHandler.dlsInst2Z64(dlsinst, waveEntries, pinfo.name);
 				}

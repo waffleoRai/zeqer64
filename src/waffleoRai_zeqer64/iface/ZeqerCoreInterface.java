@@ -68,6 +68,7 @@ public interface ZeqerCoreInterface {
 	public WaveTableEntry addUserWaveSample(Z64WaveInfo info, FileBuffer data, ErrorCode error);
 	public WaveTableEntry importSample(String path, SampleImportOptions options, ErrorCode error);
 	public boolean deleteSample(int uid);
+	public boolean updateLoop(WaveTableEntry tableEntry, int start, int end, int count); //Because loop samples need to be recalculated
 	
 	/*----- Envelope Management -----*/
 	

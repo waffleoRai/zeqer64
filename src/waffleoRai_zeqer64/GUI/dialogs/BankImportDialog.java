@@ -12,8 +12,10 @@ import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
+import javax.swing.ComboBoxModel;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.DefaultListModel;
 import javax.swing.JButton;
@@ -40,6 +42,7 @@ import waffleoRai_zeqer64.filefmt.wave.ZeqerWaveIO.SampleImportOptions;
 import javax.swing.JTextField;
 import javax.swing.JScrollPane;
 import javax.swing.border.BevelBorder;
+import java.awt.Font;
 
 public class BankImportDialog extends WRDialog{
 	
@@ -47,18 +50,33 @@ public class BankImportDialog extends WRDialog{
 	
 	private static final long serialVersionUID = 4901070415958862918L;
 	
-	public static final int MIN_WIDTH = 640;
-	public static final int MIN_HEIGHT = 480;
+	public static final int MIN_WIDTH = 750;
+	public static final int MIN_HEIGHT = 620;
 	
 	private static final int INSTTBL_COL_INDEX = 0;
 	private static final int INSTTBL_COL_NAME = 1;
 	private static final int INSTTBL_COL_WARNINGS = 2; //String of flag field in hex until graphics done.
 	private static final int INSTTBL_COL_TOFONT = 3;
 	private static final int INSTTBL_COL_TOPRESET = 4;
+	private static final int INSTTBL_COL_SAVEDRUMS = 5;
+	
+	private static final int INSTTBL_COL_COUNT = 6;
+	
+	private static final int EXTRA_INSTTBL_COL_INDEX = 0;
+	private static final int EXTRA_INSTTBL_COL_NAME = 1;
+	private static final int EXTRA_INSTTBL_COL_WARNINGS = 2; //String of flag field in hex until graphics done.
+	private static final int EXTRA_INSTTBL_COL_TOFONT = 3;
+	private static final int EXTRA_INSTTBL_COL_NEWIDX = 4;
+	private static final int EXTRA_INSTTBL_COL_TOPRESET = 5;
+	private static final int EXTRA_INSTTBL_COL_SAVEDRUMS = 6;
+	
+	private static final int EXTRA_INSTTBL_COL_COUNT = 7;
 	
 	private static final int SMPLTBL_COL_NAME = 0;
 	private static final int SMPLTBL_COL_WARNINGS = 1; //String of flag field in hex until graphics done.
 	private static final int SMPLTBL_COL_IMPORT = 2;
+	
+	private static final int SMPLTBL_COL_COUNT = 3;
 	
 	/*----- Instance Variables -----*/
 	
@@ -66,6 +84,8 @@ public class BankImportDialog extends WRDialog{
 	
 	private JTabbedPane tabbedPane;
 	private ComponentGroup cgSubLoaded;
+	private ComponentGroup cgUse126;
+	private ComponentGroup cgUse127;
 	
 	private JCheckBox cbImportFont;
 	private JTextField txtEnum;
@@ -75,14 +95,23 @@ public class BankImportDialog extends WRDialog{
 	private JList<SubBank> lstBanks;
 	
 	private CheckboxTable cbtInst;
+	private CheckboxTable cbtExtInst;
 	private CheckboxTable cbtSamples;
 	
-	private JComboBox<PresetInfo> cmbxPerc;
-	private JCheckBox cbImportPerc;
-	private JCheckBox cbSaveDrumset;
-	private JCheckBox cbSaveDrum;
-	
 	private SampleOptionsPanel pnlSampleOps;
+	
+	//Perc & SFX panels
+	private JCheckBox cbUsePerc;
+	private JCheckBox cbSave127;
+	private JCheckBox cbSaveDrums127;
+	private JComboBox<SubBank> cmbxBank127;
+	private JComboBox<PresetInfo> cmbxPreset127;
+	private JCheckBox cbFilter127;
+	private JCheckBox cbUseSfx;
+	private JCheckBox cbSaveSfx;
+	private JComboBox<SubBank> cmbxBank126;
+	private JCheckBox cbFilter126;
+	private JComboBox<PresetInfo> cmbxPreset126;
 	
 	//Tags to apply to all incoming presets and samples
 	private Set<String> ptags;
@@ -96,6 +125,8 @@ public class BankImportDialog extends WRDialog{
 	public BankImportDialog(JFrame parent){
 		super(parent, true);
 		cgSubLoaded = globalEnable.newChild();
+		cgUse126 = cgSubLoaded.newChild();
+		cgUse127 = cgSubLoaded.newChild();
 		
 		initGUI();
 	}
@@ -182,7 +213,7 @@ public class BankImportDialog extends WRDialog{
 		gbc_btnCancel.gridy = 0;
 		pnlButtons.add(btnCancel, gbc_btnCancel);
 		globalEnable.addComponent("btnCancel", btnCancel);
-		btnImport.addActionListener(new ActionListener(){
+		btnCancel.addActionListener(new ActionListener(){
 			public void actionPerformed(ActionEvent e) {
 				btnCancelCallback();
 			}
@@ -316,83 +347,266 @@ public class BankImportDialog extends WRDialog{
 		tabbedPane.addTab("Instruments", null, pnlInst, null);
 		GridBagLayout gbl_pnlInst = new GridBagLayout();
 		gbl_pnlInst.columnWidths = new int[]{0, 0};
-		gbl_pnlInst.rowHeights = new int[]{0, 0, 0};
+		gbl_pnlInst.rowHeights = new int[] {0, 100, 50, 100, 0};
 		gbl_pnlInst.columnWeights = new double[]{1.0, Double.MIN_VALUE};
-		gbl_pnlInst.rowWeights = new double[]{1.0, 0.0, Double.MIN_VALUE};
+		gbl_pnlInst.rowWeights = new double[]{1.0, 0.0, 0.0, 0.0, Double.MIN_VALUE};
 		pnlInst.setLayout(gbl_pnlInst);
 		
 		cbtInst = new CheckboxTable(new int[]
-				{CheckboxTable.COLTYPE_STRING, CheckboxTable.COLTYPE_STRING,
-					CheckboxTable.COLTYPE_STRING,
-				CheckboxTable.COLTYPE_CHECKBOX, CheckboxTable.COLTYPE_CHECKBOX});
+				{CheckboxTable.COLTYPE_STRING, CheckboxTable.COLTYPE_STRING, CheckboxTable.COLTYPE_STRING,
+				CheckboxTable.COLTYPE_CHECKBOX, CheckboxTable.COLTYPE_CHECKBOX, CheckboxTable.COLTYPE_CHECKBOX});
 		cbtInst.setColumnName(INSTTBL_COL_INDEX, "Slot");
 		cbtInst.setColumnName(INSTTBL_COL_NAME, "Name");
 		cbtInst.setColumnName(INSTTBL_COL_WARNINGS, "Warnings");
 		cbtInst.setColumnName(INSTTBL_COL_TOFONT, "Include in Font");
 		cbtInst.setColumnName(INSTTBL_COL_TOPRESET, "Save Preset");
+		cbtInst.setColumnName(INSTTBL_COL_SAVEDRUMS, "Save Drums");
 		
 		GridBagConstraints gbc_pnlStdInst = new GridBagConstraints();
-		gbc_pnlStdInst.insets = new Insets(5, 5, 5, 5);
+		gbc_pnlStdInst.insets = new Insets(5, 5, 5, 0);
 		gbc_pnlStdInst.fill = GridBagConstraints.BOTH;
 		gbc_pnlStdInst.gridx = 0;
 		gbc_pnlStdInst.gridy = 0;
 		pnlInst.add(cbtInst, gbc_pnlStdInst);
 		
+		cbtExtInst = new CheckboxTable(new int[]
+				{CheckboxTable.COLTYPE_STRING, CheckboxTable.COLTYPE_STRING, CheckboxTable.COLTYPE_STRING,
+				CheckboxTable.COLTYPE_CHECKBOX, CheckboxTable.COLTYPE_STRING, 
+				CheckboxTable.COLTYPE_CHECKBOX, CheckboxTable.COLTYPE_CHECKBOX});
+		GridBagConstraints gbc_cbtExtInst = new GridBagConstraints();
+		gbc_cbtExtInst.insets = new Insets(0, 5, 5, 0);
+		gbc_cbtExtInst.fill = GridBagConstraints.BOTH;
+		gbc_cbtExtInst.gridx = 0;
+		gbc_cbtExtInst.gridy = 1;
+		pnlInst.add(cbtExtInst, gbc_cbtExtInst);
+		cbtExtInst.setColumnName(EXTRA_INSTTBL_COL_INDEX, "Source Slot");
+		cbtExtInst.setColumnName(EXTRA_INSTTBL_COL_NAME, "Name");
+		cbtExtInst.setColumnName(EXTRA_INSTTBL_COL_WARNINGS, "Warnings");
+		cbtExtInst.setColumnName(EXTRA_INSTTBL_COL_TOFONT, "Include in Font");
+		cbtExtInst.setColumnName(EXTRA_INSTTBL_COL_NEWIDX, "Target Slot");
+		cbtExtInst.setColumnName(EXTRA_INSTTBL_COL_TOPRESET, "Save Preset");
+		cbtExtInst.setColumnName(EXTRA_INSTTBL_COL_SAVEDRUMS, "Save Drums");
+		
 		JPanel pnlPerc = new JPanel();
 		pnlPerc.setBorder(new EtchedBorder(EtchedBorder.LOWERED, null, null));
 		GridBagConstraints gbc_pnlPerc = new GridBagConstraints();
-		gbc_pnlPerc.insets = new Insets(0, 5, 0, 5);
+		gbc_pnlPerc.insets = new Insets(0, 5, 5, 0);
 		gbc_pnlPerc.fill = GridBagConstraints.BOTH;
 		gbc_pnlPerc.gridx = 0;
-		gbc_pnlPerc.gridy = 1;
+		gbc_pnlPerc.gridy = 3;
 		pnlInst.add(pnlPerc, gbc_pnlPerc);
 		GridBagLayout gbl_pnlPerc = new GridBagLayout();
-		gbl_pnlPerc.columnWidths = new int[]{0, 0, 0, 0, 0, 0};
-		gbl_pnlPerc.rowHeights = new int[]{0, 0};
-		gbl_pnlPerc.columnWeights = new double[]{0.0, 1.0, 0.0, 0.0, 0.0, Double.MIN_VALUE};
-		gbl_pnlPerc.rowWeights = new double[]{0.0, Double.MIN_VALUE};
+		gbl_pnlPerc.columnWidths = new int[]{0, 0, 10, 0, 0, 0, 0, 0};
+		gbl_pnlPerc.rowHeights = new int[]{0, 0, 0, 0};
+		gbl_pnlPerc.columnWeights = new double[]{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0};
+		gbl_pnlPerc.rowWeights = new double[]{0.0, 0.0, 0.0, Double.MIN_VALUE};
 		pnlPerc.setLayout(gbl_pnlPerc);
 		
-		JLabel lblPercussion = new JLabel("Percussion:");
-		GridBagConstraints gbc_lblPercussion = new GridBagConstraints();
-		gbc_lblPercussion.anchor = GridBagConstraints.EAST;
-		gbc_lblPercussion.insets = new Insets(0, 5, 0, 5);
-		gbc_lblPercussion.gridx = 0;
-		gbc_lblPercussion.gridy = 0;
-		pnlPerc.add(lblPercussion, gbc_lblPercussion);
+		JLabel lbl127 = new JLabel("127 - Percussion");
+		lbl127.setFont(new Font("Tahoma", Font.BOLD, 13));
+		GridBagConstraints gbc_lbl127 = new GridBagConstraints();
+		gbc_lbl127.anchor = GridBagConstraints.WEST;
+		gbc_lbl127.gridwidth = 2;
+		gbc_lbl127.insets = new Insets(5, 5, 5, 5);
+		gbc_lbl127.gridx = 0;
+		gbc_lbl127.gridy = 0;
+		pnlPerc.add(lbl127, gbc_lbl127);
+		cgSubLoaded.addComponent("lbl127", lbl127);
 		
-		cmbxPerc = new JComboBox<PresetInfo>();
-		GridBagConstraints gbc_cmbxPerc = new GridBagConstraints();
-		gbc_cmbxPerc.insets = new Insets(0, 0, 0, 5);
-		gbc_cmbxPerc.fill = GridBagConstraints.HORIZONTAL;
-		gbc_cmbxPerc.gridx = 1;
-		gbc_cmbxPerc.gridy = 0;
-		pnlPerc.add(cmbxPerc, gbc_cmbxPerc);
-		cgSubLoaded.addComponent("cmbxPerc", cmbxPerc);
+		cbUsePerc = new JCheckBox("Import to Font");
+		GridBagConstraints gbc_cbUsePerc = new GridBagConstraints();
+		gbc_cbUsePerc.anchor = GridBagConstraints.WEST;
+		gbc_cbUsePerc.insets = new Insets(0, 0, 5, 5);
+		gbc_cbUsePerc.gridx = 4;
+		gbc_cbUsePerc.gridy = 0;
+		pnlPerc.add(cbUsePerc, gbc_cbUsePerc);
+		cgSubLoaded.addComponent("cbUsePerc", cbUsePerc);
+		cbUsePerc.addActionListener(new ActionListener(){
+			public void actionPerformed(ActionEvent e) {
+				cbUse127Callback();
+			}
+		});
 		
-		cbImportPerc = new JCheckBox("Import to Font");
-		GridBagConstraints gbc_cbImportPerc = new GridBagConstraints();
-		gbc_cbImportPerc.insets = new Insets(0, 0, 0, 5);
-		gbc_cbImportPerc.gridx = 2;
-		gbc_cbImportPerc.gridy = 0;
-		pnlPerc.add(cbImportPerc, gbc_cbImportPerc);
-		cgSubLoaded.addComponent("cbImportPerc", cbImportPerc);
+		cbSave127 = new JCheckBox("Save Preset");
+		GridBagConstraints gbc_cbSave127 = new GridBagConstraints();
+		gbc_cbSave127.anchor = GridBagConstraints.WEST;
+		gbc_cbSave127.insets = new Insets(0, 0, 5, 5);
+		gbc_cbSave127.gridx = 5;
+		gbc_cbSave127.gridy = 0;
+		pnlPerc.add(cbSave127, gbc_cbSave127);
+		cgUse127.addComponent("cbSave127", cbSave127);
 		
-		cbSaveDrumset = new JCheckBox("Save Drumset");
-		GridBagConstraints gbc_cbSaveDrumset = new GridBagConstraints();
-		gbc_cbSaveDrumset.insets = new Insets(0, 0, 0, 5);
-		gbc_cbSaveDrumset.gridx = 3;
-		gbc_cbSaveDrumset.gridy = 0;
-		pnlPerc.add(cbSaveDrumset, gbc_cbSaveDrumset);
-		cgSubLoaded.addComponent("cbSaveDrumset", cbSaveDrumset);
+		cbSaveDrums127 = new JCheckBox("Save Drums");
+		GridBagConstraints gbc_cbSaveDrums127 = new GridBagConstraints();
+		gbc_cbSaveDrums127.anchor = GridBagConstraints.WEST;
+		gbc_cbSaveDrums127.insets = new Insets(0, 0, 5, 0);
+		gbc_cbSaveDrums127.gridx = 6;
+		gbc_cbSaveDrums127.gridy = 0;
+		pnlPerc.add(cbSaveDrums127, gbc_cbSaveDrums127);
+		cgUse127.addComponent("cbSaveDrums127", cbSaveDrums127);
 		
-		cbSaveDrum = new JCheckBox("Save Drums");
-		GridBagConstraints gbc_cbSaveDrum = new GridBagConstraints();
-		gbc_cbSaveDrum.insets = new Insets(0, 0, 0, 5);
-		gbc_cbSaveDrum.gridx = 4;
-		gbc_cbSaveDrum.gridy = 0;
-		pnlPerc.add(cbSaveDrum, gbc_cbSaveDrum);
-		cgSubLoaded.addComponent("cbSaveDrum", cbSaveDrum);
+		JLabel lblBank127 = new JLabel("Bank:");
+		GridBagConstraints gbc_lblBank127 = new GridBagConstraints();
+		gbc_lblBank127.anchor = GridBagConstraints.EAST;
+		gbc_lblBank127.insets = new Insets(0, 5, 5, 5);
+		gbc_lblBank127.gridx = 0;
+		gbc_lblBank127.gridy = 1;
+		pnlPerc.add(lblBank127, gbc_lblBank127);
+		cgUse127.addComponent("lblBank127", lblBank127);
+		
+		cmbxBank127 = new JComboBox<SubBank>();
+		GridBagConstraints gbc_cmbxBank127 = new GridBagConstraints();
+		gbc_cmbxBank127.insets = new Insets(0, 0, 5, 5);
+		gbc_cmbxBank127.fill = GridBagConstraints.HORIZONTAL;
+		gbc_cmbxBank127.gridx = 1;
+		gbc_cmbxBank127.gridy = 1;
+		pnlPerc.add(cmbxBank127, gbc_cmbxBank127);
+		cgUse127.addComponent("cmbxBank127", cmbxBank127);
+		cmbxBank127.addActionListener(new ActionListener(){
+			public void actionPerformed(ActionEvent e) {
+				cmbxBank127Callback();
+			}
+		});
+		
+		JLabel lblPreset127 = new JLabel("Preset:");
+		GridBagConstraints gbc_lblPreset127 = new GridBagConstraints();
+		gbc_lblPreset127.anchor = GridBagConstraints.EAST;
+		gbc_lblPreset127.insets = new Insets(0, 0, 5, 5);
+		gbc_lblPreset127.gridx = 3;
+		gbc_lblPreset127.gridy = 1;
+		pnlPerc.add(lblPreset127, gbc_lblPreset127);
+		cgUse127.addComponent("lblPreset127", lblPreset127);
+		
+		cmbxPreset127 = new JComboBox<PresetInfo>();
+		GridBagConstraints gbc_cmbxPreset127 = new GridBagConstraints();
+		gbc_cmbxPreset127.gridwidth = 3;
+		gbc_cmbxPreset127.insets = new Insets(0, 0, 5, 5);
+		gbc_cmbxPreset127.fill = GridBagConstraints.HORIZONTAL;
+		gbc_cmbxPreset127.gridx = 4;
+		gbc_cmbxPreset127.gridy = 1;
+		pnlPerc.add(cmbxPreset127, gbc_cmbxPreset127);
+		cgUse127.addComponent("cmbxPreset127", cmbxPreset127);
+		
+		cbFilter127 = new JCheckBox("Exclude regular instruments");
+		cbFilter127.setSelected(true);
+		GridBagConstraints gbc_cbFilter127 = new GridBagConstraints();
+		gbc_cbFilter127.anchor = GridBagConstraints.WEST;
+		gbc_cbFilter127.gridx = 4;
+		gbc_cbFilter127.gridy = 2;
+		pnlPerc.add(cbFilter127, gbc_cbFilter127);
+		cgUse127.addComponent("cbFilter127", cbFilter127);
+		cbFilter127.addActionListener(new ActionListener(){
+			public void actionPerformed(ActionEvent e) {
+				cbFilter127Callback();
+			}
+		});
+		
+		JPanel pnlSfx = new JPanel();
+		pnlSfx.setBorder(new EtchedBorder(EtchedBorder.LOWERED, null, null));
+		GridBagConstraints gbc_pnlSfx = new GridBagConstraints();
+		gbc_pnlSfx.insets = new Insets(0, 5, 5, 0);
+		gbc_pnlSfx.fill = GridBagConstraints.BOTH;
+		gbc_pnlSfx.gridx = 0;
+		gbc_pnlSfx.gridy = 2;
+		pnlInst.add(pnlSfx, gbc_pnlSfx);
+		GridBagLayout gbl_pnlSfx = new GridBagLayout();
+		gbl_pnlSfx.columnWidths = new int[] {0, 0, 10, 0, 0, 0, 0};
+		gbl_pnlSfx.rowHeights = new int[]{0, 0, 0, 0};
+		gbl_pnlSfx.columnWeights = new double[]{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0};
+		gbl_pnlSfx.rowWeights = new double[]{0.0, 0.0, 0.0, Double.MIN_VALUE};
+		pnlSfx.setLayout(gbl_pnlSfx);
+		
+		JLabel lbl126 = new JLabel("126 - Sound Effects Program");
+		lbl126.setFont(new Font("Tahoma", Font.BOLD, 13));
+		GridBagConstraints gbc_lbl126 = new GridBagConstraints();
+		gbc_lbl126.anchor = GridBagConstraints.WEST;
+		gbc_lbl126.gridwidth = 2;
+		gbc_lbl126.insets = new Insets(5, 5, 5, 5);
+		gbc_lbl126.gridx = 0;
+		gbc_lbl126.gridy = 0;
+		pnlSfx.add(lbl126, gbc_lbl126);
+		cgSubLoaded.addComponent("lbl126", lbl126);
+		
+		cbUseSfx = new JCheckBox("Import to Font");
+		GridBagConstraints gbc_cbUseSfx = new GridBagConstraints();
+		gbc_cbUseSfx.anchor = GridBagConstraints.WEST;
+		gbc_cbUseSfx.insets = new Insets(5, 0, 5, 5);
+		gbc_cbUseSfx.gridx = 4;
+		gbc_cbUseSfx.gridy = 0;
+		pnlSfx.add(cbUseSfx, gbc_cbUseSfx);
+		cgSubLoaded.addComponent("cbUseSfx", cbUseSfx);
+		cbUseSfx.addActionListener(new ActionListener(){
+			public void actionPerformed(ActionEvent e) {
+				cbUse126Callback();
+			}
+		});
+		
+		cbSaveSfx = new JCheckBox("Save SFX Preset");
+		GridBagConstraints gbc_cbSaveSfx = new GridBagConstraints();
+		gbc_cbSaveSfx.anchor = GridBagConstraints.WEST;
+		gbc_cbSaveSfx.insets = new Insets(5, 0, 5, 5);
+		gbc_cbSaveSfx.gridx = 5;
+		gbc_cbSaveSfx.gridy = 0;
+		pnlSfx.add(cbSaveSfx, gbc_cbSaveSfx);
+		cgUse126.addComponent("cbSaveSfx", cbSaveSfx);
+		
+		JLabel lblBank126 = new JLabel("Bank:");
+		GridBagConstraints gbc_lblBank126 = new GridBagConstraints();
+		gbc_lblBank126.insets = new Insets(0, 5, 5, 5);
+		gbc_lblBank126.anchor = GridBagConstraints.EAST;
+		gbc_lblBank126.gridx = 0;
+		gbc_lblBank126.gridy = 1;
+		pnlSfx.add(lblBank126, gbc_lblBank126);
+		cgUse126.addComponent("lblBank126", lblBank126);
+		
+		cmbxBank126 = new JComboBox<SubBank>();
+		GridBagConstraints gbc_cmbxBank126 = new GridBagConstraints();
+		gbc_cmbxBank126.insets = new Insets(0, 0, 5, 5);
+		gbc_cmbxBank126.fill = GridBagConstraints.HORIZONTAL;
+		gbc_cmbxBank126.gridx = 1;
+		gbc_cmbxBank126.gridy = 1;
+		pnlSfx.add(cmbxBank126, gbc_cmbxBank126);
+		cgUse126.addComponent("cmbxBank126", cmbxBank126);
+		cmbxBank126.addActionListener(new ActionListener(){
+			public void actionPerformed(ActionEvent e) {
+				cmbxBank126Callback();
+			}
+		});
+		
+		JLabel lblPreset126 = new JLabel("Preset:");
+		GridBagConstraints gbc_lblPreset126 = new GridBagConstraints();
+		gbc_lblPreset126.insets = new Insets(0, 0, 5, 5);
+		gbc_lblPreset126.anchor = GridBagConstraints.EAST;
+		gbc_lblPreset126.gridx = 3;
+		gbc_lblPreset126.gridy = 1;
+		pnlSfx.add(lblPreset126, gbc_lblPreset126);
+		cgUse126.addComponent("lblPreset126", lblPreset126);
+		
+		cbFilter126 = new JCheckBox("Exclude regular instruments");
+		cbFilter126.setSelected(true);
+		GridBagConstraints gbc_cbFilter126 = new GridBagConstraints();
+		gbc_cbFilter126.anchor = GridBagConstraints.WEST;
+		gbc_cbFilter126.gridwidth = 2;
+		gbc_cbFilter126.insets = new Insets(0, 0, 5, 5);
+		gbc_cbFilter126.gridx = 4;
+		gbc_cbFilter126.gridy = 2;
+		pnlSfx.add(cbFilter126, gbc_cbFilter126);
+		cgUse126.addComponent("cbFilter126", cbFilter126);
+		cbFilter126.addActionListener(new ActionListener(){
+			public void actionPerformed(ActionEvent e) {
+				cbFilter126Callback();
+			}
+		});
+		
+		cmbxPreset126 = new JComboBox<PresetInfo>();
+		GridBagConstraints gbc_cmbxPreset126 = new GridBagConstraints();
+		gbc_cmbxPreset126.gridwidth = 2;
+		gbc_cmbxPreset126.insets = new Insets(0, 0, 5, 5);
+		gbc_cmbxPreset126.fill = GridBagConstraints.HORIZONTAL;
+		gbc_cmbxPreset126.gridx = 4;
+		gbc_cmbxPreset126.gridy = 1;
+		pnlSfx.add(cmbxPreset126, gbc_cmbxPreset126);
+		cgUse126.addComponent("cmbxPreset126", cmbxPreset126);
 	}
 	
 	private void initSampleTab(){
@@ -463,6 +677,8 @@ public class BankImportDialog extends WRDialog{
 		bankInfo = info.copy();
 		selectedBank = null;
 		updateBankList();
+		populateBankCombobox(cmbxBank126);
+		populateBankCombobox(cmbxBank127);
 		loadSamplesToGUI();
 	}
 	
@@ -498,19 +714,25 @@ public class BankImportDialog extends WRDialog{
 		reenable();
 	}
 	
-	private void selectSubbank(int index){
+	private void selectSubbank(int id){
 		saveGUIToSubbank(selectedBank);
 		
-		if(index < 0 || index >= bankInfo.getBankCount()) return;
-		selectedBank = bankInfo.getBank(index);
+		//if(index < 0 || index >= bankInfo.getBankCount()) return;
+		if(id >= 0) {
+			selectedBank = bankInfo.getBank(id);
+		}
+		else {
+			//Just pull first from list
+			selectedBank = lstBanks.getModel().getElementAt(0);
+		}
 		loadSubbankToGUI(selectedBank);
 	}
 		
 	private void loadSubbankToFontsInfoPanel(SubBank bnk){
 		if(bnk != null){
 			cbImportFont.setSelected(bnk.importAsFont);
-			txtEnum.setText(bnk.name);
-			txtName.setText(bnk.enumLabel);
+			txtName.setText(bnk.name);
+			txtEnum.setText(bnk.enumLabel);
 			cmbxCache.setRawValue(bnk.cache);
 			cmbxMedium.setRawValue(bnk.medium);
 		}
@@ -523,24 +745,28 @@ public class BankImportDialog extends WRDialog{
 
 	private void loadSubbankToInstPanel(SubBank bnk){
 		if(bnk != null){
-			cbImportPerc.setSelected(bnk.importPercToFont);
-			cbSaveDrumset.setSelected(bnk.saveDrumset);
-			cbSaveDrum.setSelected(bnk.saveDrums);
+			//cbImportPerc.setSelected(bnk.importPercToFont);
+			//cbSaveDrumset.setSelected(bnk.saveDrumset);
+			//cbSaveDrum.setSelected(bnk.saveDrums);
 			
 			if(bnk.instruments != null){
-				cbtInst.allocateRows(bnk.instruments.length);
-				DefaultComboBoxModel<PresetInfo> mdl = new DefaultComboBoxModel<PresetInfo>();
+				int mainInstAlloc = bnk.instruments.length;
+				if(mainInstAlloc > 126) mainInstAlloc = 126;
+				cbtInst.allocateRows(mainInstAlloc);
+				//DefaultComboBoxModel<PresetInfo> mdl = new DefaultComboBoxModel<PresetInfo>();
 				
-				for(int i = 0; i < bnk.instruments.length; i++){
+				for(int i = 0; i < mainInstAlloc; i++){
 					PresetInfo preset = bnk.instruments[i];
 					if(!preset.emptySlot){
-						mdl.addElement(preset);
+						//mdl.addElement(preset);
 						cbtInst.setTextCellContents(i, INSTTBL_COL_INDEX, String.format("%03d", preset.index));
 						cbtInst.setTextCellContents(i, INSTTBL_COL_NAME, preset.name);
 						cbtInst.setTextCellContents(i, INSTTBL_COL_WARNINGS, String.format("%08x", preset.warningFlags));
 						cbtInst.setCheckboxCellContents(i, INSTTBL_COL_TOFONT, preset.importToFont);
 						cbtInst.setCheckboxCellContents(i, INSTTBL_COL_TOPRESET, preset.savePreset);
+						cbtInst.setCheckboxCellContents(i, INSTTBL_COL_SAVEDRUMS, preset.saveDrums);
 						cbtInst.setRowEnabled(i, true);
+						cbtInst.setCellEnabled(i, INSTTBL_COL_SAVEDRUMS, preset.percInSrc);
 					}
 					else{
 						cbtInst.setTextCellContents(i, INSTTBL_COL_INDEX, String.format("%03d", preset.index));
@@ -548,29 +774,85 @@ public class BankImportDialog extends WRDialog{
 						cbtInst.setTextCellContents(i, INSTTBL_COL_WARNINGS, "N/A");
 						cbtInst.setCheckboxCellContents(i, INSTTBL_COL_TOFONT, false);
 						cbtInst.setCheckboxCellContents(i, INSTTBL_COL_TOPRESET, false);
+						cbtInst.setCheckboxCellContents(i, INSTTBL_COL_SAVEDRUMS, false);
 						cbtInst.setRowEnabled(i, false);
 						
 						//Dummy to keep indices the same
-						preset = new PresetInfo();
+						/*preset = new PresetInfo();
 						preset.index = i;
 						preset.name = "<Empty>";
-						mdl.addElement(preset);
+						mdl.addElement(preset);*/
 					}
 				}
-				cmbxPerc.setModel(mdl);
+				//cmbxPerc.setModel(mdl);
+				
+				if(bnk.instruments.length > 126) {
+					cbtExtInst.allocateRows(2);
+					for(int i = 0; i < 2; i++){
+						int pidx = i + 126;
+						PresetInfo preset = null;
+						if(pidx < bnk.instruments.length) preset = bnk.instruments[pidx];
+						if((preset != null) && (!preset.emptySlot)) {
+							cbtExtInst.setTextCellContents(i, EXTRA_INSTTBL_COL_INDEX, String.format("%03d", preset.index));
+							cbtExtInst.setTextCellContents(i, EXTRA_INSTTBL_COL_NAME, preset.name);
+							cbtExtInst.setTextCellContents(i, EXTRA_INSTTBL_COL_WARNINGS, String.format("%08x", preset.warningFlags));
+							cbtExtInst.setCheckboxCellContents(i, EXTRA_INSTTBL_COL_TOFONT, preset.importToFont);
+							cbtExtInst.setCheckboxCellContents(i, EXTRA_INSTTBL_COL_TOPRESET, preset.savePreset);
+							cbtExtInst.setCheckboxCellContents(i, EXTRA_INSTTBL_COL_SAVEDRUMS, preset.saveDrums);
+							if(preset.movedToIndex >= 0) {
+								cbtExtInst.setTextCellContents(i, EXTRA_INSTTBL_COL_NEWIDX, String.format("%03d", preset.movedToIndex));
+							}
+							else {
+								cbtExtInst.setTextCellContents(i, EXTRA_INSTTBL_COL_NEWIDX, "N/A");
+							}
+							cbtExtInst.setRowEnabled(i, true);
+							cbtExtInst.setCellEnabled(i, EXTRA_INSTTBL_COL_SAVEDRUMS, preset.percInSrc);
+						}
+						else {
+							cbtExtInst.setTextCellContents(i, EXTRA_INSTTBL_COL_INDEX, String.format("%03d", preset.index));
+							cbtExtInst.setTextCellContents(i, EXTRA_INSTTBL_COL_NAME, "<Empty>");
+							cbtExtInst.setTextCellContents(i, EXTRA_INSTTBL_COL_WARNINGS, "N/A");
+							cbtExtInst.setTextCellContents(i, EXTRA_INSTTBL_COL_NEWIDX, "N/A");
+							cbtExtInst.setCheckboxCellContents(i, EXTRA_INSTTBL_COL_TOFONT, false);
+							cbtExtInst.setCheckboxCellContents(i, EXTRA_INSTTBL_COL_TOPRESET, false);
+							cbtExtInst.setCheckboxCellContents(i, EXTRA_INSTTBL_COL_SAVEDRUMS, false);
+							cbtExtInst.setRowEnabled(i, false);
+						}
+					}
+				}
+				else {
+					cbtExtInst.allocateRows(0);
+				}
+				
+				
+				cbUsePerc.setSelected(bnk.importPercToFont);
+				cbUseSfx.setSelected(bnk.importSfxToFont);
+				cbSave127.setSelected(bnk.saveDrumset);
+				cbSaveDrums127.setSelected(bnk.saveDrums);
+				cbSaveSfx.setSelected(bnk.saveSfx);
+				updateCmbxSelectionTo(cmbxBank127, cmbxPreset127, bnk.percBank, bnk.percInst, cbFilter127.isSelected());
+				updateCmbxSelectionTo(cmbxBank126, cmbxPreset126, bnk.sfxBank, bnk.sfxInst, cbFilter126.isSelected());
 			}
 			else{
 				cbtInst.allocateRows(0);
-				cmbxPerc.setModel(new DefaultComboBoxModel<PresetInfo>());
+				cbtExtInst.allocateRows(0);
+				//cmbxPerc.setModel(new DefaultComboBoxModel<PresetInfo>());
 			}
 		}
 		else{
 			cbtInst.allocateRows(0);
-			cmbxPerc.setModel(new DefaultComboBoxModel<PresetInfo>());
-			cbImportPerc.setSelected(false);
-			cbSaveDrumset.setSelected(false);
-			cbSaveDrum.setSelected(false);
+			cbtExtInst.allocateRows(0);
+			//cmbxPerc.setModel(new DefaultComboBoxModel<PresetInfo>());
+			//cbImportPerc.setSelected(false);
+			//cbSaveDrumset.setSelected(false);
+			//cbSaveDrum.setSelected(false);
+			cbUsePerc.setSelected(false);
+			cbUseSfx.setSelected(false);
+			cbSave127.setSelected(false);
+			cbSaveDrums127.setSelected(false);
+			cbSaveSfx.setSelected(false);
 		}
+		
 	}
 	
 	private void loadSubbankToGUI(SubBank bnk){
@@ -590,25 +872,23 @@ public class BankImportDialog extends WRDialog{
 	
 	private void saveInstPanelToSubbank(SubBank bnk){
 		if(bnk == null) return;
-		bnk.importPercToFont = cbImportPerc.isSelected();
-		bnk.saveDrumset = cbSaveDrumset.isSelected();
-		bnk.saveDrums = cbSaveDrum.isSelected();
 		
-		if(bnk.importPercToFont){
-			bnk.percInst = cmbxPerc.getSelectedIndex();
-		}
-		else bnk.percInst = -1;
-		
+		//Main inst table
 		int icount = cbtInst.getAllocatedRowCount();
-		bnk.allocInstruments(icount);
+		int eicount = cbtExtInst.getAllocatedRowCount();
+		if (eicount > 0) icount = 126;
+		bnk.allocInstruments(icount + eicount);
 		for(int i = 0; i < icount; i++){
 			bnk.instruments[i].index = i;
 			boolean notEmpty = cbtInst.rowEnabled(i);
 			if(notEmpty){
 				bnk.instruments[i].emptySlot = false;
 				bnk.instruments[i].name = cbtInst.getTextCellContents(i, INSTTBL_COL_NAME);
+				bnk.instruments[i].warningFlags = Integer.parseUnsignedInt(cbtInst.getTextCellContents(i, INSTTBL_COL_WARNINGS), 16);
 				bnk.instruments[i].importToFont = cbtInst.getCheckboxCellContents(i, INSTTBL_COL_TOFONT);
 				bnk.instruments[i].savePreset = cbtInst.getCheckboxCellContents(i, INSTTBL_COL_TOPRESET);
+				bnk.instruments[i].percInSrc = cbtInst.cellEnabled(i, INSTTBL_COL_SAVEDRUMS);
+				bnk.instruments[i].saveDrums = cbtInst.getCheckboxCellContents(i, INSTTBL_COL_SAVEDRUMS);
 			}
 			else{
 				bnk.instruments[i].emptySlot = true;
@@ -616,6 +896,50 @@ public class BankImportDialog extends WRDialog{
 				bnk.instruments[i].savePreset = false;
 			}
 		}
+		
+		//Extra slots table
+		for(int i = 0; i < eicount; i++) {
+			int ii = 126 + i;
+			bnk.instruments[ii].index = ii;
+			boolean notEmpty = cbtExtInst.rowEnabled(i);
+			if(notEmpty){
+				bnk.instruments[ii].emptySlot = false;
+				bnk.instruments[ii].name = cbtExtInst.getTextCellContents(i, EXTRA_INSTTBL_COL_NAME);
+				bnk.instruments[ii].warningFlags = Integer.parseUnsignedInt(cbtExtInst.getTextCellContents(i, EXTRA_INSTTBL_COL_WARNINGS), 16);
+				bnk.instruments[ii].importToFont = cbtExtInst.getCheckboxCellContents(i, EXTRA_INSTTBL_COL_TOFONT);
+				bnk.instruments[ii].savePreset = cbtExtInst.getCheckboxCellContents(i, EXTRA_INSTTBL_COL_TOPRESET);
+				bnk.instruments[ii].percInSrc = cbtExtInst.cellEnabled(i, EXTRA_INSTTBL_COL_SAVEDRUMS);
+				bnk.instruments[ii].saveDrums = cbtExtInst.getCheckboxCellContents(i, EXTRA_INSTTBL_COL_SAVEDRUMS);
+				
+				String ccont = cbtExtInst.getTextCellContents(i, EXTRA_INSTTBL_COL_NEWIDX);
+				if((ccont == null) || ccont.equals("N/A")) {
+					bnk.instruments[ii].movedToIndex = -1;
+				}
+				else {
+					bnk.instruments[ii].movedToIndex = Integer.parseInt(ccont);	
+				}
+			}
+			else{
+				bnk.instruments[ii].emptySlot = true;
+				bnk.instruments[ii].importToFont = false;
+				bnk.instruments[ii].savePreset = false;
+				bnk.instruments[ii].saveDrums = false;
+				bnk.instruments[ii].movedToIndex = -1;
+			}
+		}
+		
+		//Slot 126
+		bnk.importSfxToFont = cbUseSfx.isSelected();
+		bnk.saveSfx = cbSaveSfx.isSelected();
+		bnk.sfxBank = getSelectedBank126Id();
+		bnk.sfxInst = getSelectedPreset126Index();
+		
+		//Slot 127
+		bnk.importPercToFont = cbUsePerc.isSelected();
+		bnk.saveDrumset = cbSave127.isSelected();
+		bnk.saveDrums = cbSaveDrums127.isSelected();
+		bnk.percBank = getSelectedBank127Id();
+		bnk.percInst = getSelectedPreset127Index();
 	}
 	
 	private void saveGUIToSubbank(SubBank bnk){
@@ -625,7 +949,98 @@ public class BankImportDialog extends WRDialog{
 	
 	/*----- GUI Management -----*/
 	
-	private void clearBankList(){
+	private void populateBankCombobox(JComboBox<SubBank> cmbxBank) {
+		DefaultComboBoxModel<SubBank> mdl = new DefaultComboBoxModel<SubBank>();
+		if(bankInfo != null) {
+			List<Integer> bnkIds = bankInfo.getAllBankIds();
+			for(Integer id : bnkIds) {
+				mdl.addElement(bankInfo.getBank(id));
+			}
+		}
+		cmbxBank.setModel(mdl);
+	}
+	
+	private static void populatePresetCombobox(JComboBox<PresetInfo> cmbxPreset, SubBank bank, boolean percFilter) {
+		DefaultComboBoxModel<PresetInfo> mdl = new DefaultComboBoxModel<PresetInfo>();
+		if(bank != null) {
+			int icount = bank.instruments.length;
+			for(int i = 0; i < icount; i++) {
+				if(bank.instruments[i] == null) continue;
+				if(bank.instruments[i].emptySlot) continue;
+				if(percFilter && !bank.instruments[i].percInSrc) continue;
+				mdl.addElement(bank.instruments[i]);
+			}
+		}
+		cmbxPreset.setModel(mdl);
+		cmbxPreset.setSelectedIndex(-1);
+	}
+	
+	private void updateCmbxSelectionTo(JComboBox<SubBank> cmbxBank, JComboBox<PresetInfo> cmbxPreset, int bankId, int presetId, boolean percFilter) {
+		SubBank selbnk = null;
+		int selidx = -1;
+		ComboBoxModel<SubBank> bmdl = cmbxBank.getModel();
+		int count = bmdl.getSize();
+		for(int i = 0; i < count; i++) {
+			SubBank bnk = bmdl.getElementAt(i);
+			if(bnk.bankIndex == bankId) {
+				selbnk = bnk;
+				selidx = i;
+				break;
+			}
+		}
+		
+		cmbxBank.setSelectedIndex(selidx);
+		populatePresetCombobox(cmbxPreset, selbnk, percFilter);
+		if(selbnk == null) return;
+		selidx = -1;
+		ComboBoxModel<PresetInfo> pmdl = cmbxPreset.getModel();
+		count = pmdl.getSize();
+		for(int i = 0; i < count; i++) {
+			PresetInfo preset = pmdl.getElementAt(i);
+			if(preset.index == presetId) {
+				selidx = i;
+				break;
+			}
+		}
+		
+		cmbxPreset.setSelectedIndex(selidx);
+	}
+	
+	private static SubBank getBankComboBoxSelection(JComboBox<SubBank> cmbxBank) {
+		ComboBoxModel<SubBank> bmdl = cmbxBank.getModel();
+		return bmdl.getElementAt(cmbxBank.getSelectedIndex());
+	}
+	
+	private static PresetInfo getPresetComboBoxSelection(JComboBox<PresetInfo> cmbxPreset) {
+		ComboBoxModel<PresetInfo> mdl = cmbxPreset.getModel();
+		return mdl.getElementAt(cmbxPreset.getSelectedIndex());
+	}
+	
+	private int getSelectedBank126Id() {
+		SubBank bnk = getBankComboBoxSelection(cmbxBank126);
+		if(bnk == null) return -1;
+		return bnk.bankIndex;
+	}
+	
+	private int getSelectedPreset126Index() {
+		PresetInfo preset = getPresetComboBoxSelection(cmbxPreset126);
+		if(preset == null) return -1;
+		return preset.index;
+	}
+	
+	private int getSelectedBank127Id() {
+		SubBank bnk = getBankComboBoxSelection(cmbxBank127);
+		if(bnk == null) return -1;
+		return bnk.bankIndex;
+	}
+	
+	private int getSelectedPreset127Index() {
+		PresetInfo preset = getPresetComboBoxSelection(cmbxPreset127);
+		if(preset == null) return -1;
+		return preset.index;
+	}
+	
+ 	private void clearBankList(){
 		selectedBank = null;
 		lstBanks.setModel(new DefaultListModel<SubBank>());
 	}
@@ -636,24 +1051,25 @@ public class BankImportDialog extends WRDialog{
 			return;
 		}
 		
-		int count = bankInfo.getBankCount();
-		if(count < 1){
+		List<Integer> idlist = bankInfo.getAllBankIds();
+		if(idlist.isEmpty()){
 			clearBankList();
 			return;
 		}
 		
-		int selidx = lstBanks.getSelectedIndex();
+		//int selidx = lstBanks.getSelectedIndex();
+		SubBank selobj = lstBanks.getSelectedValue();
 		DefaultListModel<SubBank> mdl = new DefaultListModel<SubBank>();
-		for(int i = 0; i < count; i++){
-			mdl.addElement(bankInfo.getBank(i));
+		for(Integer id : idlist) {
+			mdl.addElement(bankInfo.getBank(id));
 		}
-		
+
 		lstBanks.setModel(mdl);
-		if(selidx > 0 && selidx < count){
-			selectSubbank(selidx);
+		if(selobj != null){
+			selectSubbank(selobj.bankIndex);
 		}
 		else{
-			selectSubbank(0);
+			selectSubbank(-1);
 		}
 	}
 	
@@ -661,27 +1077,69 @@ public class BankImportDialog extends WRDialog{
 		super.reenable();
 		cgSubLoaded.setEnabling(selectedBank != null);
 		cbtInst.updateEnabling();
+		cbtExtInst.updateEnabling();
 		cbtSamples.updateEnabling();
 		
 		if(bankInfo != null){
 			pnlSampleOps.reenable();
+			cgUse126.setEnabling(cbUseSfx.isSelected());
+			cgUse127.setEnabling(cbUsePerc.isSelected());
 		}
 		else pnlSampleOps.disableAll();
+		//repaint();
 	}
 	
 	public void disableAll(){
 		super.disableAll();
 		cbtInst.disableAll();
+		cbtExtInst.disableAll();
 		cbtSamples.disableAll();
 	}
 	
 	public void repaint(){
 		super.repaint();
 		cbtInst.repaintAll();
+		cbtExtInst.repaintAll();
 		cbtSamples.repaintAll();
 	}
 	
 	/*----- Callbacks -----*/
+	
+	private void cmbxBank126Callback() {
+		setWait();
+		SubBank sel = getBankComboBoxSelection(cmbxBank126);
+		populatePresetCombobox(cmbxPreset126, sel, cbFilter126.isSelected());
+		unsetWait();
+	}
+	
+	private void cmbxBank127Callback() {
+		setWait();
+		SubBank sel = getBankComboBoxSelection(cmbxBank127);
+		populatePresetCombobox(cmbxPreset127, sel, cbFilter127.isSelected());
+		unsetWait();
+	}
+	
+	private void cbUse126Callback() {
+		reenable();
+	}
+	
+	private void cbUse127Callback() {
+		reenable();
+	}
+	
+	private void cbFilter126Callback() {
+		setWait();
+		SubBank sel = getBankComboBoxSelection(cmbxBank126);
+		populatePresetCombobox(cmbxPreset126, sel, cbFilter126.isSelected());
+		unsetWait();
+	}
+	
+	private void cbFilter127Callback() {
+		setWait();
+		SubBank sel = getBankComboBoxSelection(cmbxBank127);
+		populatePresetCombobox(cmbxPreset127, sel, cbFilter127.isSelected());
+		unsetWait();
+	}
 	
 	private void btnOkayCallback(){
 		exitSelection = true;
@@ -719,9 +1177,12 @@ public class BankImportDialog extends WRDialog{
 	
 	private void lstFontSelectCallback(){
 		setWait();
-		int selidx = lstBanks.getSelectedIndex();
-		if(selidx >= 0){
-			selectSubbank(selidx);
+		SubBank selobj = lstBanks.getSelectedValue();
+		if(selobj != null){
+			selectSubbank(selobj.bankIndex);
+		}
+		else {
+			selectSubbank(-1);
 		}
 		unsetWait();
 	}

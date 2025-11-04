@@ -1423,6 +1423,15 @@ public class ZeqerCore {
 			return false;
 		}
 	}
+
+	public WaveTableEntry updateWaveLoop(int uid, int loopStart, int loopEnd, int loopCount) {
+		if(wavManager == null) return null;
+		try {return wavManager.updateLoop(uid, loopStart, loopEnd, loopCount);} 
+		catch (Exception e) {
+			e.printStackTrace();
+			return null;
+		}
+	}
 	
 	public ZeqerSeq addUserSeq(NUSALSeq seq) {
 		if(seqManager == null) return null;

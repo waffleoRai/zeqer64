@@ -1,5 +1,12 @@
 package waffleoRai_zeqer64.bankImport;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+
 import waffleoRai_Sound.nintendo.Z64Sound;
 
 public class BankImportInfo {
@@ -10,8 +17,11 @@ public class BankImportInfo {
 	
 	public static final int SAMPLE_WARNING_LOWSR = 1 << 0; //Sample rate is very low. May not compress well.
 	
-	public static final int PRESET_WARNING_REGCOUNT = 1 << 0; //More than 3 regions. Will need to collapse.
+	public static final int PRESET_WARNING_REGCOUNT = 1 << 0; //More than 3 regions (inst). Will need to collapse.
 	public static final int PRESET_WARNING_INCOMP_MODS = 1 << 1; //Contains incompatible modulation specs.
+	public static final int PRESET_WARNING_REGCOUNT_PERC = 1 << 2; //Perc preset contains drum assignments outside 64 note range
+	public static final int PRESET_WARNING_BAD_SLOT = 1 << 3; //Instrument preset sits in slot 126 or 127. Will be moved or cut.
+	public static final int PRESET_WARNING_PERC_AS_INST = 1 << 4; //Preset marked as percussion in source is in instrument slot for import
 	
 	/*----- Inner Classes -----*/
 	
@@ -33,6 +43,7 @@ public class BankImportInfo {
 			other.id = this.id;
 			other.name = this.name;
 			other.importSample = this.importSample;
+			other.warningFlags = this.warningFlags;
 		}
 		
 		public String toString(){
@@ -47,16 +58,26 @@ public class BankImportInfo {
 		
 		public boolean importToFont = true;
 		public boolean savePreset = false;
+		public boolean percInSrc = false; //Is marked percussion in source file
+		public boolean saveDrums = false;
 		
 		public boolean emptySlot = true;
 		public int warningFlags = 0;
+		public int movedToIndex = -1; //If in slot 126 or 127
+		
+		public List<String> incompModNames = new LinkedList<String>();
 		
 		public void copyTo(PresetInfo other){
 			if(other == null) return;
 			other.index = this.index;
 			other.name = this.name;
+			other.emptySlot = this.emptySlot;
+			other.warningFlags = this.warningFlags;
 			other.importToFont = this.importToFont;
 			other.savePreset = this.savePreset;
+			other.percInSrc = this.percInSrc;
+			other.saveDrums = this.saveDrums;
+			other.movedToIndex = this.movedToIndex;
 		}
 		
 		public PresetInfo copy(){
@@ -87,10 +108,17 @@ public class BankImportInfo {
 		public PresetInfo[] instruments;
 		
 		//Perc
+		public int percBank = -1; //If from other bank
 		public int percInst = -1; //Preset index
 		public boolean importPercToFont = false;
 		public boolean saveDrumset = false;
 		public boolean saveDrums = false;
+		
+		//SFX
+		public int sfxBank = -1; //If from other bank
+		public int sfxInst = -1; //Preset index
+		public boolean importSfxToFont = false;
+		public boolean saveSfx = false;
 		
 		public void allocInstruments(int count){
 			if(count < 1){
@@ -124,10 +152,15 @@ public class BankImportInfo {
 			other.medium = this.medium;
 			other.importAsFont = this.importAsFont;
 			other.bankIndex = this.bankIndex;
+			other.percBank = this.percBank;
 			other.percInst = this.percInst;
 			other.importPercToFont = this.importPercToFont;
 			other.saveDrumset = this.saveDrumset;
 			other.saveDrums = this.saveDrums;
+			other.sfxBank = this.sfxBank;
+			other.sfxInst = this.sfxInst;
+			other.importSfxToFont = this.importSfxToFont;
+			other.saveSfx = this.saveSfx;
 			if(this.instruments != null){
 				other.instruments = new PresetInfo[this.instruments.length];
 				for(int i = 0; i < this.instruments.length; i++){
@@ -148,17 +181,23 @@ public class BankImportInfo {
 		}
 		
 		public String toString(){
-			return String.format("%03d - %s", bankIndex, name);
+			return String.format("0x%04x - %s", bankIndex, name);
 		}
 		
 	}
 	
 	/*----- Instance Variables -----*/
 	
-	private SubBank[] banks;
+	//private SubBank[] banks;
+	private Map<Integer, SubBank> banks; //IDs are not necessarily index
 	private SampleInfo[] samples;
 	
 	/*----- Init -----*/
+	
+	public BankImportInfo(int sampleAlloc){
+		allocBanks(0); //Just instantiates map
+		allocSamples(sampleAlloc);
+	}
 	
 	public BankImportInfo(int bankAlloc, int sampleAlloc){
 		allocBanks(bankAlloc);
@@ -166,22 +205,27 @@ public class BankImportInfo {
 	}
 	
 	public void allocBanks(int alloc){
+		banks = new HashMap<Integer, SubBank>();
 		if(alloc < 1){
-			banks = null;
 			return;
 		}
-		banks = new SubBank[alloc];
+		//banks = new SubBank[alloc];
 		for(int i = 0; i < alloc; i++){
 			newBank(i);
 		}
 	}
 	
-	private void newBank(int index){
-		banks[index] = new SubBank();
-		banks[index].bankIndex = index;
-		banks[index].name = String.format("Bank %05d", index);
-		banks[index].enumLabel = String.format("SFBANK_%05d", index);
-		banks[index].allocInstruments(128);
+	public SubBank newBank(int index){
+		SubBank bank = new SubBank();
+		bank = new SubBank();
+		bank.bankIndex = index;
+		//bank.name = String.format("Bank %05d", index);
+		//bank.enumLabel = String.format("SFBANK_%05d", index);
+		bank.name = String.format("Bank %04x", index);
+		bank.enumLabel = String.format("SFBANK_%04x", index);
+		bank.allocInstruments(128);
+		banks.put(index, bank);
+		return bank;
 	}
 	
 	public void allocSamples(int alloc){
@@ -206,11 +250,16 @@ public class BankImportInfo {
 	
 	public void copyTo(BankImportInfo other){
 		if(banks != null){
-			other.banks = new SubBank[this.banks.length];
+			/*other.banks = new SubBank[this.banks.length];
 			for(int i = 0; i < banks.length; i++){
 				if(banks[i] != null){
 					other.banks[i] = this.banks[i].copy();
 				}
+			}*/
+			other.allocBanks(0);
+			for(SubBank bank : this.banks.values()) {
+				SubBank bankCopy = bank.copy();
+				other.banks.put(bankCopy.bankIndex, bankCopy);
 			}
 		}
 		else other.banks = null;
@@ -234,13 +283,13 @@ public class BankImportInfo {
 	
 	public int getBankCount(){
 		if(banks == null) return 0;
-		return banks.length;
+		//return banks.length;
+		return banks.size();
 	}
 	
-	public SubBank getBank(int index){
+	public SubBank getBank(int id){
 		if(banks == null) return null;
-		if(index < 0 || index >= banks.length) return null;
-		return banks[index];
+		return banks.get(id);
 	}
 	
 	public int getSampleCount(){
@@ -252,6 +301,14 @@ public class BankImportInfo {
 		if(samples == null) return null;
 		if(index < 0 || index >= samples.length) return null;
 		return samples[index];
+	}
+	
+	public List<Integer> getAllBankIds(){
+		if(banks == null) return new LinkedList<Integer>();
+		List<Integer> list = new ArrayList<Integer>(banks.size()+1);
+		list.addAll(banks.keySet());
+		Collections.sort(list);
+		return list;
 	}
 	
 	/*----- Setters -----*/

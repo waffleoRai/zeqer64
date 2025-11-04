@@ -464,6 +464,12 @@ public class CoreGUIInterface implements ZeqerCoreInterface{
 		return core.removeUserWave(uid);
 	}
 	
+	public boolean updateLoop(WaveTableEntry tableEntry, int start, int end, int count) {
+		if(core == null) return false;
+		boolean b = core.updateWaveLoop(tableEntry.getUID(), start, end, count) != null;
+		return b;
+	}
+	
 	/*----- Envelope Management -----*/
 	
 	public Map<String, Z64Envelope> getAllEnvelopePresets(){
